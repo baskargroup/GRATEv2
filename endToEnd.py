@@ -22,7 +22,7 @@ import time
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
 import random
 from statistics import mean 
-import gc
+import gc 
 
 def invertBinaryImage(im):
     ## Flips the image pixel values(0 and 255) and returns the inverted image
@@ -44,7 +44,7 @@ def show_scalled_img(img_arr, scalePercent=100):
     # resize image
     output = cv2.resize(img_arr, (width, height))
 
-    plt.figure(figsize = (50,50))
+    fig = plt.figure(figsize = (50,50))
     plt.imshow(output, cmap='gray', vmin=0, vmax=255)
     plt.show()
 
@@ -67,97 +67,89 @@ def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
     return temp
 
 
-## GRATE as Function
+############### OPERATIONS USED IN GRATE ############################3
 
-def GRATE(projectPath, dataDir, imgName, resultDir):
-    img = cv2.imread(projectPath + dataDir + imgName,0)
-    if img.size == 0:
-        print("FILE NOT PROPERLY LOADED"+ projectPath + dataDir + imgName+" \n")
-        return 0
-    #image_scale_percent = 50 # Scaling the image before display
-    #border = np.zeros((img.shape[0],75)) # Setting border between the concatenated images
-    blur_thresh_interation = 20
-    closing_k_size = 15 # Kernel Size
-    opening_k_size = 17 # Kernel Size
-    pixThresh = 200 # Threshold number of pixels consituting polymers
-    ellipseAspectRatio = 5 # Threshold aspect Ratio of the ellipse
-    thresh_dist = 300  # Centroid Distance threshold for adjacency matrix 
-    thresh_theta = 15  # delta Theta threshold for adjacency matrix 
-    clusterSize = 7 # Threshold Crystal cluster size  
-
-    ## Blurring and Thresholding 
+def BlurThresh(img, num_interation):
     input = img
     thresh = input
-    for i in range(blur_thresh_interation):
+    for i in range(num_interation):
         blur = cv2.GaussianBlur(thresh,(15,15),0)
         _,thresh = cv2.threshold(blur,0, 255,  cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    return thresh
 
-    # Closing: Removing black spots from white regions. Basically Dilation followed by Erosion.
-    input = thresh
-    kernel = np.ones((closing_k_size,closing_k_size),np.uint8)
-    closing = cv2.morphologyEx(input, cv2.MORPH_CLOSE, kernel)
+# Closing: Removing black spots from white regions. Basically Dilation followed by Erosion.
+def Closing(img, k_size):
+    input = img
+    kernel = np.ones((k_size,k_size),np.uint8)
+    output = cv2.morphologyEx(input, cv2.MORPH_CLOSE, kernel)
+    return output
 
-    ## Opening  : Removing white spots from black regions. Basically Erosion followed by Dilation.
-    input = closing
-    kernel = np.ones((opening_k_size,opening_k_size),np.uint8)
-    opening = cv2.morphologyEx(input, cv2.MORPH_OPEN, kernel)
+## Opening: Removing white spots from black regions. Basically Erosion followed by Dilation.
+def Opening(img, k_size):
+    input = img
+    kernel = np.ones((k_size,k_size),np.uint8)
+    output = cv2.morphologyEx(input, cv2.MORPH_OPEN, kernel)
+    return output 
 
-    ## Skeletonize Image after opening 
-    input = opening 
+## Skeletonize Image
+def Skeletonize(img): 
+    input = img 
     image = invert(input/np.max(input))
     skeleton = skeletonize(image)
-    skeleton = (skeleton/np.max(skeleton))*255 
+    output = (skeleton/np.max(skeleton))*255 
+    return output
 
-    
-    ## Finds branching points for images with black background and white lines
-    # receive a degree matrix
-    _, _, degrees = skeleton_to_csgraph(skeleton)
-
+## Finds branching points for images with black background and white lines receive a degree matrix
+def BreakBraches(img):
+    input = np.copy(img)
+    _, _, degrees = skeleton_to_csgraph(input)
     # consider all values larger than two as intersection
     intersection_matrix = degrees > 2
-    skeleton[intersection_matrix==True] = 0
-    #show_scalled_img(skeleton, image_scale_percent)
+    input[intersection_matrix==True] = 0
+    return input
 
-    ## Skeleton Segmentation
-
-    # Set global debug behavior to None (default), "print" (to file), 
-    # or "plot" (Jupyter Notebooks or X11)
+## Skeleton Segmentation
+def SkeletonSegmentation(img):
+    input = np.copy(img)
+    input = input.astype('uint8')
+    # Set global debug behavior to None (default), "print" (to file), or "plot" (Jupyter Notebooks or X11)
     pcv.params.debug = "None"
-
-    # Adjust line thickness with the global line thickness parameter (default = 5),
-    # and provide binary mask of the plant for debugging. NOTE: the objects and
-    # hierarchies returned will be exactly the same but the debugging image (segmented_img)
-    # will look different.
     pcv.params.line_thickness = 2
-    skeleton = skeleton.astype('uint8')
-    _, obj = pcv.morphology.segment_skeleton(skel_img=skeleton)
+    segmentedImg, obj = pcv.morphology.segment_skeleton(skel_img=input)
+    
+    return segmentedImg, obj
 
-    #show_scalled_img(segmented_img, image_scale_percent)
+## Filtering out small backbones using the pixThresh variable and breaking them into uniform size.
+def Filtered_Uniform_BB(img, obj_list, pixelThreshold, ellipseSize):
+    bb = np.zeros(img.shape)
+    for i in range(len(obj_list)):
+        if len(obj_list[i]) > pixelThreshold:
+            count = 0
+            for ind in obj_list[i]:
+                count += 1
+                if count%ellipseSize == 0:
+                    bb[ind[0][1], ind[0][0]] = 0
+                else:
+                    bb[ind[0][1], ind[0][0]] = 255
+    return bb
 
-    ## Filtering out small polymer branches using the pixThresh variable.  
-    test = np.zeros(img.shape)
-    filteredPolys = []
-
-    for i in range(len(obj)):
-        if len(obj[i]) > pixThresh:
-            filteredPolys.append(obj[i])
-            for ind in obj[i]:
-                test[ind[0][1], ind[0][0]] = 255
-
-    #show_scalled_img(test, image_scale_percent)
-
-
-    ## Removing unnecessary dimension from the filteredPoly and storing it in restructuredFP
-    restructuredFP = []
-    for i in range(len(filteredPolys)):
-        tp = np.zeros((len(filteredPolys[i]), 2))
-        for j,val in enumerate(filteredPolys[i]):
+## Removing unnecessary dimension from the filteredPoly and storing it in restructuredFP
+def RemovingDim(lis):
+    temp = []
+    for i in range(len(lis)):
+        tp = np.zeros((len(lis[i]), 2))
+        for j,val in enumerate(lis[i]):
             tp[j][0] = val[0][0]
             tp[j][1] = val[0][1]
-        restructuredFP.append(tp)
+        temp.append(tp)
+    return temp
 
-    input = test#np.copy(test)
+
+################ SCIPY BASED ELLIPSE CONSTRUCTION FUNCTION ###############################
+def EllipseConstruction(img, aspectRatio):
+    input = np.copy(img)
     label_img = label(input)
+    print("MODIFIED Num Unique Values in IMG:", len(np.unique(label_img)))
     props = regionprops_table(label_img, properties=('centroid',
                                                      'orientation',
                                                      'major_axis_length',
@@ -167,65 +159,77 @@ def GRATE(projectPath, dataDir, imgName, resultDir):
     props['major_axis_length'] = props['major_axis_length']/2
     props['minor_axis_length'] = props['minor_axis_length']/2
 
-    pd_backbone_ellipse_props = pd.DataFrame()
-    pd_backbone_ellipse_props = props
-
+    bb_props = pd.DataFrame()
+    bb_props = props
+    
     for ind in range(props.shape[0]):
-    #     if props['major_axis_length'][ind]/props['minor_axis_length'][ind] > ellipseAspectRatio:
-    #         ellip_temp_img = cv2.ellipse(input, (int(props['centroid-1'][ind]), int(props['centroid-0'][ind])), (int(props['major_axis_length'][ind]),int(props['minor_axis_length'][ind])),props['orientation'][ind], 0.0, 360.0, (255, 0, 0), 2);
-    #     else: 
         if props['minor_axis_length'][ind] < 1:
-            pd_backbone_ellipse_props = pd_backbone_ellipse_props.drop([ind])
+            bb_props = bb_props.drop([ind])   
+        elif props['major_axis_length'][ind]/props['minor_axis_length'][ind] > aspectRatio:
+            ellip_temp_img = cv2.ellipse(input, (int(props['centroid-1'][ind]), int(props['centroid-0'][ind])), (int(props['major_axis_length'][ind]),int(props['minor_axis_length'][ind])),props['orientation'][ind], 0.0, 360.0, (255, 0, 0), 2);
+        else: 
+            bb_props = bb_props.drop([ind])
+    return ellip_temp_img, bb_props
 
-        elif props['major_axis_length'][ind]/props['minor_axis_length'][ind] < ellipseAspectRatio:
-            pd_backbone_ellipse_props = pd_backbone_ellipse_props.drop([ind])
-
-    PolysWithProps = pd_backbone_ellipse_props.to_numpy()
-    #show_scalled_img(ellip_temp_img)
-
-    ## Creating Adjacency Matrix based on distance between centroid and the orientation angle
-    N = len(PolysWithProps)
-    adjacencyMat = np.zeros((N,N))
-
+## Creating Adjacency Matrix based on distance between centroid and the orientation angle
+def AdjacencyMat(img, bb_props, distanceThresh, thetaThresh):
+    
+    bb_props_np = bb_props.to_numpy()
+    N = len(bb_props_np)
+    A_Mat = np.zeros((N,N))
+    print("adjacencyMat Size: ",N)
     for i in range(N):
         for j in range(N): ## Change j to i+1 to N
             if i == j:
                 continue
             else:
-                #l2norm = np.linalg.norm(PolysWithProps[i][0]-PolysWithProps[j][0])
-                l2norm = np.linalg.norm([PolysWithProps[i][0]-PolysWithProps[j][0],PolysWithProps[i][1]-PolysWithProps[j][1]])
-                #angleDiff = abs(PolysWithProps[i][1]-PolysWithProps[j][1])
-                angleDiff = abs(PolysWithProps[i][2]-PolysWithProps[j][2])
-                if l2norm < thresh_dist and angleDiff<thresh_theta:
-                    adjacencyMat[i][j] = 1
-                    adjacencyMat[j][i] = 1
+                l2norm = np.linalg.norm([bb_props_np[i][0]-bb_props_np[j][0],bb_props_np[i][1]-bb_props_np[j][1]])
+                angleDiff = abs(bb_props_np[i][2]-bb_props_np[j][2])
+                if l2norm < distanceThresh and angleDiff < thetaThresh:
+                    A_Mat[i][j] = 1
+                    A_Mat[j][i] = 1
+    
+    # Plotting the adjacent ellipse.
+    A_Mat_img = np.copy(img)
+    for i in range(N):
+        for j in range(N):
+            if A_Mat[i][j] == 1:
+                poly = bb_props_np[i]
+                A_Mat_img = cv2.ellipse(A_Mat_img, (int(poly[1]), int(poly[0])), (int(poly[3]), int(poly[4])), poly[2], 0.0, 360.0, (255, 0, 0), 2);
+                break
+                
+    return A_Mat_img, A_Mat
 
-    ## Connected Components:
+## Connected Components:
+def ConnecComp(img, A_Mat, props, c_size):
+    polyProps = props.to_numpy() 
+    N = A_Mat.shape[0]
     visited = np.zeros(N)
     cc = []
-
+    
     for v in range(N):
         if visited[v] == 0:
-            #print(v)
             temp = []
-            cc.append(DFSUtil(temp, v, visited, N, adjacencyMat))
-
-    # finalImg = np.copy(test)
-
-    # startAngle = 0
-    # endAngle = 360
-    # color = (255, 0, 0)
-    # thickness = 2
+            cc.append(DFSUtil(temp, v, visited, N, A_Mat))
+    
+    ccImg = np.copy(img)
+    print("Length of CC: ",len(cc))
+    startAngle = 0
+    endAngle = 360
+    color = (255, 0, 0)
+    thickness = 2
 
     AllClusterPointCloud = []
     crystalAngles = []
-    crystalArea = []
+    print("Cluster Size:", c_size)
     for i in range(len(cc)):
-        if len(cc[i]) >= clusterSize:
+        if len(cc[i]) >= c_size:
+            print("cc ind:", i)
             majorsAxisPointCloud = []
             ellipseAngels = []
             for j in cc[i]:
-                poly = PolysWithProps[j]
+                poly = polyProps[j]
+                ccImg = cv2.ellipse(ccImg, (int(poly[1]), int(poly[0])), (int(poly[3]), int(poly[4])), poly[2], 0.0, 360.0, (255, 0, 0), 2);
                 temp = np.zeros([2,2])
                 ang = poly[2]*np.pi/180
                 temp[0,0] = int(poly[1] - poly[3]*np.cos(ang)) 
@@ -233,20 +237,25 @@ def GRATE(projectPath, dataDir, imgName, resultDir):
 
                 temp[1,0] = int(poly[1] + poly[3]*np.cos(ang))
                 temp[1,1] = int(poly[0] + poly[3]*np.sin(ang))
+                #ccImg = cv2.circle(ccImg, (int(temp[0,0]),int(temp[0,1])), radius=5, color=(255, 0, 0), thickness=-1)
+                #ccImg = cv2.circle(ccImg, (int(temp[1,0]),int(temp[1,1])), radius=5, color=(255, 0, 0), thickness=-1)
                 majorsAxisPointCloud.append(temp[0,:])
                 majorsAxisPointCloud.append(temp[1,:])
                 ellipseAngels.append(poly[2])
             AllClusterPointCloud.append(majorsAxisPointCloud)
             crystalAngles.append(mean(ellipseAngels))
-
-
-    RGBImg = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
     
+    return ccImg, AllClusterPointCloud, crystalAngles
+
+def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName):
+    RGBImg = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+    CrystalImg = img#invertBinaryImage(finalImg)
+
     figure, axes = plt.subplots(nrows=1, ncols=2, figsize = (50,25))
     axes[1].imshow(RGBImg, vmin=0, vmax=255)
 
-
-    for cluster in AllClusterPointCloud:
+    crystalArea = []
+    for cluster in ClusterPointCloud:
 
         PointCloud = np.array(cluster)
         hull = ConvexHull(PointCloud)
@@ -258,22 +267,82 @@ def GRATE(projectPath, dataDir, imgName, resultDir):
 
     axes[0].imshow(img, cmap = 'gray')
     figure.tight_layout()
-    figure.savefig(projectPath + resultDir + imgName[:-4]+'.png')
-    
+    figure.savefig(ProjectPath + ResultDir + ImgName[:-4]+'.png')
+    plt.show()
     figure.clf()
     plt.close()
     plt.clf()
-    #plt.show()
-    del RGBImg, img
     gc.collect()
+    return crystalArea
+
+def ConcatAndShow(input, border, output, scale_percent,text):
+    img=np.concatenate((input,border,output),axis=1)
+    print(text + " \n")
+    show_scalled_img(img,scale_percent)
+
+## GRATE as Function
+
+def GRATE(projectPath, dataDir, imgName, resultDir):
+    img = cv2.imread(projectPath + dataDir + imgName,0)
     
+    image_scale_percent = 50 # Scaling the image before display
+    border = np.zeros((img.shape[0],75)) # Setting border between the concatenated images
+    blur_thresh_interation = 40
+    closing_k_size = 15 # Kernel Size
+    opening_k_size = 17 # Kernel Size
+    pixThresh = 150 # Threshold number of pixels consituting polymers
+    ellipse_len = 160 # Breaking polymer into this size before constructing ellipse 
+    ellipseAspectRatio = 5 # Threshold aspect Ratio of the ellipse
+    thresh_dist = 200  # Centroid Distance threshold for adjacency matrix 
+    thresh_theta = 25  # delta Theta threshold for adjacency matrix 
+    clusterSize = 10 # Threshold Crystal cluster size 
+    
+
+    thresh = BlurThresh(img, blur_thresh_interation)
+#     ConcatAndShow(img, border, thresh, image_scale_percent, "BLURRING AND THRESHOLDING")
+    
+    closing = Closing(thresh, closing_k_size)
+#     ConcatAndShow(thresh, border, closing, image_scale_percent, "CLOSING")
+    
+    opening = Opening(closing, opening_k_size)
+#     ConcatAndShow(closing, border, opening, image_scale_percent, "OPENING")
+    
+    skeleton = Skeletonize(opening)
+#     ConcatAndShow(opening, border, skeleton, image_scale_percent, "SKELETONIZED")
+    
+    skeleton = BreakBraches(skeleton)
+#     print("BRANCHED SKELETON \n")
+#     show_scalled_img(skeleton, image_scale_percent)
+    
+    _, temp = SkeletonSegmentation(skeleton)
+    
+    Broken_backbone_img = Filtered_Uniform_BB(img, temp, pixThresh, ellipse_len)
+#     print("UNIFORM SIZED BACKBONE \n")
+#     show_scalled_img(Broken_backbone_img, image_scale_percent)
+    
+    _, filteredPolys = SkeletonSegmentation(Broken_backbone_img)
+
+    restructuredFP = RemovingDim(filteredPolys)
+    
+    bb_ellipse1, bb_ellipse_props = EllipseConstruction(Broken_backbone_img, ellipseAspectRatio)
+#     print("ELLIPSE INSCRIBED \n")
+#     show_scalled_img(bb_ellipse1,image_scale_percent)
+    
+    adjEllipse_img, adjacencyMat = AdjacencyMat(Broken_backbone_img, bb_ellipse_props, thresh_dist, thresh_theta)
+#     print("ADJACENT ELLIPSES \n")
+#     show_scalled_img(adjEllipse_img, image_scale_percent)
+    
+    ellipseCluster, AllClusterPointCloud, crystalAngles = ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, clusterSize)
+#     print("CLUSTERS")
+#     show_scalled_img(ellipseCluster, image_scale_percent)
+    
+    crystalArea = PlottingAndSaving(img, AllClusterPointCloud, projectPath, resultDir, imgName)
+        
     df = pd.DataFrame(list(zip(crystalArea, crystalAngles)), columns=['Crystal Area', 'Crystal Angle'])
     df.to_csv(projectPath + resultDir +imgName[:-4]+'.csv')
-
-    del filteredPolys,restructuredFP, cc, AllClusterPointCloud,crystalAngles,crystalArea
-
+    
     return 0
-
+    
 from os import listdir
 from os.path import isfile, join
 import sys
