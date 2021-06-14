@@ -40,3 +40,25 @@ def debugORSave(initial, final, params, concat, text):
             show_scalled_img(final, params['display image scaling'])
     if params['save intermediate images'] == 1:
         cv2.imwrite(text+".png", final)
+
+def imgLength(freqCoord, imgSize):
+    freqCoord = freqCoord.astype(np.int32)
+    beta = np.arctan(imgSize[0]/imgSize[1])
+
+    if freqCoord[0] == 0:
+        return imgSize[1]
+    elif freqCoord[1] == 0:
+        return imgSize[0]
+    elif freqCoord[0] > 0 and freqCoord[1] > 0:
+        theta = np.pi/2 - np.arctan(freqCoord[1]/freqCoord[0])
+    elif freqCoord[0] < 0 and freqCoord[1] < 0:
+        theta = np.pi/2 - np.arctan(freqCoord[1]/freqCoord[0])
+    elif freqCoord[0] > 0 and freqCoord[1] < 0:
+        theta = np.pi/2 + np.arctan(freqCoord[1]/freqCoord[0])
+    elif freqCoord[0] < 0 and freqCoord[1] > 0:
+        theta = np.pi/2 + np.arctan(freqCoord[1]/freqCoord[0])
+    
+    if theta <= beta:
+        return imgSize[1]/np.cos(theta)
+    else:
+        return imgSize[0]/np.sin(theta)

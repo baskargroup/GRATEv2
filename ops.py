@@ -41,18 +41,18 @@ def BlurThresh(img, params):
         # blur_img = cv2.equalizeHist(blur_img)
     blur_img = blur_img.astype('uint8')
 
-    debugORSave(img, blur_img, params,1,"blur_"+str(params['blur iterations'])+"_"+str(params['blur k size']))
+    # debugORSave(img, blur_img, params,1,"blur_"+str(params['blur iterations'])+"_"+str(params['blur k size']))
     
     ###################################
     blur_img = cv2.equalizeHist(blur_img)
     ###################################
     
-    debugORSave(img, blur_img, params,1,"blur_HE_"+str(params['blur iterations'])+"_"+str(params['blur k size']))
+    # debugORSave(img, blur_img, params,1,"blur_HE_"+str(params['blur iterations'])+"_"+str(params['blur k size']))
 
     _,thresh = cv2.threshold(blur_img,0, 255,  cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     
-    # debugORSave(img, thresh, params,1,"1_BLURRING AND THRESHOLDING")
-    debugORSave(img, thresh, params,1,"blur_HE_thresh_"+str(params['blur iterations'])+"_"+str(params['blur k size']))
+    debugORSave(img, thresh, params,1,"1_BLURRING AND THRESHOLDING")
+    # debugORSave(img, thresh, params,1,"blur_HE_thresh_"+str(params['blur iterations'])+"_"+str(params['blur k size']))
     return thresh
 
 # Closing: Removing black spots from white regions. Basically Dilation followed by Erosion.
@@ -422,7 +422,7 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         boundingBox.append([int(x_minMax[0]), int(y_minMax[0]), int(x_minMax[1]),int(y_minMax[1])])
         
         c = random.choice(color)
-        arrLen = min(int(x_minMax[1]-x_minMax[0])/2, int(y_minMax[1]-y_minMax[0])/2)
+        arrLen = min(int(x_minMax[1]-x_minMax[0])/2, int(y_minMax[1]-y_minMax[0])/2)/3
         plt.arrow(cx, cy,arrLen*np.cos(crystalAng[ind]*np.pi/180), arrLen*np.sin(crystalAng[ind]*np.pi/180),linewidth=7.0, color=c )
         ################### Code for plotting Convex Hull #####################################
         for simplex in hull.simplices:
@@ -447,16 +447,6 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
     df_BB = pd.DataFrame(list(zip(boundingBox)), columns=["Top Left(x_y) Bottom Right(x_y)"])
     
     return crystalArea, centroid, df_BB
-
-def imgLength(freqCoord, imgSize):
-    freqCoord = freqCoord.astype(np.int32)
-    if freqCoord[0] == 0:
-        return imgSize[1]
-    elif freqCoord[1] == 0:
-        return imgSize[0]
-    else:
-        theta = np.arctan(freqCoord[1]/freqCoord[0])
-        return imgSize[1]/np.sin(theta)
 
 def evaluateDspacing(bb, img, params):
     bb_arr = bb.to_numpy()
@@ -492,13 +482,14 @@ def evaluateDspacing(bb, img, params):
         d_space = tp*orientedLen
         d_spaces.append(d_space/params['pix to nm'])
         
-        # print("Max Magnitude:", np.amax(power_spectrum))
-        # print("Freq Index:", ind)
-        # print("size of Arr:", arrSiz)
-        # print("freq coord:",freq_coord)
-        # print("freq:", freq)
-        # print("Oriented Length:", orientedLen)
-        # print("D space:", d_space)
+        # print("Max Magnitude    :", np.amax(power_spectrum))
+        # print("Freq Index       :", ind)
+        # print("size of Arr      :", arrSiz)
+        # print("freq coord       :",freq_coord)
+        # print("freq             :", freq)
+        # print("Oriented Length  :", orientedLen)
+        # print("D space          :", d_space)
+        print("D space in nm    :", d_space/params['pix to nm'])
 
         # plt.subplot(121)
         # plt.imshow(img_cropped, cmap = 'gray')
