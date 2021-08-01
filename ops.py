@@ -333,6 +333,8 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
     crystalArea         = []
     centroid            = []
     boundingBox         = []
+    crystalAngles_final = []
+    dspaces             = []
     color               = ['b', 'g', 'r', 'c', 'm','y','w']
 
     for ind, cluster in enumerate(ClusterPointCloud):
@@ -342,13 +344,19 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         #Get centoid
         cx          = np.mean(hull.points[hull.vertices,0], dtype= int)
         cy          = np.mean(hull.points[hull.vertices,1], dtype= int)
-        centroid.append([cx, cy])
+        
         
         # Get Boundingbox coordinates
         x_minMax    = [np.amin(hull.points[hull.vertices,0]), np.amax(hull.points[hull.vertices,0])]
         y_minMax    = [np.amin(hull.points[hull.vertices,1]), np.amax(hull.points[hull.vertices,1])]
-        boundingBox.append( [ int( x_minMax[0] ) , int( y_minMax[0] ) , int( x_minMax[1] ) , int( y_minMax[1] ) ] )
-        
+
+        detection_region = img[int( y_minMax[0] ) : int( y_minMax[1] ), int( x_minMax[0] ) : int( x_minMax[1] )]
+
+        dspace     = evaluateDspacing_final(detection_region, params)
+        if dspace == 0:
+            continue
+        print("D space in nm    :", dspace)
+
         c       = random.choice(color)
         arrLen  = min( int( x_minMax[1] - x_minMax[0] ) / 2, int( y_minMax[1] - y_minMax[0] ) / 2 ) / 3
         plt.arrow( cx , cy , arrLen * np.cos( crystalAng[ ind ] * np.pi/180 ) , arrLen * np.sin( crystalAng[ind] * np.pi/180 ) , linewidth = 7.0 , color = c )
@@ -360,9 +368,16 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         
         ##################### Code for Plotting Alpha Shape (Tight fitting boundry)#############
         alpha_shape     = alphashape.alphashape( PointCloud , alpha = 0.005 )
-        crystalArea.append( ( alpha_shape.area ) * unitConv_pixSq2nmSq )
+        
         axes[1].add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
         ########################################################################################
+
+        centroid.append([cx, cy])
+        crystalArea.append( ( alpha_shape.area ) * unitConv_pixSq2nmSq )
+        crystalAngles_final.append(crystalAng[ ind ])
+        dspaces.append(dspace)
+        if params['save bounding box'] == 1:
+            boundingBox.append( [ int( x_minMax[0] ) , int( y_minMax[0] ) , int( x_minMax[1] ) , int( y_minMax[1] ) ] )
 
     axes[0].imshow( img , cmap = 'gray')
     figure.tight_layout()
@@ -374,9 +389,71 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
     plt.close()
     plt.clf()
     gc.collect()
-    df_BB = pd.DataFrame( list( zip( boundingBox ) ) , columns = [ "Top Left(x_y) Bottom Right(x_y)" ] )
     
-    return crystalArea, centroid, df_BB
+    return crystalArea, centroid, crystalAngles_final, dspaces, boundingBox
+
+def evaluateDspacing_final(img, params):
+    peak_cutoff_factor  = 1.15
+    smallerDim      = min(img.shape)
+
+    row_low         = int( ( img.shape[0] - smallerDim ) / 2 )
+    row_high        = int( ( img.shape[0] + smallerDim ) / 2 )
+    col_low         = int( ( img.shape[1] - smallerDim ) / 2 )
+    col_high        = int( ( img.shape[1] + smallerDim ) / 2 )
+
+    square_region   = img[ row_low : row_high, col_low : col_high ]
+    img_centre      = (np.asarray(square_region.shape)/2).astype(int)
+    
+    f               = np.fft.fft2( square_region )
+    fshift          = np.fft.fftshift( f )
+    power_spectrum  = 1 * np.log( np.abs( fshift ) + 1 )
+    
+    # plot3d(power_spectrum)
+
+    arrSiz          = np.asarray( power_spectrum.shape )
+    qIn, qOut       = ringSize( arrSiz , params )
+    TFring, nonZero = draw_ring( shape = power_spectrum.shape , rIn = qIn , rOut = qOut )
+    power_spectrum  = filter_ring( TFring , power_spectrum )
+
+    bandpass_pow_spec_mean      = np.sum( power_spectrum ) / nonZero
+
+    if np.max( power_spectrum ) >= peak_cutoff_factor * bandpass_pow_spec_mean:
+        ind             = np.unravel_index( np.argmax( power_spectrum , axis = None ) , power_spectrum.shape )
+        
+        ps2             = power_spectrum
+        ps2[ind]        = 0
+        ind2            = np.unravel_index( np.argmax( ps2 , axis = None ) , ps2.shape )
+
+        freq_coord      = (np.asarray(ind) - np.asarray(ind2))
+        freq_coord      = freq_coord.astype( np.int32 )
+    
+        if np.all( ( freq_coord == 0 ) ):
+            freq_coord = np.ones( ( 2 ) )
+        
+        freq            = np.linalg.norm( freq_coord )/2
+        tp              = 1 / freq
+        # orientedLen     = np.abs( imgLength( freq_coord , arrSiz ) )
+        d_space         = tp * arrSiz[0]
+        d_space         = d_space / params[ 'pix to nm' ]
+    else:
+        d_space = 0
+
+    # print("\n")
+    # print("size of Arr      :", arrSiz)
+    # print("Max Magnitude    :", np.max(power_spectrum))
+    # print("Band Pass Mean   :", bandpass_pow_spec_mean)
+    # print("1st Freq Index   :", ind)
+    # print("2nd Freq Index   :", ind2)
+    # print("freq vector      :", freq_coord)
+    # print("freq             :", freq)
+    # print("Time Period      :", tp)
+    # # print("Oriented Length  :", orientedLen)
+    # print("D space in px    :", d_space * params[ 'pix to nm' ])
+    # print("D space in nm    :", d_space)
+
+    return d_space
+
+
 
 def evaluateDspacing(bb, img, params):
     
@@ -463,10 +540,10 @@ def evaluateDspacing(bb, img, params):
 
         d_spaces.append( d_space / params[ 'pix to nm' ] )
 
-        print("\n")
+        # print("\n")
         # print("size of Arr      :", arrSiz)
-        print("Max Magnitude    :", np.max(power_spectrum))
-        print("Band Pass Mean   :", bandpass_pow_spec_mean)
+        # print("Max Magnitude    :", np.max(power_spectrum))
+        # print("Band Pass Mean   :", bandpass_pow_spec_mean)
         # print("1st Freq Index   :", ind)
         # print("2nd Freq Index   :", ind2)
         # print("freq vector      :", freq_coord)
@@ -474,7 +551,7 @@ def evaluateDspacing(bb, img, params):
         # print("Time Period      :", tp)
         # # print("Oriented Length  :", orientedLen)
         # print("D space in px    :", d_space)
-        print("D space in nm    :", d_space/params['pix to nm'])
+        # print("D space in nm    :", d_space/params['pix to nm'])
 
         # plot3d(power_spectrum)
 
