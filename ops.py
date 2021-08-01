@@ -344,18 +344,17 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         #Get centoid
         cx          = np.mean(hull.points[hull.vertices,0], dtype= int)
         cy          = np.mean(hull.points[hull.vertices,1], dtype= int)
-        
-        
+    
         # Get Boundingbox coordinates
         x_minMax    = [np.amin(hull.points[hull.vertices,0]), np.amax(hull.points[hull.vertices,0])]
         y_minMax    = [np.amin(hull.points[hull.vertices,1]), np.amax(hull.points[hull.vertices,1])]
 
         detection_region = img[int( y_minMax[0] ) : int( y_minMax[1] ), int( x_minMax[0] ) : int( x_minMax[1] )]
 
-        dspace     = evaluateDspacing_final(detection_region, params)
+        dspace     = evaluateDspacing(detection_region, params)
         if dspace == 0:
             continue
-        print("D space in nm    :", dspace)
+        # print("D space in nm    :", dspace)
 
         c       = random.choice(color)
         arrLen  = min( int( x_minMax[1] - x_minMax[0] ) / 2, int( y_minMax[1] - y_minMax[0] ) / 2 ) / 3
@@ -392,8 +391,8 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
     
     return crystalArea, centroid, crystalAngles_final, dspaces, boundingBox
 
-def evaluateDspacing_final(img, params):
-    peak_cutoff_factor  = 1.15
+def evaluateDspacing(img, params):
+    peak_cutoff_factor  = params[ 'pow spec peak vs mean factor' ]
     smallerDim      = min(img.shape)
 
     row_low         = int( ( img.shape[0] - smallerDim ) / 2 )
@@ -402,7 +401,6 @@ def evaluateDspacing_final(img, params):
     col_high        = int( ( img.shape[1] + smallerDim ) / 2 )
 
     square_region   = img[ row_low : row_high, col_low : col_high ]
-    img_centre      = (np.asarray(square_region.shape)/2).astype(int)
     
     f               = np.fft.fft2( square_region )
     fshift          = np.fft.fftshift( f )
@@ -432,7 +430,6 @@ def evaluateDspacing_final(img, params):
         
         freq            = np.linalg.norm( freq_coord )/2
         tp              = 1 / freq
-        # orientedLen     = np.abs( imgLength( freq_coord , arrSiz ) )
         d_space         = tp * arrSiz[0]
         d_space         = d_space / params[ 'pix to nm' ]
     else:
@@ -447,125 +444,22 @@ def evaluateDspacing_final(img, params):
     # print("freq vector      :", freq_coord)
     # print("freq             :", freq)
     # print("Time Period      :", tp)
-    # # print("Oriented Length  :", orientedLen)
     # print("D space in px    :", d_space * params[ 'pix to nm' ])
     # print("D space in nm    :", d_space)
 
+    """ plt.subplot(121)
+    plt.imshow(img_cropped, cmap = 'gray')
+    plt.title('Input Image')
+    plt.xticks([]), plt.yticks([])
+    plt.subplot(122)
+    plt.imshow(power_spectrum, cmap = 'gray')
+    plt.title('Power Spectrum'), plt.xticks([]), plt.yticks([])
+    plt.show()
+    plt.close()
+    plt.clf() """
+
     return d_space
 
-
-
-def evaluateDspacing(bb, img, params):
-    
-    bb_arr              = bb.to_numpy()
-    peak_cutoff_factor  = 1.15 
-    if bb_arr.size == 0:
-        return []
-    
-    bb_arr      = np.hstack(bb_arr)
-    d_spaces    = []
-
-    for region in range(len(bb_arr)):
-        
-        img_cropped     = img[ bb_arr[ region ][ 1 ] : bb_arr[ region ][ 3 ] , bb_arr[ region ][ 0 ] : bb_arr[ region ][ 2 ] ]
-        smallerDim      = min(img_cropped.shape)
-
-        row_low         = int( ( img_cropped.shape[0] - smallerDim ) / 2 )
-        row_high        = int( ( img_cropped.shape[0] + smallerDim ) / 2 )
-        col_low         = int( ( img_cropped.shape[1] - smallerDim ) / 2 )
-        col_high        = int( ( img_cropped.shape[1] + smallerDim ) / 2 )
-
-        square_region   = img_cropped[ row_low : row_high, col_low : col_high ]
-        img_centre      = (np.asarray(square_region.shape)/2).astype(int)
-        
-        f               = np.fft.fft2( square_region )
-        fshift          = np.fft.fftshift( f )
-        power_spectrum  = 1 * np.log( np.abs( fshift ) + 1 )
-        
-        # plot3d(power_spectrum)
-
-        arrSiz          = np.asarray( power_spectrum.shape )
-        qIn, qOut       = ringSize( arrSiz , params )
-        TFring, nonZero = draw_ring( shape = power_spectrum.shape , rIn = qIn , rOut = qOut )
-        power_spectrum  = filter_ring( TFring , power_spectrum )
-
-        bandpass_pow_spec_mean      = np.sum( power_spectrum ) / nonZero
-        
-        # plt.imshow(power_spectrum, cmap='hot', interpolation='nearest')
-        # plt.show()
-        
-        """ ind             = np.unravel_index( np.argmax( power_spectrum , axis = None ) , power_spectrum.shape )
-
-        ps2             = power_spectrum
-        ps2[ind]        = 0
-        ind2            = np.unravel_index( np.argmax( ps2 , axis = None ) , ps2.shape )
-
-        # plt.imshow(ps2, cmap='hot', interpolation='nearest')
-        # plt.show()
-
-        # freq_coord      = ind - ( arrSiz / 2 )
-        freq_coord      = (np.asarray(ind) - np.asarray(ind2))
-        freq_coord      = freq_coord.astype( np.int32 )
-        
-        if np.all( ( freq_coord == 0 ) ):
-            freq_coord  = np.ones( ( 2 ) )
-        
-        freq            = np.linalg.norm( freq_coord )/2
-        tp              = 1 / freq
-        # orientedLen     = np.abs( imgLength( freq_coord , arrSiz ) )
-        # d_space         = tp * orientedLen
-        d_space         = tp * arrSiz[0] """
-
-        
-        ### Setting a cuttoff for the max of power spectrum to be considered as peak.  
-        if np.max( power_spectrum ) >= peak_cutoff_factor * bandpass_pow_spec_mean:
-            ind             = np.unravel_index( np.argmax( power_spectrum , axis = None ) , power_spectrum.shape )
-            
-            ps2             = power_spectrum
-            ps2[ind]        = 0
-            ind2            = np.unravel_index( np.argmax( ps2 , axis = None ) , ps2.shape )
-
-            freq_coord      = (np.asarray(ind) - np.asarray(ind2))
-            freq_coord      = freq_coord.astype( np.int32 )
-        
-            if np.all( ( freq_coord == 0 ) ):
-                freq_coord = np.ones( ( 2 ) )
-            
-            freq            = np.linalg.norm( freq_coord )/2
-            tp              = 1 / freq
-            # orientedLen     = np.abs( imgLength( freq_coord , arrSiz ) )
-            d_space         = tp * arrSiz[0]
-        else:
-            d_space = 0
-
-        d_spaces.append( d_space / params[ 'pix to nm' ] )
-
-        # print("\n")
-        # print("size of Arr      :", arrSiz)
-        # print("Max Magnitude    :", np.max(power_spectrum))
-        # print("Band Pass Mean   :", bandpass_pow_spec_mean)
-        # print("1st Freq Index   :", ind)
-        # print("2nd Freq Index   :", ind2)
-        # print("freq vector      :", freq_coord)
-        # print("freq             :", freq)
-        # print("Time Period      :", tp)
-        # # print("Oriented Length  :", orientedLen)
-        # print("D space in px    :", d_space)
-        # print("D space in nm    :", d_space/params['pix to nm'])
-
-        # plot3d(power_spectrum)
-
-        """ plt.subplot(121)
-        plt.imshow(img_cropped, cmap = 'gray')
-        plt.title('Input Image')
-        plt.xticks([]), plt.yticks([])
-        plt.subplot(122)
-        plt.imshow(power_spectrum, cmap = 'gray')
-        plt.title('Power Spectrum'), plt.xticks([]), plt.yticks([])
-        plt.show()
-        plt.close()
-        plt.clf() """
-    return d_spaces
 
 def draw_ring(shape,rIn, rOut):
     rows, cols = shape[0], shape[1]

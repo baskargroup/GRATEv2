@@ -83,14 +83,8 @@ def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
     if timeCode == 1:
         t0 = time.time()
         total = t0-t1
-        print("Plotting and Saving Time                 :", round(total,2))
+        print("Eval D-Spacing, Plotting and Saving Time :", round(total,2))
 
-    # t0 = time.time()
-    # ds = evaluateDspacing(df_boundBox, img, parameters)
-    if timeCode == 1:
-        t1 = time.time()
-        total = t1-t0
-        print("Evaluate D-Spacing Time                  :", round(total,2))
 
     if len(centroid) == 0:
         imgNamelist = [imgName]

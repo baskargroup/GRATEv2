@@ -7,29 +7,17 @@ import os
 from os import listdir
 from os.path import isfile
 
-projectPath = '/media/dhruv/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/' 
-dataDir = 'sampleData/'
-resultDir = 'Results/temp/'
+projectPath     = os.path.dirname(os.path.abspath(__file__))
+dataDir         = 'sampleData/'
+resultDir       = 'Results/temp/'
+AnnotationDir   = 'Annotations/'
 
-# projectPath = '/work/adarsh/Dhruv/GRATE/'
-# dataDir = 'DATA/'
-# resultDir = 'Results/all/skimage_Library/'
+dataDir     = join(dataDir, str(sys.argv[1]))
+resultDir   = join(resultDir, str(sys.argv[1]), str(sys.argv[2]))
+dspace_nm   = float(sys.argv[2]) # 1.9nm, 7A == 0.7nm, 4A == 0.4nm
 
-AnnotationDir = 'Annotations/'
-
-dataDir = join(dataDir, str(sys.argv[2]))
-
-onlyfiles = [f for f in listdir(join(projectPath,dataDir)) if isfile(join(projectPath,dataDir,f))]
-
-resultDir = join(resultDir, str(sys.argv[2]),str(sys.argv[1]))
-if os.path.isdir(join(projectPath, resultDir)) == False:
-    os.mkdir(join(projectPath, resultDir))
-
-dspace_nm = float(sys.argv[1]) # 1.9nm, 7A == 0.7nm, 4A == 0.4nm
-pix2nm = 78.5
-print("\n d space:", dspace_nm)
-dspace_pix = int(dspace_nm*pix2nm)
-# print("dspace_pix:", dspace_pix)
+pix2nm      = 78.5
+dspace_pix  = int(dspace_nm*pix2nm)
 
 blur_iteration          = 15                    # Number of Blur Iteration 
 Blur_kernel             = int(0.15*dspace_pix)  # Fraction of dspace for the blur kernel size 
@@ -40,7 +28,8 @@ ellipse_len             = int(1.5*dspace_pix)   # Breaking Backbone into uniform
 ellipseAspectRatio      = 5                     # Threshold ellipse aspect Ratio 
 thresh_dist             = int(2*dspace_pix)     # Distance threshold for adjacency matrix 
 thresh_theta            = 10                    # delta Theta threshold for adjacency matrix 
-clusterSize             = 7                     # Threshold ellipse in Crystal cluster  
+clusterSize             = 7                     # Threshold ellipse in Crystal cluster
+powSpec_peak_thresk     = 1.15
 
 
 debug               = 0     # To show images: 1, Not to:0
@@ -49,7 +38,8 @@ save_BB             = 0     # To save Bounding box coordinates: 1, Not to: 0
 ResultDisp          = 0     # To display final result in notebook: 1, Not to:0
 image_scale_percent = 50    # Scaling the image before display
 
-parameters = {'d space pix':                    dspace_pix, 
+parameters = {'d space nm':                     dspace_nm,
+             'd space pix':                     dspace_pix, 
              'pix to nm':                       pix2nm,
              'blur iterations':                 blur_iteration, 
              'blur k size':                     Blur_kernel,
@@ -61,6 +51,7 @@ parameters = {'d space pix':                    dspace_pix,
              'adjacency threshold distance':    thresh_dist,
              'adjacency threshold angle':       thresh_theta, 
              'cluster threshold size':          clusterSize,
+             'pow spec peak vs mean factor':    powSpec_peak_thresk,
              'show intermediate images':        debug,
              'save intermediate images':        saveImg,
              'save bounding box':               save_BB,
@@ -70,8 +61,15 @@ parameters = {'d space pix':                    dspace_pix,
 
 df_overall = pd.DataFrame(columns =['Image Name', 'Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)'])
 
+if os.path.isdir(join(projectPath, resultDir)) == False: os.mkdir(join(projectPath, resultDir))
+
+onlyfiles = [f for f in listdir(join(projectPath,dataDir)) if isfile(join(projectPath,dataDir,f))]
+
+print("\nd space:", dspace_nm)
+
 for f in onlyfiles:
-    if f[-4:] == ".tif" and f == "FoilHole_21836544_Data_21829764_21829765_20200123_0129.tif":
+
+    if f[-4:] == ".tif" and f == "FoilHole_21836304_Data_21829764_21829765_20200123_0048.tif":
         print("Img Name: ", f, "\n")
         # print("Full Img Path: ",join(projectPath,dataDir,f))
         t0 = time.time()    
