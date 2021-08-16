@@ -17,8 +17,6 @@ from scipy.spatial import ConvexHull
 import random
 from statistics import mean 
 import gc
-from descartes import PolygonPatch
-import alphashape
 from sklearn.decomposition import PCA
 from os.path import join
 from scipy.ndimage import gaussian_filter
@@ -341,40 +339,37 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         PointCloud  = np.array(cluster)
         hull        = ConvexHull(PointCloud)
         
-        #Get centoid
-        cx          = np.mean(hull.points[hull.vertices,0], dtype= int)
-        cy          = np.mean(hull.points[hull.vertices,1], dtype= int)
-    
-        # Get Boundingbox coordinates
-        x_minMax    = [np.amin(hull.points[hull.vertices,0]), np.amax(hull.points[hull.vertices,0])]
-        y_minMax    = [np.amin(hull.points[hull.vertices,1]), np.amax(hull.points[hull.vertices,1])]
-
-        detection_region = img[int( y_minMax[0] ) : int( y_minMax[1] ), int( x_minMax[0] ) : int( x_minMax[1] )]
-
-        dspace     = evaluateDspacing(detection_region, params)
-        if dspace == 0:
+        cx, cy = getCentroid(hull)
+        x_minMax, y_minMax = getBoundingBox(hull)
+        
+        ## D Spacing Evaluation 
+        dspace     = evaluateDspacing(img, params, x_minMax, y_minMax)
+        
+        ## Skip the detection with incorrect D-Spacing
+        if dspace == 0:            
             continue
-        # print("D space in nm    :", dspace)
-
-        c       = random.choice(color)
-        arrLen  = min( int( x_minMax[1] - x_minMax[0] ) / 2, int( y_minMax[1] - y_minMax[0] ) / 2 ) / 3
-        plt.arrow( cx , cy , arrLen * np.cos( crystalAng[ ind ] * np.pi/180 ) , arrLen * np.sin( crystalAng[ind] * np.pi/180 ) , linewidth = 7.0 , color = c )
-
-        ################### Code for plotting Convex Hull #####################################
-        for simplex in hull.simplices:
-            plt.plot( PointCloud[ simplex , 0 ] , PointCloud[ simplex , 1 ] , linewidth = 7.0 , color = c )
-        ########################################################################################
         
-        ##################### Code for Plotting Alpha Shape (Tight fitting boundry)#############
-        alpha_shape     = alphashape.alphashape( PointCloud , alpha = 0.005 )
-        
-        axes[1].add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
-        ########################################################################################
+        ## Picking up a color for the detection
+        c = random.choice(color)
 
+        ## Plotting Alpha Shape (Tight fitting boundry)
+        alpha_shape, smallArea = pltAlphaShape(axes, PointCloud, params)
+        
+        if smallArea == True:
+            print("Small area Removed!!")
+            continue
+
+        ## Plotting the orientation line
+        pltOrientationLine(axes, ind, crystalAng, c, x_minMax, y_minMax, cx, cy)
+        
+        ## Plotting Convex Hull
+        pltConvexHull(axes, hull, PointCloud, c)
+        
         centroid.append([cx, cy])
         crystalArea.append( ( alpha_shape.area ) * unitConv_pixSq2nmSq )
         crystalAngles_final.append(crystalAng[ ind ])
         dspaces.append(dspace)
+        
         if params['save bounding box'] == 1:
             boundingBox.append( [ int( x_minMax[0] ) , int( y_minMax[0] ) , int( x_minMax[1] ) , int( y_minMax[1] ) ] )
 
@@ -391,7 +386,9 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
     
     return crystalArea, centroid, crystalAngles_final, dspaces, boundingBox
 
-def evaluateDspacing(img, params):
+def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
+    
+    img = Entire_img[int( y_minMax[0] ) : int( y_minMax[1] ), int( x_minMax[0] ) : int( x_minMax[1] )]
     peak_cutoff_factor  = params[ 'pow spec peak vs mean factor' ]
     smallerDim      = min(img.shape)
 
@@ -417,7 +414,6 @@ def evaluateDspacing(img, params):
 
     if np.max( power_spectrum ) >= peak_cutoff_factor * bandpass_pow_spec_mean:
         ind             = np.unravel_index( np.argmax( power_spectrum , axis = None ) , power_spectrum.shape )
-        
         ps2             = power_spectrum
         ps2[ind]        = 0
         ind2            = np.unravel_index( np.argmax( ps2 , axis = None ) , ps2.shape )
@@ -480,10 +476,8 @@ def draw_ring(shape,rIn, rOut):
     return mask, count
 
 def filter_ring(TFring,fft_img_channel):
-    
     temp            = np.zeros( fft_img_channel.shape[ : 2 ] )
     temp[ TFring ]  = fft_img_channel[ TFring ]
-    
     return(temp)
 
 def ringSize(arrSiz, params):

@@ -12,6 +12,13 @@ dataDir         = 'sampleData/'
 resultDir       = 'Results/temp/'
 AnnotationDir   = 'Annotations/'
 
+'''
+Command Line Arguments
+
+sys.argv[1] : Folder inside the dataDir from where the images will be read.
+sys.argv[2] : The D-Spacing value (eg. 1.9, 0.7) at which the algorithm will run. 
+'''
+
 dataDir     = join(dataDir, str(sys.argv[1]))
 resultDir   = join(resultDir, str(sys.argv[1]), str(sys.argv[2]))
 dspace_nm   = float(sys.argv[2]) # 1.9nm, 7A == 0.7nm, 4A == 0.4nm
@@ -30,6 +37,7 @@ thresh_dist             = int(2*dspace_pix)     # Distance threshold for adjacen
 thresh_theta            = 10                    # delta Theta threshold for adjacency matrix 
 clusterSize             = 7                     # Threshold ellipse in Crystal cluster
 powSpec_peak_thresk     = 1.15
+Thresh_area_factor      = 4
 
 
 debug               = 0     # To show images: 1, Not to:0
@@ -56,7 +64,8 @@ parameters = {'d space nm':                     dspace_nm,
              'save intermediate images':        saveImg,
              'save bounding box':               save_BB,
              'show final image':                ResultDisp,
-             'display image scaling':           image_scale_percent}
+             'display image scaling':           image_scale_percent,
+             'Threshold area factor':           Thresh_area_factor}
 
 
 df_overall = pd.DataFrame(columns =['Image Name', 'Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)'])
@@ -69,7 +78,7 @@ print("\nd space:", dspace_nm)
 
 for f in onlyfiles:
 
-    if f[-4:] == ".tif" and f == "FoilHole_21836304_Data_21829764_21829765_20200123_0048.tif":
+    if f[-4:] == ".tif" and f == "FoilHole_21836260_Data_21829764_21829765_20200123_0028.tif":
         print("Img Name: ", f, "\n")
         # print("Full Img Path: ",join(projectPath,dataDir,f))
         t0 = time.time()    
@@ -77,7 +86,6 @@ for f in onlyfiles:
         t1 = time.time()
         total = t1-t0
         print("Overall GRATE Time:", round(total,2), "\n")
-
         df_overall = df_overall.append(df_crystalProps, ignore_index=True,)
 
 df_overall.to_csv(join(projectPath, resultDir,'overall.csv'))
