@@ -484,16 +484,16 @@ def ringSize(arrSiz, params):
     f_in_px, f_out_px = 0, 0 
     
     if 1.8 <= params[ 'd space nm' ] <= 2.2 :
-        lowDS       = 1.8       ## nm 
-        higherDS    = 2.5       ## nm
+        lowDS       = 1.52       ## nm 
+        higherDS    = 2.28       ## nm
     
-    elif 0.5 <= params[ 'd space nm' ] <= 1.5 :
-        lowDS       = 0.5       ## nm 
-        higherDS    = 1.5       ## nm
+    elif 0.6 <= params[ 'd space nm' ] <= 0.8 :
+        lowDS       = 0.56       ## nm 
+        higherDS    = 0.84       ## nm
     
-    elif 0.1 <= params[ 'd space nm' ] <= 0.5 : 
-        lowDS       = 0.1       ## nm 
-        higherDS    = 0.5       ## nm
+    elif 0.35 <= params[ 'd space nm' ] <= 0.45 : 
+        lowDS       = 0.32       ## nm 
+        higherDS    = 0.48       ## nm
 
     f_in_nm     = 1 / higherDS
     f_out_nm    = 1 / lowDS
