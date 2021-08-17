@@ -2,6 +2,9 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import os
+import re
+from os.path import join
+
 from descartes import PolygonPatch
 import alphashape
 
@@ -130,3 +133,20 @@ def pltAlphaShape(axes, pntCloud, params):
         axes[1].add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
         
     return alpha_shape, TorF
+
+def createVersionDirectory(projectPath, BaseResultDir, name):
+    folderDir       = join(projectPath, BaseResultDir)
+    ResFolderName   = name + '_' #'version_'
+    lenFolderName   = len(ResFolderName)
+    dirlist         = [int(item[lenFolderName:]) for item in os.listdir(folderDir) if os.path.isdir(os.path.join(folderDir,item)) and re.search(ResFolderName, item) != None and len(item)> lenFolderName] 
+    print("printing dirlist:", dirlist)
+
+    if len(dirlist) != 0:
+        latestVersion = max(dirlist)
+    else:
+        latestVersion = 0
+
+    print("max of dirlist:", latestVersion)
+    os.mkdir(join(folderDir, ResFolderName + str(latestVersion + 1)))
+    resultDir = join(BaseResultDir,ResFolderName + str(latestVersion + 1))
+    return resultDir

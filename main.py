@@ -4,24 +4,25 @@ from grate import *
 
 import sys
 import os
+import re
 from os import listdir
 from os.path import isfile
 
 projectPath     = os.path.dirname(os.path.abspath(__file__))
-dataDir         = 'sampleData/'
-resultDir       = 'Results/temp/'
+dataDir         = 'DATA/sampleData/'
+BaseResultDir   = 'Results/temp/'
 AnnotationDir   = 'Annotations/'
 
-'''
-Command Line Arguments
+BaseResultDir   = createVersionDirectory(projectPath, BaseResultDir, 'version')
 
-sys.argv[1] : Folder inside the dataDir from where the images will be read.
-sys.argv[2] : The D-Spacing value (eg. 1.9, 0.7) at which the algorithm will run. 
+'''
+Command Line Arguments:
+sys.argv[1] : The D-Spacing value (eg. 1.9, 0.7) at which the algorithm will run. 
 '''
 
-dataDir     = join(dataDir, str(sys.argv[1]))
-resultDir   = join(resultDir, str(sys.argv[1]), str(sys.argv[2]))
-dspace_nm   = float(sys.argv[2]) # 1.9nm, 7A == 0.7nm, 4A == 0.4nm
+# dataDir     = join(dataDir, str(sys.argv[1]))
+resultDir   = join(BaseResultDir, str(sys.argv[1]))
+dspace_nm   = float(sys.argv[1]) # 1.9nm, 7A == 0.7nm, 4A == 0.4nm
 
 pix2nm      = 78.5
 dspace_pix  = int(dspace_nm*pix2nm)

@@ -356,10 +356,6 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         alpha_shape, smallArea = pltAlphaShape(axes, PointCloud, params)
         
         if smallArea == True:
-<<<<<<< HEAD
-=======
-            print("Small area Removed!!")
->>>>>>> 907ef35e98566839869ea253a6c355cef80bf700
             continue
 
         ## Plotting the orientation line
