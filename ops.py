@@ -408,39 +408,52 @@ def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
     qIn, qOut       = ringSize( arrSiz , params )
     TFring, nonZero = draw_ring( shape = power_spectrum.shape , rIn = qIn , rOut = qOut )
     power_spectrum  = filter_ring( TFring , power_spectrum )
-
+    
+    ps_maxMag = np.max(power_spectrum)
+    
     bandpass_pow_spec_mean      = np.sum( power_spectrum ) / nonZero
 
     if np.max( power_spectrum ) >= peak_cutoff_factor * bandpass_pow_spec_mean:
-        ind             = np.unravel_index( np.argmax( power_spectrum , axis = None ) , power_spectrum.shape )
-        ps2             = power_spectrum
-        ps2[ind]        = 0
-        ind2            = np.unravel_index( np.argmax( ps2 , axis = None ) , ps2.shape )
+        
+        # plt.subplots(nrows=1, ncols=1, figsize = (50,50))
+        # plt.imshow(power_spectrum, cmap = cm.coolwarm)
+        # plt.show()
+        # plt.close()
 
-        freq_coord      = (np.asarray(ind) - np.asarray(ind2))
+        ind             = np.unravel_index( np.argmax( power_spectrum , axis = None ) , power_spectrum.shape )
+        # ps2             = power_spectrum
+        # ps2[ind]        = 0
+        # ind2            = np.unravel_index( np.argmax( ps2 , axis = None ) , ps2.shape )
+
+        # freq_coord      = (np.asarray(ind) - np.asarray(ind2))
+        freq_coord      = (np.asarray(ind) - arrSiz/2)
         freq_coord      = freq_coord.astype( np.int32 )
     
         if np.all( ( freq_coord == 0 ) ):
             freq_coord = np.ones( ( 2 ) )
         
-        freq            = np.linalg.norm( freq_coord )/2
+        freq            = np.linalg.norm( freq_coord )
+        # freq            = np.linalg.norm( freq_coord )/2
         tp              = 1 / freq
         d_space         = tp * arrSiz[0]
         d_space         = d_space / params[ 'pix to nm' ]
+
+        print("\n")
+        print("size of Arr      :", arrSiz)
+        print("Max Magnitude PS :", ps_maxMag)
+        # print("Band Pass Mean   :", bandpass_pow_spec_mean)
+        # print("1st Freq Index   :", ind)
+        # print("2nd Freq Index   :", ind2)
+        print("freq vector      :", freq_coord)
+        print("freq             :", freq)
+        print("Time Period      :", tp)
+        print("D space in px    :", d_space * params[ 'pix to nm' ])
+        print("D space in nm    :", d_space)
+    
     else:
         d_space = 0
 
-    # print("\n")
-    # print("size of Arr      :", arrSiz)
-    # print("Max Magnitude    :", np.max(power_spectrum))
-    # print("Band Pass Mean   :", bandpass_pow_spec_mean)
-    # print("1st Freq Index   :", ind)
-    # print("2nd Freq Index   :", ind2)
-    # print("freq vector      :", freq_coord)
-    # print("freq             :", freq)
-    # print("Time Period      :", tp)
-    # print("D space in px    :", d_space * params[ 'pix to nm' ])
-    # print("D space in nm    :", d_space)
+    
 
     """ plt.subplot(121)
     plt.imshow(img_cropped, cmap = 'gray')
