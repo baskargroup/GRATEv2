@@ -117,16 +117,22 @@ def plotScatter(value=None, wght=None, path=None, filename=None, logscaling=None
     plt.close()
 
 def plotKDE(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', logscaling=None, xLabel = None, yLabel=None, show='no'):
-    X_plot = np.linspace(-1, 100000, 1000)[:, np.newaxis]
+    minVal  = min(value)
+    maxVal  = max(value)
+    diff    = maxVal - minVal
+    x_d     = np.linspace(minVal, maxVal, 100*diff)
+
     if wght == None:
         value = np.array(value)
-        X = value.reshape(-1, 1)
+        X = value[:, None]
     else:
         X = np.concatenate((value, wght), axis = 1)
 
-    kde = KernelDensity(kernel=kernel, bandwidth=0.2).fit(X)
-    log_dens = kde.score_samples(X_plot)
-    plt.fill(X_plot[:,0], np.exp(log_dens), fc='#AAAAFF')
+    kde = KernelDensity(bandwidth=1.0, kernel=kernel).fit(X)
+    log_dens = kde.score_samples(x_d[:,None])
+
+    plt.fill_between(x_d, np.exp(log_dens), alpha=0.5)
+    plt.plot(X, np.full_like(X, -0.01), '|k', markeredgewidth=1)
 
     if logscaling == 'x':
         plt.xscale('log')

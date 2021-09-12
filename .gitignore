@@ -11,3 +11,5 @@ temp/
 __pycache__/
 DATA/
 Annotations/
+utils.pyc
+.DS_Store
