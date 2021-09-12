@@ -27,9 +27,9 @@ def radFromArea(area):
     return rad
 
 projectPath     = os.path.dirname(os.path.abspath(__file__))
-dataDir = 'Results/all/fixedDspacing/GridSquare_21826475'
-d_spaceDir1 = join(projectPath, dataDir, "0.7")
-d_spaceDir2 = join(projectPath, dataDir, "1.9")
+dataDir = 'Results/all'
+d_spaceDir1 = join(projectPath, dataDir, "version_2/0.7")
+d_spaceDir2 = join(projectPath, dataDir, "version_1/1.9")
 pix2nm      = 78.5
 
 files1 = [f for f in listdir(d_spaceDir1) if splitext(f)[1] == ".csv"]
@@ -61,15 +61,17 @@ for filename in commonCSV:
             CCdist      = centroidDist(centroid1, centroid2)
             boundDist   = CCdist - rad1 - rad2
             
-            if boundDist < 0:
-                distances.append(CCdist)
-            else:
-                distances.append(boundDist)
+            # if boundDist < 0:                     ## Circular Distance
+            #     distances.append(CCdist)
+            # else:
+            #     distances.append(boundDist)
+            
+            distances.append(CCdist)                ## Direct Distance
 
 print("len distances:   ", len(distances))
 
 df_dist = pd.DataFrame(distances, columns=['Distances'])
-df_dist.to_csv(join(projectPath, dataDir, "Distances.csv"))
+df_dist.to_csv(join(projectPath, dataDir, "direct_Distances.csv"))
 
 
         

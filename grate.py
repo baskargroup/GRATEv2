@@ -5,10 +5,10 @@ import time
 def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
     img = cv2.imread(join(projectPath, dataDir, imgName),0)
     
-    timeCode = 1
+    timeCode = 0
     
     t0 = time.time()
-    thresh = BlurThresh(img, parameters)
+    thresh = BlurThresh(img, parameters, resultDir)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0
@@ -16,11 +16,11 @@ def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
 
     # t0 = time.time()
     if parameters['d space pix'] < 78:
-        skeleton = Skeletonize(thresh, parameters)
+        skeleton = Skeletonize(thresh, parameters, resultDir)
     else:
-        closing = Closing(thresh, parameters)
-        opening = Opening(closing, parameters)
-        skeleton = Skeletonize(opening, parameters)
+        closing = Closing(thresh, parameters, resultDir)
+        opening = Opening(closing, parameters, resultDir)
+        skeleton = Skeletonize(opening, parameters, resultDir)
     
     if timeCode == 1:
         t0 = time.time()
@@ -28,7 +28,7 @@ def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
         print("Closing Opening and Skeletonization Time :", round(total,2))
 
     # t0 = time.time()
-    skeleton = BreakBraches(skeleton, parameters)
+    skeleton = BreakBraches(skeleton, parameters, resultDir)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0
@@ -42,7 +42,7 @@ def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
         total = t1-t0
         print("Segmentation Time                        :", round(total,2))
 
-    Broken_backbone_img = Filtered_Uniform_BB(img, temp, parameters)
+    Broken_backbone_img = Filtered_Uniform_BB(img, temp, parameters, resultDir)
     if timeCode == 1:
         t0 = time.time()
         total = t0-t1
@@ -57,7 +57,7 @@ def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
 #     restructuredFP = RemovingDim(filteredPolys1)
     
     # t0 = time.time()
-    bb_ellipse1, bb_ellipse_props = EllipseConstruction(Broken_backbone_img, parameters)
+    bb_ellipse1, bb_ellipse_props = EllipseConstruction(Broken_backbone_img, parameters, resultDir)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0
@@ -65,14 +65,14 @@ def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
 
 
     # t0 = time.time()
-    adjacencyMat = AdjacencyMat(Broken_backbone_img, bb_ellipse_props, parameters)
+    adjacencyMat = AdjacencyMat(Broken_backbone_img, bb_ellipse_props, parameters, resultDir)
     if timeCode == 1:
         t0 = time.time()
         total = t0-t1
         print("Adjacency Matrix Time                    :", round(total,2))
 
     # t0 = time.time()
-    ellipseCluster, AllClusterPointCloud, crystalAngles = ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters)
+    ellipseCluster, AllClusterPointCloud, crystalAngles = ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters, resultDir)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0

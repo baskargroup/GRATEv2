@@ -9,7 +9,7 @@ from os import listdir
 from os.path import isfile
 
 projectPath     = os.path.dirname(os.path.abspath(__file__))
-dataDir         = 'DATA/sampleData/'
+dataDir         = 'DATA/sampleData/defectiveDspacing/'
 BaseResultDir   = 'Results/temp/'
 AnnotationDir   = 'Annotations/'
 
@@ -37,7 +37,7 @@ ellipseAspectRatio      = 5                     # Threshold ellipse aspect Ratio
 thresh_dist             = int(2*dspace_pix)     # Distance threshold for adjacency matrix 
 thresh_theta            = 10                    # delta Theta threshold for adjacency matrix 
 clusterSize             = 7                     # Threshold ellipse in Crystal cluster
-powSpec_peak_thresk     = 1.15
+powSpec_peak_thresk     = 1.20                  # 1.20 works for all
 Thresh_area_factor      = 4
 
 
@@ -79,7 +79,7 @@ print("\nd space:", dspace_nm)
 
 for f in onlyfiles:
 
-    if f[-4:] == ".tif" and f == "FoilHole_21836260_Data_21829764_21829765_20200123_0028.tif":
+    if f[-4:] == ".tif" and f == "FoilHole_21830290_Data_21829764_21829765_20200122_1140.tif":
         print("Img Name: ", f, "\n")
         # print("Full Img Path: ",join(projectPath,dataDir,f))
         t0 = time.time()    
@@ -89,4 +89,4 @@ for f in onlyfiles:
         print("Overall GRATE Time:", round(total,2), "\n")
         df_overall = df_overall.append(df_crystalProps, ignore_index=True,)
 
-df_overall.to_csv(join(projectPath, resultDir,'overall.csv'))
+df_overall.to_csv(join(projectPath, resultDir,'overall_'+str(int(dspace_nm))+'p'+str(int((dspace_nm-int(dspace_nm))*10)) +'.csv'))

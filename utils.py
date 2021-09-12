@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+from sklearn.neighbors import KernelDensity
 import os
 import re
 from os.path import join
@@ -37,7 +38,7 @@ def show_scalled_img(img_arr, scalePercent=100):
     plt.imshow(output, cmap='gray', vmin=0, vmax=255)
     plt.show() 
 
-def debugORSave(initial, final, params, concat, text):
+def debugORSave(initial, final, params, concat, resultDir, text):
     if params['show intermediate images'] == 1:
         if concat == 1:
             ConcatAndShow(initial, final, params['display image scaling'], text)
@@ -45,7 +46,7 @@ def debugORSave(initial, final, params, concat, text):
             print(text + "\n")
             show_scalled_img(final, params['display image scaling'])
     if params['save intermediate images'] == 1:
-        cv2.imwrite(text+".png", final)
+        cv2.imwrite(resultDir + "/"+ text+".png", final)
 
 def imgLength(freqCoord, imgSize):
     freqCoord = freqCoord.astype(np.int32)
@@ -69,17 +70,90 @@ def imgLength(freqCoord, imgSize):
     else:
         return imgSize[0]/np.sin(theta)
 
-def plotfig(value, path, filename, numBins, wght=None, semilog = 1):
-    _ = plt.hist(value, weights = wght,bins=numBins)
-    plt.title(filename[:-4])
-    if semilog == 1:
-        plt.semilogx()
-    plt.savefig(os.path.join(path, filename))
-    plt.show()
+def plotHist(value=None, wght=None, path=None, filename=None, numBins=100, logscaling=None, xLabel = None, yLabel=None, show='no'):
 
-def isAreaSmall(area, params):
+    _ = plt.hist(value, weights = wght, bins = numBins)
+    # plt.title(filename[:-4])
+    
+    if logscaling == 'x':
+        plt.xscale('log')
+    elif logscaling == 'y':
+        plt.yscale('log')
+    elif logscaling == 'both':
+        plt.xscale('log')
+        plt.yscale('log')
+    
+    if xLabel != None:
+        plt.xlabel(xLabel)
+    if yLabel != None:
+        plt.ylabel(yLabel)
+    
+    plt.savefig(os.path.join(path, filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+def plotScatter(value=None, wght=None, path=None, filename=None, logscaling=None, xLabel = None, yLabel=None, show='no'):
+
+    _ = plt.plot(value, wght, 'o', color = 'black')
+    # plt.title(filename[:-4])
+    
+    if logscaling == 'x':
+        plt.xscale('log')
+    elif logscaling == 'y':
+        plt.yscale('log')
+    elif logscaling == 'both':
+        plt.xscale('log')
+        plt.yscale('log')
+    
+    if xLabel != None:
+        plt.xlabel(xLabel)
+    if yLabel != None:
+        plt.ylabel(yLabel)
+    
+    plt.savefig(os.path.join(path, filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+def plotKDE(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', logscaling=None, xLabel = None, yLabel=None, show='no'):
+    X_plot = np.linspace(-1, 100000, 1000)[:, np.newaxis]
+    if wght == None:
+        value = np.array(value)
+        X = value.reshape(-1, 1)
+    else:
+        X = np.concatenate((value, wght), axis = 1)
+
+    kde = KernelDensity(kernel=kernel, bandwidth=0.2).fit(X)
+    log_dens = kde.score_samples(X_plot)
+    plt.fill(X_plot[:,0], np.exp(log_dens), fc='#AAAAFF')
+
+    if logscaling == 'x':
+        plt.xscale('log')
+    elif logscaling == 'y':
+        plt.yscale('log')
+    elif logscaling == 'both':
+        plt.xscale('log')
+        plt.yscale('log')
+
+    if xLabel != None:
+        plt.xlabel(xLabel)
+    if yLabel != None:
+        plt.ylabel(yLabel)
+    
+    plt.savefig(os.path.join(path, filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+def isAreaSmall(area, params, areaInPix = True):
     factor          = params['Threshold area factor']
-    d_space         = params['d space pix']
+    
+    if areaInPix == True:
+        d_space     = params['d space pix']
+    else:
+        d_space     = params['d space nm']
+
     width           = factor*d_space
     height          = d_space
     areaThresh      = width*height
@@ -139,14 +213,13 @@ def createVersionDirectory(projectPath, BaseResultDir, name):
     ResFolderName   = name + '_' #'version_'
     lenFolderName   = len(ResFolderName)
     dirlist         = [int(item[lenFolderName:]) for item in os.listdir(folderDir) if os.path.isdir(os.path.join(folderDir,item)) and re.search(ResFolderName, item) != None and len(item)> lenFolderName] 
-    print("printing dirlist:", dirlist)
-
+    
     if len(dirlist) != 0:
         latestVersion = max(dirlist)
     else:
         latestVersion = 0
 
-    print("max of dirlist:", latestVersion)
     os.mkdir(join(folderDir, ResFolderName + str(latestVersion + 1)))
+    print(ResFolderName + str(latestVersion + 1) + '\n')
     resultDir = join(BaseResultDir,ResFolderName + str(latestVersion + 1))
     return resultDir
