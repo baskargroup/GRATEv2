@@ -28,8 +28,8 @@ def radFromArea(area):
 
 projectPath     = os.path.dirname(os.path.abspath(__file__))
 dataDir = 'Results/all'
-d_spaceDir1 = join(projectPath, dataDir, "version_2/0.7")
-d_spaceDir2 = join(projectPath, dataDir, "version_1/1.9")
+d_spaceDir1 = join(projectPath, dataDir, "version_4/0.7")
+d_spaceDir2 = join(projectPath, dataDir, "version_3/1.9")
 pix2nm      = 78.5
 
 files1 = [f for f in listdir(d_spaceDir1) if splitext(f)[1] == ".csv"]
@@ -40,7 +40,8 @@ print("len files1:  ",len(files1))
 print("len files2:  ",len(files2))
 print("len commonCSV", len(commonCSV))
 
-distances = []
+MetricDistances = []
+DirectDistances = []
 
 for filename in commonCSV:
     if filename == "overall.csv":
@@ -59,19 +60,12 @@ for filename in commonCSV:
             area2       = row2['Crystal Area (nm^2)']
             rad2        = radFromArea(area2)
             CCdist      = centroidDist(centroid1, centroid2)
-            boundDist   = CCdist - rad1 - rad2
+            MetricDist   = CCdist/ (rad1 + rad2)
             
-            # if boundDist < 0:                     ## Circular Distance
-            #     distances.append(CCdist)
-            # else:
-            #     distances.append(boundDist)
-            
-            distances.append(CCdist)                ## Direct Distance
+            MetricDistances.append(MetricDist)            ## Metric Distance
+            DirectDistances.append(CCdist)                ## Direct Distance
 
-print("len distances:   ", len(distances))
+print("len distances:   ", len(DirectDistances))
 
-df_dist = pd.DataFrame(distances, columns=['Distances'])
-df_dist.to_csv(join(projectPath, dataDir, "direct_Distances.csv"))
-
-
-        
+df_dist = pd.DataFrame(list(zip(MetricDistances, DirectDistances)), columns=['Metric Distances','Direct Distances'])
+df_dist.to_csv(join(projectPath, dataDir, "metricAndDirect_Distances.csv"))
