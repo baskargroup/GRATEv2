@@ -2,6 +2,9 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
+
+from sklearn.model_selection import GridSearchCV, LeaveOneOut, KFold
+import scipy.stats as st
 import os
 import re
 from os.path import join
@@ -116,23 +119,42 @@ def plotScatter(value=None, wght=None, path=None, filename=None, logscaling=None
         plt.show()
     plt.close()
 
-def plotKDE(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', logscaling=None, xLabel = None, yLabel=None, show='no'):
+def plotKDE(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', bandwidth = None, logscaling=None, xLabel = None, yLabel=None, show='no'):
+
     minVal  = min(value)
     maxVal  = max(value)
-    diff    = maxVal - minVal
+    diff    = int(maxVal - minVal)
+    if diff == 0:
+        diff = 1
     x_d     = np.linspace(minVal, maxVal, 100*diff)
-
+    # print("minVal   :", minVal)
+    # print("maxVal   :", maxVal)
+    # print("diff     :", diff)
+    # print("x_d.shape:", x_d.shape)
+      
     if wght == None:
         value = np.array(value)
         X = value[:, None]
-    else:
-        X = np.concatenate((value, wght), axis = 1)
 
-    kde = KernelDensity(bandwidth=1.0, kernel=kernel).fit(X)
+    """ print( "Shape of value before:", value.shape)
+    value = np.array(value)[:, None]
+    print( "Shape of value:",value.shape)
+    wght  = np.array(wght)[:, None]
+    X = np.concatenate((value, wght), axis = 1)
+    print( "Shape of X:",X.shape) """
+    
+    if bandwidth == None:
+        bandwidth_space  = 10 ** np.linspace(-1, 1, 100)
+        grid        = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidth_space}, cv=KFold(5))
+        grid.fit(X)
+        bandwidth = grid.best_params_['bandwidth']
+        print( "Bandwidth Value : ", bandwidth)
+
+    kde = KernelDensity(bandwidth=bandwidth, kernel=kernel).fit(X)
     log_dens = kde.score_samples(x_d[:,None])
 
     plt.fill_between(x_d, np.exp(log_dens), alpha=0.5)
-    plt.plot(X, np.full_like(X, -0.01), '|k', markeredgewidth=1)
+    plt.plot(X, np.full_like(X, -0.001), '|k', markeredgewidth=1)
 
     if logscaling == 'x':
         plt.xscale('log')
@@ -148,6 +170,67 @@ def plotKDE(value=None, wght=None, path=None, filename=None, kernel = 'gaussian'
         plt.ylabel(yLabel)
     
     plt.savefig(os.path.join(path, filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+def plotKDE_2D(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', bandwidth = None, logscaling=None, xLabel = None, yLabel=None, show='no'):
+    
+    # Extract x and y# Extract x and y
+    x = np.array(value)
+    y = np.array(wght)
+
+    # Define the borders
+    deltaX = (max(x) - min(x))/10
+    deltaY = (max(y) - min(y))/10
+
+    xmin = min(x) - deltaX
+    xmax = max(x) + deltaX
+    ymin = min(y) - deltaY
+    ymax = max(y) + deltaY
+
+    # Create meshgrid
+    xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+    
+    positions = np.vstack([xx.ravel(), yy.ravel()])
+    values = np.vstack([x, y])
+    kernel = st.gaussian_kde(values)
+    f = np.reshape(kernel(positions).T, xx.shape)
+
+    fig = plt.figure(figsize=(13, 7))
+    ax = plt.axes(projection='3d')
+    surf = ax.plot_surface(xx, yy, f, rstride=1, cstride=1, cmap='coolwarm', edgecolor='none')
+
+    if xLabel != None:
+        ax.set_xlabel(xLabel)
+    if yLabel != None:
+        ax.set_ylabel(yLabel)
+
+    if logscaling == 'x':
+        ax.set_xscale('log')
+    elif logscaling == 'y':
+        ax.set_yscale('log')
+    elif logscaling == 'both':
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+
+    ax.set_zlabel('PDF')
+    ax.set_title('Surface plot of Gaussian 2D KDE')
+    fig.colorbar(surf, shrink=0.5, aspect=5) # add color bar indicating the PDF
+    ax.view_init(45, 0)
+    
+    fig.savefig(os.path.join(path, filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+    h =plt.hist2d(x, y, bins=(36, 36))
+    plt.colorbar(h[3])
+    if xLabel != None:
+        plt.xlabel(xLabel)
+    if yLabel != None:
+        plt.ylabel(yLabel)
+    plt.savefig(os.path.join(path, '2D_hist_'+filename))
     if show=='yes':
         plt.show()
     plt.close()
