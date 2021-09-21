@@ -17,7 +17,7 @@ from scipy.spatial import ConvexHull
 import random
 from statistics import mean 
 import gc
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 from os.path import join
 from scipy.ndimage import gaussian_filter
 from mpl_toolkits.mplot3d import Axes3D
@@ -320,7 +320,7 @@ def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
     #print(temp)
     return temp
 
-def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, crystalAng, params):
+def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ResultImageDir, ImgName, crystalAng, params):
     RGBImg          = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
     # CrystalImg      = img       #invertBinaryImage(finalImg)
     
@@ -333,6 +333,11 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
     boundingBox         = []
     crystalAngles_final = []
     dspaces             = []
+    crystalMajorAxis_length     = []
+    crystalMinorAxis_length     = []
+    crystalMajorAxisAngle       = []
+    angleDifference     = []
+
     color               = ['b', 'g', 'r', 'c', 'm','y','w']
 
     for ind, cluster in enumerate(ClusterPointCloud):
@@ -357,6 +362,8 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         
         if smallArea == True:
             continue
+        majorLen, minorLen, majorAxesAngle = getCrystalSizeAndOrientation(hull)
+        angleDiff_val = getAngleDifference(majorAxesAngle, crystalAng[ ind ])
 
         ## Plotting the orientation line
         pltOrientationLine(axes, ind, crystalAng, c, x_minMax, y_minMax, cx, cy)
@@ -369,12 +376,17 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         crystalAngles_final.append(crystalAng[ ind ])
         dspaces.append(dspace)
         
+        crystalMajorAxis_length.append(majorLen * 1/params['pix to nm'])
+        crystalMinorAxis_length.append(minorLen * 1/params['pix to nm'])
+        crystalMajorAxisAngle.append(majorAxesAngle)
+        angleDifference.append(angleDiff_val)
+        
         if params['save bounding box'] == 1:
             boundingBox.append( [ int( x_minMax[0] ) , int( y_minMax[0] ) , int( x_minMax[1] ) , int( y_minMax[1] ) ] )
 
     axes[0].imshow( img , cmap = 'gray')
     figure.tight_layout()
-    figure.savefig( join(ProjectPath , ResultDir , ImgName[:-4]+'.png') )
+    figure.savefig( join(ProjectPath, ResultDir, ResultImageDir, ImgName[:-4]+'.png') )
 
     if params['show final image'] == 1:
         plt.show()
@@ -383,7 +395,7 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
     plt.clf()
     gc.collect()
     
-    return crystalArea, centroid, crystalAngles_final, dspaces, boundingBox
+    return crystalArea, centroid, crystalAngles_final, dspaces, boundingBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference 
 
 def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
     
@@ -438,7 +450,7 @@ def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
         d_space         = tp * arrSiz[0]
         d_space         = d_space / params[ 'pix to nm' ]
 
-        print("\n")
+        """ print("\n")
         print("size of Arr      :", arrSiz)
         print("Max Magnitude PS :", ps_maxMag)
         # print("Band Pass Mean   :", bandpass_pow_spec_mean)
@@ -448,7 +460,7 @@ def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
         print("freq             :", freq)
         print("Time Period      :", tp)
         print("D space in px    :", d_space * params[ 'pix to nm' ])
-        print("D space in nm    :", d_space)
+        print("D space in nm    :", d_space) """
     
     else:
         d_space = 0

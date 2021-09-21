@@ -2,9 +2,11 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
-
 from sklearn.model_selection import GridSearchCV, LeaveOneOut, KFold
 import scipy.stats as st
+from sklearn.decomposition import PCA
+import math
+
 import os
 import re
 from os.path import join
@@ -269,8 +271,43 @@ def getCentroid (convHull):
     y_centroid = np.mean(convHull.points[convHull.vertices,1], dtype= int)
     return x_centroid, y_centroid
 
-def getBoundingBox(convHull):
+def getCrystalSizeAndOrientation(convHull):
     """ 
+    Return's half of the major and minor axis length and the orientation angle of the major axis. 
+    The orientation angle is zero at the x-axis and positive in the clockwise direction. 
+    """
+
+    X = convHull.points[convHull.vertices,:2]
+    pca = PCA(n_components = 2)
+    pca.fit(X)
+
+    eigen_vectors = pca.components_
+    eigen_values = pca.explained_variance_
+
+    major_scale = np.sqrt(2 * eigen_values[0])
+    minor_scale = np.sqrt(2 * eigen_values[1])
+
+    major_axis_unit = eigen_vectors[0, :]
+    # minor_axis_unit = eigen_vectors[1, :]
+
+    major_axis = major_axis_unit * major_scale
+    # minor_axis = minor_axis_unit * minor_scale
+    if major_axis[0] == 0:
+        angle = -90
+    else:
+        angle   = math.atan(major_axis[1]/major_axis[0]) * 180/np.pi 
+
+    return major_scale, minor_scale, angle
+
+def getAngleDifference(ang1, ang2):
+    diff = abs(ang1-ang2) 
+    if diff > 90:
+        return 180 - diff
+    else: 
+        return diff
+
+def getBoundingBox(convHull):
+    """
     Returns the detection region bounding box coordinates according to the image coordinate convention {(columns, rows) with top left as origin}.  
     x_minMax and y_minMax are list of size 2, containing the min value first and max second. 
     """

@@ -2,7 +2,7 @@ from utils import *
 from ops import *
 import time
 
-def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
+def GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir, ResultAnnotationDir, parameters):
     img = cv2.imread(join(projectPath, dataDir, imgName),0)
     
     timeCode = 0
@@ -79,7 +79,7 @@ def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
         print("Connected Component Time                 :", round(total,2))
 
     # t0 = time.time()
-    crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox = PlottingAndSaving(img, AllClusterPointCloud, projectPath, resultDir, imgName, crystalAngles, parameters)
+    crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = PlottingAndSaving(img, AllClusterPointCloud, projectPath, resultDir, ResultImageDir, imgName, crystalAngles, parameters)
     if timeCode == 1:
         t0 = time.time()
         total = t0-t1
@@ -91,16 +91,16 @@ def GRATE(projectPath, dataDir, imgName, resultDir, annotationDir, parameters):
     else:
         imgNamelist = [None]*len(centroid)
         imgNamelist[0] = imgName
-    # df = pd.DataFrame(list(zip(imgNamelist, centroid, crystalArea, crystalAngles, ds)), columns=['Image Name','Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)'])
-    df = pd.DataFrame(list(zip(imgNamelist, centroid, crystalArea, crystalAngles_final, dspaces)), columns=['Image Name','Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)'])
+    
+    df = pd.DataFrame(list(zip(imgNamelist, centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference)), columns=['Image Name','Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)', 'crystalMajorAxis_length (nm)', 'crystalMinorAxis_length (nm)', 'MajorAxisAngle', 'angleDifference'])
     df = df.round(2)
 
 #     print("Saving results to: ",join(projectPath, resultDir,imgName[:-4]+'.csv'))
-    df.to_csv(join(projectPath, resultDir,imgName[:-4]+'.csv'))
+    df.to_csv(join(projectPath, resultDir, ResultCSVDir, imgName[:-4]+'.csv'))
     
     if parameters['save bounding box'] == 1: 
 #         print("Saving BB Annotations to: ",join(projectPath, annotationDir, imgName[:-4]+'.csv'))
         df_BB = pd.DataFrame( list( zip( df_boundBox ) ) , columns = [ "Top Left(x_y) Bottom Right(x_y)" ] )
-        df_BB.to_csv(join(projectPath, annotationDir, imgName[:-4]+'.csv'))
+        df_BB.to_csv(join(projectPath, resultDir, ResultAnnotationDir, imgName[:-4]+'.csv'))
     
     return df 
