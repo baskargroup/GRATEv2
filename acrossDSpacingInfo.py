@@ -42,6 +42,7 @@ print("len commonCSV", len(commonCSV))
 
 MetricDistances = []
 DirectDistances = []
+ModRelAngle     = []
 
 for filename in commonCSV:
     if filename == "overall.csv":
@@ -52,20 +53,24 @@ for filename in commonCSV:
 
     for ind1, row1 in df1.iterrows():
         centroid1   = numericFromString(row1['Centroid'], pix2nm) 
-        area1       = row1['Crystal Area (nm^2)']
+        area1       = float(row1['Crystal Area (nm^2)'])
         rad1        = radFromArea(area1)
+        ang1        = float(row1['Crystal Angle (zero at X-axis and clockwise positive)'])
 
         for ind2, row2 in df2.iterrows():
             centroid2   = numericFromString(row2['Centroid'], pix2nm) 
-            area2       = row2['Crystal Area (nm^2)']
+            area2       = float(row2['Crystal Area (nm^2)'])
             rad2        = radFromArea(area2)
+            ang2        = float(row2['Crystal Angle (zero at X-axis and clockwise positive)'])
+
             CCdist      = centroidDist(centroid1, centroid2)
             MetricDist   = CCdist/ (rad1 + rad2)
             
-            MetricDistances.append(MetricDist)            ## Metric Distance
-            DirectDistances.append(CCdist)                ## Direct Distance
+            MetricDistances.append(MetricDist)              ## Metric Distance
+            DirectDistances.append(CCdist)                  ## Direct Distance
+            ModRelAngle.append(abs(ang1 - ang2))            ## Absolute Value of the Angle Difference 
 
 print("len distances:   ", len(DirectDistances))
 
-df_dist = pd.DataFrame(list(zip(MetricDistances, DirectDistances)), columns=['Metric Distances','Direct Distances'])
-df_dist.to_csv(join(projectPath, dataDir, "metricAndDirect_Distances.csv"))
+df_dist = pd.DataFrame(list(zip(MetricDistances, DirectDistances, ModRelAngle)), columns=['Metric Distances','Direct Distances','Modulus Relative Angle'])
+df_dist.to_csv(join(projectPath, dataDir, "acrossDSpacingInfo.csv"))

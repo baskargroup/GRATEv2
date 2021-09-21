@@ -36,7 +36,7 @@ files1 = [f for f in listdir(d_spaceDir1) if splitext(f)[1] == ".csv"]
 
 print("len files1:  ",len(files1))
 
-relModAngle = []
+modRelAngle = []
 distances = []
 
 for filename in files1:
@@ -57,9 +57,9 @@ for filename in files1:
                 centroid2   = numericFromString(row2['Centroid'], pix2nm)
                 CCdist      = centroidDist(centroid1, centroid2)
                 distances.append(CCdist)
-                relModAngle.append(abs(ang1 - ang2))
+                modRelAngle.append(abs(ang1 - ang2))
             
-print("length:   ", len(relModAngle))
+print("length:   ", len(modRelAngle))
 
-df_dist = pd.DataFrame(list(zip(relModAngle, distances)), columns=['relModAngle', 'distance'])
+df_dist = pd.DataFrame(list(zip(modRelAngle, distances)), columns=['modRelAngle', 'distance'])
 df_dist.to_csv(join(projectPath, dataDir, "relAngleAndDist.csv"))
