@@ -17,7 +17,7 @@ from scipy.spatial import ConvexHull
 import random
 from statistics import mean 
 import gc
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 from os.path import join
 from scipy.ndimage import gaussian_filter
 from mpl_toolkits.mplot3d import Axes3D
@@ -27,7 +27,7 @@ from utils import *
 
 ############### Operations ############################3
 
-def BlurThresh(img, params):
+def BlurThresh(img, params, resultDir):
     blur_img    = img
     k_size      = params['blur k size']
     
@@ -41,34 +41,34 @@ def BlurThresh(img, params):
     blur_img = cv2.equalizeHist( blur_img )
     _,thresh = cv2.threshold( blur_img , 0 , 255 , cv2.THRESH_BINARY + cv2.THRESH_OTSU )
     
-    debugORSave(img, thresh, params,1,"1_BLURRING AND THRESHOLDING")
+    debugORSave(img, thresh, params,1, resultDir,"1_BLURRING AND THRESHOLDING")
     
     return thresh
 
 # Closing: Removing black spots from white regions. Basically Dilation followed by Erosion.
-def Closing(img, params):
+def Closing(img, params, resultDir):
     
     input   = img
     kernel  = np.ones( ( params[ 'closing k size' ] , params[ 'closing k size' ] ) , np.uint8 )
     output  = cv2.morphologyEx( input , cv2.MORPH_CLOSE , kernel )
     
-    debugORSave( input , output , params , 1 , "2_CLOSING" )
+    debugORSave( input , output , params , 1, resultDir , "2_CLOSING" )
     
     return output
 
 ## Opening: Removing white spots from black regions. Basically Erosion followed by Dilation.
-def Opening(img, params):
+def Opening(img, params, resultDir):
 
     input   = img
     kernel  = np.ones(( params[ 'opening k size' ] , params[ 'opening k size' ] ) , np.uint8 )
     output  = cv2.morphologyEx( input , cv2.MORPH_OPEN , kernel )
     
-    debugORSave( input , output , params , 1 , "3_OPENING" )
+    debugORSave( input , output , params , 1, resultDir , "3_OPENING" )
     
     return output 
 
 ## Skeletonize Image
-def Skeletonize(img, params): 
+def Skeletonize(img, params, resultDir): 
 
     input       = img 
     image       = invert( input / np.max( input ) )
@@ -76,12 +76,12 @@ def Skeletonize(img, params):
     output      = ( skeleton / np.max( skeleton ) ) * 255 
     InvOutput   = invertBinaryImage( output )
 
-    debugORSave( input , InvOutput , params , 1 , "4_SKELETONIZED" )
+    debugORSave( input , InvOutput , params , 1, resultDir , "4_SKELETONIZED" )
     
     return output
 
 ## Finds branching points for images with black background and white lines receive a degree matrix
-def BreakBraches(img, params):
+def BreakBraches(img, params, resultDir):
 
     input                               = np.copy( img )
     _, _, degrees                       = skeleton_to_csgraph( input )
@@ -89,7 +89,7 @@ def BreakBraches(img, params):
     input[intersection_matrix==True]    = 0
     InvInput                            = invertBinaryImage( input )
     
-    debugORSave( img , InvInput , params , 0 , "5_BRANCHED SKELETON" )
+    debugORSave( img , InvInput , params , 0, resultDir , "5_BRANCHED SKELETON" )
     
     return input
 
@@ -104,7 +104,7 @@ def SkeletonSegmentation(img):
     return props
 
 ## Filtering out small backbones using the pixThresh variable and breaking them into uniform size.
-def Filtered_Uniform_BB(img, obj_list, params):
+def Filtered_Uniform_BB(img, obj_list, params, resultDir):
     
     bb              = np.zeros( img.shape )
     residualFrac    = 0.3
@@ -129,7 +129,7 @@ def Filtered_Uniform_BB(img, obj_list, params):
 
     Invbb = invertBinaryImage(bb)
     
-    debugORSave( img , Invbb , params , 0 , "6_FILTERED AND UNIFORM SIZED BACKBONE" )
+    debugORSave( img , Invbb , params , 0, resultDir , "6_FILTERED AND UNIFORM SIZED BACKBONE" )
     
     return bb
 
@@ -157,7 +157,7 @@ def RemovingDim(lis):
 
 
 ################ SCIPY BASED ELLIPSE CONSTRUCTION FUNCTION ###############################
-def EllipseConstruction(img, params):
+def EllipseConstruction(img, params, resultDir):
 
     input                       = np.copy(img)
     label_img                   = label(input)
@@ -183,12 +183,12 @@ def EllipseConstruction(img, params):
     bb_props_np         = bb_props.to_numpy()
     InvEllip_temp_img   = invertBinaryImage(ellip_temp_img)
     
-    debugORSave( img , InvEllip_temp_img , params , 0 , "7_ELLIPSE INSCRIBED" )
+    debugORSave( img , InvEllip_temp_img , params , 0, resultDir , "7_ELLIPSE INSCRIBED" )
     
     return ellip_temp_img, bb_props_np
 
 ## Creating Adjacency Matrix based on distance between centroid and the orientation angle
-def AdjacencyMat(img, bb_props, params):# distanceThresh, thetaThresh):
+def AdjacencyMat(img, bb_props, params, resultDir):# distanceThresh, thetaThresh):
     
     bb_props_np     = bb_props
     centroid_coord  = bb_props_np[ : , : 2 ]
@@ -225,7 +225,7 @@ def AdjacencyMat(img, bb_props, params):# distanceThresh, thetaThresh):
                     break
                     
         InvA_Mat_img = invertBinaryImage(A_Mat_img)
-        debugORSave(img, InvA_Mat_img, params, 0, "8_ADJACENT ELLIPSES")
+        debugORSave(img, InvA_Mat_img, params, 0, resultDir, "8_ADJACENT ELLIPSES")
                 
     return A_Mat
 
@@ -259,7 +259,7 @@ def minDist(pts1, pts2):
     return minD
 
 ## Connected Components:
-def ConnecComp(img, A_Mat, props, params):
+def ConnecComp(img, A_Mat, props, params, resultDir):
 
     polyProps   = props 
     N           = A_Mat.shape[0]
@@ -302,7 +302,7 @@ def ConnecComp(img, A_Mat, props, params):
             crystalAngles.append(mean(ellipseAngels))
     
     InvCcImg        = invertBinaryImage(ccImg)
-    debugORSave(img, InvCcImg, params, 0, "9_CLUSTERS")
+    debugORSave(img, InvCcImg, params, 0, resultDir, "9_CLUSTERS")
     
     return ccImg, AllClusterPointCloud, crystalAngles
 
@@ -320,7 +320,7 @@ def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
     #print(temp)
     return temp
 
-def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, crystalAng, params):
+def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ResultImageDir, ImgName, crystalAng, params):
     RGBImg          = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
     # CrystalImg      = img       #invertBinaryImage(finalImg)
     
@@ -333,6 +333,11 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
     boundingBox         = []
     crystalAngles_final = []
     dspaces             = []
+    crystalMajorAxis_length     = []
+    crystalMinorAxis_length     = []
+    crystalMajorAxisAngle       = []
+    angleDifference     = []
+
     color               = ['b', 'g', 'r', 'c', 'm','y','w']
 
     for ind, cluster in enumerate(ClusterPointCloud):
@@ -357,6 +362,8 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         
         if smallArea == True:
             continue
+        majorLen, minorLen, majorAxesAngle = getCrystalSizeAndOrientation(hull)
+        angleDiff_val = getAngleDifference(majorAxesAngle, crystalAng[ ind ])
 
         ## Plotting the orientation line
         pltOrientationLine(axes, ind, crystalAng, c, x_minMax, y_minMax, cx, cy)
@@ -369,12 +376,17 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
         crystalAngles_final.append(crystalAng[ ind ])
         dspaces.append(dspace)
         
+        crystalMajorAxis_length.append(majorLen * 1/params['pix to nm'])
+        crystalMinorAxis_length.append(minorLen * 1/params['pix to nm'])
+        crystalMajorAxisAngle.append(majorAxesAngle)
+        angleDifference.append(angleDiff_val)
+        
         if params['save bounding box'] == 1:
             boundingBox.append( [ int( x_minMax[0] ) , int( y_minMax[0] ) , int( x_minMax[1] ) , int( y_minMax[1] ) ] )
 
     axes[0].imshow( img , cmap = 'gray')
     figure.tight_layout()
-    figure.savefig( join(ProjectPath , ResultDir , ImgName[:-4]+'.png') )
+    figure.savefig( join(ProjectPath, ResultDir, ResultImageDir, ImgName[:-4]+'.png') )
 
     if params['show final image'] == 1:
         plt.show()
@@ -383,7 +395,7 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ImgName, c
     plt.clf()
     gc.collect()
     
-    return crystalArea, centroid, crystalAngles_final, dspaces, boundingBox
+    return crystalArea, centroid, crystalAngles_final, dspaces, boundingBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference 
 
 def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
     
@@ -438,17 +450,17 @@ def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
         d_space         = tp * arrSiz[0]
         d_space         = d_space / params[ 'pix to nm' ]
 
-        print("\n")
+        """ print("\n")
         print("size of Arr      :", arrSiz)
         print("Max Magnitude PS :", ps_maxMag)
         # print("Band Pass Mean   :", bandpass_pow_spec_mean)
-        # print("1st Freq Index   :", ind)
+        print("1st Freq Index   :", ind)
         # print("2nd Freq Index   :", ind2)
         print("freq vector      :", freq_coord)
         print("freq             :", freq)
         print("Time Period      :", tp)
         print("D space in px    :", d_space * params[ 'pix to nm' ])
-        print("D space in nm    :", d_space)
+        print("D space in nm    :", d_space) """
     
     else:
         d_space = 0

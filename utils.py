@@ -1,6 +1,12 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+from sklearn.neighbors import KernelDensity
+from sklearn.model_selection import GridSearchCV, LeaveOneOut, KFold
+import scipy.stats as st
+from sklearn.decomposition import PCA
+import math
+
 import os
 import re
 from os.path import join
@@ -37,7 +43,7 @@ def show_scalled_img(img_arr, scalePercent=100):
     plt.imshow(output, cmap='gray', vmin=0, vmax=255)
     plt.show() 
 
-def debugORSave(initial, final, params, concat, text):
+def debugORSave(initial, final, params, concat, resultDir, text):
     if params['show intermediate images'] == 1:
         if concat == 1:
             ConcatAndShow(initial, final, params['display image scaling'], text)
@@ -45,7 +51,7 @@ def debugORSave(initial, final, params, concat, text):
             print(text + "\n")
             show_scalled_img(final, params['display image scaling'])
     if params['save intermediate images'] == 1:
-        cv2.imwrite(text+".png", final)
+        cv2.imwrite(resultDir + "/"+ text+".png", final)
 
 def imgLength(freqCoord, imgSize):
     freqCoord = freqCoord.astype(np.int32)
@@ -69,17 +75,176 @@ def imgLength(freqCoord, imgSize):
     else:
         return imgSize[0]/np.sin(theta)
 
-def plotfig(value, path, filename, numBins, wght=None, semilog = 1):
-    _ = plt.hist(value, weights = wght,bins=numBins)
-    plt.title(filename[:-4])
-    if semilog == 1:
-        plt.semilogx()
-    plt.savefig(os.path.join(path, filename))
-    plt.show()
+def plotHist(value=None, wght=None, path=None, filename=None, numBins=100, logscaling=None, xLabel = None, yLabel=None, show='no'):
 
-def isAreaSmall(area, params):
+    _ = plt.hist(value, weights = wght, bins = numBins)
+    # plt.title(filename[:-4])
+    
+    if logscaling == 'x':
+        plt.xscale('log')
+    elif logscaling == 'y':
+        plt.yscale('log')
+    elif logscaling == 'both':
+        plt.xscale('log')
+        plt.yscale('log')
+    
+    if xLabel != None:
+        plt.xlabel(xLabel)
+    if yLabel != None:
+        plt.ylabel(yLabel)
+    
+    plt.savefig(os.path.join(path, filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+def plotScatter(value=None, wght=None, path=None, filename=None, logscaling=None, xLabel = None, yLabel=None, show='no'):
+
+    _ = plt.plot(value, wght, 'o', color = 'black')
+    # plt.title(filename[:-4])
+    
+    if logscaling == 'x':
+        plt.xscale('log')
+    elif logscaling == 'y':
+        plt.yscale('log')
+    elif logscaling == 'both':
+        plt.xscale('log')
+        plt.yscale('log')
+    
+    if xLabel != None:
+        plt.xlabel(xLabel)
+    if yLabel != None:
+        plt.ylabel(yLabel)
+    
+    plt.savefig(os.path.join(path, filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+def plotKDE(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', bandwidth = None, logscaling=None, xLabel = None, yLabel=None, show='no'):
+
+    minVal  = min(value)
+    maxVal  = max(value)
+    diff    = int(maxVal - minVal)
+    if diff == 0:
+        diff = 1
+    x_d     = np.linspace(minVal, maxVal, 100*diff)
+    # print("minVal   :", minVal)
+    # print("maxVal   :", maxVal)
+    # print("diff     :", diff)
+    # print("x_d.shape:", x_d.shape)
+      
+    if wght == None:
+        value = np.array(value)
+        X = value[:, None]
+
+    """ print( "Shape of value before:", value.shape)
+    value = np.array(value)[:, None]
+    print( "Shape of value:",value.shape)
+    wght  = np.array(wght)[:, None]
+    X = np.concatenate((value, wght), axis = 1)
+    print( "Shape of X:",X.shape) """
+    
+    if bandwidth == None:
+        bandwidth_space  = 10 ** np.linspace(-1, 1, 100)
+        grid        = GridSearchCV(KernelDensity(kernel='gaussian'), {'bandwidth': bandwidth_space}, cv=KFold(5))
+        grid.fit(X)
+        bandwidth = grid.best_params_['bandwidth']
+        print( "Bandwidth Value : ", bandwidth)
+
+    kde = KernelDensity(bandwidth=bandwidth, kernel=kernel).fit(X)
+    log_dens = kde.score_samples(x_d[:,None])
+
+    plt.fill_between(x_d, np.exp(log_dens), alpha=0.5)
+    plt.plot(X, np.full_like(X, -0.001), '|k', markeredgewidth=1)
+
+    if logscaling == 'x':
+        plt.xscale('log')
+    elif logscaling == 'y':
+        plt.yscale('log')
+    elif logscaling == 'both':
+        plt.xscale('log')
+        plt.yscale('log')
+
+    if xLabel != None:
+        plt.xlabel(xLabel)
+    if yLabel != None:
+        plt.ylabel(yLabel)
+    
+    plt.savefig(os.path.join(path, filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+def plotKDE_2D(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', bandwidth = None, logscaling=None, xLabel = None, yLabel=None, show='no'):
+    
+    # Extract x and y# Extract x and y
+    x = np.array(value)
+    y = np.array(wght)
+
+    # Define the borders
+    deltaX = (max(x) - min(x))/10
+    deltaY = (max(y) - min(y))/10
+
+    xmin = min(x) - deltaX
+    xmax = max(x) + deltaX
+    ymin = min(y) - deltaY
+    ymax = max(y) + deltaY
+
+    # Create meshgrid
+    xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+    
+    positions = np.vstack([xx.ravel(), yy.ravel()])
+    values = np.vstack([x, y])
+    kernel = st.gaussian_kde(values)
+    f = np.reshape(kernel(positions).T, xx.shape)
+
+    fig = plt.figure(figsize=(13, 7))
+    ax = plt.axes(projection='3d')
+    surf = ax.plot_surface(xx, yy, f, rstride=1, cstride=1, cmap='coolwarm', edgecolor='none')
+
+    if xLabel != None:
+        ax.set_xlabel(xLabel)
+    if yLabel != None:
+        ax.set_ylabel(yLabel)
+
+    if logscaling == 'x':
+        ax.set_xscale('log')
+    elif logscaling == 'y':
+        ax.set_yscale('log')
+    elif logscaling == 'both':
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+
+    ax.set_zlabel('PDF')
+    ax.set_title('Surface plot of Gaussian 2D KDE')
+    fig.colorbar(surf, shrink=0.5, aspect=5) # add color bar indicating the PDF
+    ax.view_init(45, 0)
+    
+    fig.savefig(os.path.join(path, filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+    h =plt.hist2d(x, y, bins=(36, 36))
+    plt.colorbar(h[3])
+    if xLabel != None:
+        plt.xlabel(xLabel)
+    if yLabel != None:
+        plt.ylabel(yLabel)
+    plt.savefig(os.path.join(path, '2D_hist_'+filename))
+    if show=='yes':
+        plt.show()
+    plt.close()
+
+def isAreaSmall(area, params, areaInPix = True):
     factor          = params['Threshold area factor']
-    d_space         = params['d space pix']
+    
+    if areaInPix == True:
+        d_space     = params['d space pix']
+    else:
+        d_space     = params['d space nm']
+
     width           = factor*d_space
     height          = d_space
     areaThresh      = width*height
@@ -106,8 +271,43 @@ def getCentroid (convHull):
     y_centroid = np.mean(convHull.points[convHull.vertices,1], dtype= int)
     return x_centroid, y_centroid
 
-def getBoundingBox(convHull):
+def getCrystalSizeAndOrientation(convHull):
     """ 
+    Return's half of the major and minor axis length and the orientation angle of the major axis. 
+    The orientation angle is zero at the x-axis and positive in the clockwise direction. 
+    """
+
+    X = convHull.points[convHull.vertices,:2]
+    pca = PCA(n_components = 2)
+    pca.fit(X)
+
+    eigen_vectors = pca.components_
+    eigen_values = pca.explained_variance_
+
+    major_scale = np.sqrt(2 * eigen_values[0])
+    minor_scale = np.sqrt(2 * eigen_values[1])
+
+    major_axis_unit = eigen_vectors[0, :]
+    # minor_axis_unit = eigen_vectors[1, :]
+
+    major_axis = major_axis_unit * major_scale
+    # minor_axis = minor_axis_unit * minor_scale
+    if major_axis[0] == 0:
+        angle = -90
+    else:
+        angle   = math.atan(major_axis[1]/major_axis[0]) * 180/np.pi 
+
+    return major_scale, minor_scale, angle
+
+def getAngleDifference(ang1, ang2):
+    diff = abs(ang1-ang2) 
+    if diff > 90:
+        return 180 - diff
+    else: 
+        return diff
+
+def getBoundingBox(convHull):
+    """
     Returns the detection region bounding box coordinates according to the image coordinate convention {(columns, rows) with top left as origin}.  
     x_minMax and y_minMax are list of size 2, containing the min value first and max second. 
     """
@@ -139,14 +339,13 @@ def createVersionDirectory(projectPath, BaseResultDir, name):
     ResFolderName   = name + '_' #'version_'
     lenFolderName   = len(ResFolderName)
     dirlist         = [int(item[lenFolderName:]) for item in os.listdir(folderDir) if os.path.isdir(os.path.join(folderDir,item)) and re.search(ResFolderName, item) != None and len(item)> lenFolderName] 
-    print("printing dirlist:", dirlist)
-
+    
     if len(dirlist) != 0:
         latestVersion = max(dirlist)
     else:
         latestVersion = 0
 
-    print("max of dirlist:", latestVersion)
     os.mkdir(join(folderDir, ResFolderName + str(latestVersion + 1)))
+    print(ResFolderName + str(latestVersion + 1) + '\n')
     resultDir = join(BaseResultDir,ResFolderName + str(latestVersion + 1))
     return resultDir

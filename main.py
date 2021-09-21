@@ -11,7 +11,10 @@ from os.path import isfile
 projectPath     = os.path.dirname(os.path.abspath(__file__))
 dataDir         = 'DATA/sampleData/'
 BaseResultDir   = 'Results/temp/'
-AnnotationDir   = 'Annotations/'
+
+ResultImageDir      = 'Images'
+ResultCSVDir        = 'CSV'
+ResultAnnotationDir = 'Annotations'
 
 BaseResultDir   = createVersionDirectory(projectPath, BaseResultDir, 'version')
 
@@ -37,7 +40,7 @@ ellipseAspectRatio      = 5                     # Threshold ellipse aspect Ratio
 thresh_dist             = int(2*dspace_pix)     # Distance threshold for adjacency matrix 
 thresh_theta            = 10                    # delta Theta threshold for adjacency matrix 
 clusterSize             = 7                     # Threshold ellipse in Crystal cluster
-powSpec_peak_thresk     = 1.15
+powSpec_peak_thresk     = 1.20                  # 1.20 works for all
 Thresh_area_factor      = 4
 
 
@@ -72,6 +75,11 @@ parameters = {'d space nm':                     dspace_nm,
 df_overall = pd.DataFrame(columns =['Image Name', 'Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)'])
 
 if os.path.isdir(join(projectPath, resultDir)) == False: os.mkdir(join(projectPath, resultDir))
+if os.path.isdir(join(projectPath, resultDir, ResultCSVDir)) == False: os.mkdir(join(projectPath, resultDir, ResultCSVDir))
+if os.path.isdir(join(projectPath, resultDir, ResultImageDir)) == False: os.mkdir(join(projectPath, resultDir, ResultImageDir))
+
+if save_BB == 1: 
+    if os.path.isdir(join(projectPath, resultDir, ResultAnnotationDir)) == False: os.mkdir(join(projectPath, resultDir, ResultAnnotationDir))
 
 onlyfiles = [f for f in listdir(join(projectPath,dataDir)) if isfile(join(projectPath,dataDir,f))]
 
@@ -79,14 +87,14 @@ print("\nd space:", dspace_nm)
 
 for f in onlyfiles:
 
-    if f[-4:] == ".tif" and f == "FoilHole_21836260_Data_21829764_21829765_20200123_0028.tif":
+    if f[-4:] == ".tif":# and f == "FoilHole_21836390_Data_21829764_21829765_20200123_0115.tif":
         print("Img Name: ", f, "\n")
         # print("Full Img Path: ",join(projectPath,dataDir,f))
         t0 = time.time()    
-        df_crystalProps = GRATE(projectPath, dataDir, f, resultDir, AnnotationDir, parameters)
+        df_crystalProps = GRATE(projectPath, dataDir, f, resultDir, ResultImageDir, ResultCSVDir, ResultAnnotationDir, parameters)
         t1 = time.time()
         total = t1-t0
         print("Overall GRATE Time:", round(total,2), "\n")
         df_overall = df_overall.append(df_crystalProps, ignore_index=True,)
 
-df_overall.to_csv(join(projectPath, resultDir,'overall.csv'))
+df_overall.to_csv(join(projectPath, resultDir, ResultCSVDir, 'overall_'+str(int(dspace_nm))+'p'+str(int((dspace_nm-int(dspace_nm))*10)) +'.csv'))

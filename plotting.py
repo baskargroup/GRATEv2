@@ -2,61 +2,249 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from utils import plotfig, totalAreaInDSRange
+from utils import plotHist, createVersionDirectory, totalAreaInDSRange, isAreaSmall, plotScatter, plotKDE, plotKDE_2D
 
-def Old_filterThresholdArea(dataframe, factor, d_space):
-    width           = factor*d_space
-    height          = d_space
-    areaThresh      = width*height
 
-    dropCount       = 0
+def Hist_outside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
+    outOfRangeDS    = []
     for ind, row in dataframe.iterrows():
-        if row['Crystal Area (nm^2)'] < areaThresh or row[ 'D-Spacing(FFT, nm)' ] == 0:
-            print("Drop ind   :", ind)
-            dropCount += 1
-            dataframe = dataframe.drop([ind])
-    return dataframe, dropCount
+        if row[ 'D-Spacing(FFT, nm)' ] < dsRange[0] or row[ 'D-Spacing(FFT, nm)' ] > dsRange[1]:
+            outOfRangeDS.append(row[ 'D-Spacing(FFT, nm)' ])
+    
+    plotHist(value = outOfRangeDS, path = savePath, filename = str(d_space)+"_outOfRangedspace.png", numBins=200, logscaling=None, xLabel= 'DSpacing out of range', yLabel='Frequency', show=showFig)
 
-def plotsExceptRelDistance(df, factor, d_space, dSpace_range, csvPath):
-    TotDspaceArea   = 0
-    dropCount       = 0
-    dsRangeCount    = 0
+def filterThreshArea(df, params):
+    for ind, row in df.iterrows():
+        TorF_area = isAreaSmall(row['Crystal Area (nm^2)'], params, areaInPix=False)
+        if TorF_area == True:# or row['D-Spacing(FFT, nm)']<1.5:
+            df.drop(ind, inplace = True)
+    
+    return df
 
-    print("D Spacing                            :", d_space)
-    print("Original Number of Detections        :", df.shape[0])
 
-    df, dropCount = Old_filterThresholdArea(df, factor, d_space)
+""" 
+Lookup table for "plotType": 
+0   :   Generate KDE based single D-Spacing plots, 
+    - Set "csvPath"
+    - Set "filename"
+    - Set "ShowFig"
+    - Set "d_space"
+1   :   Generate combined D-Spacing plots, 
+2   :   Generate relative Distance Plots., 
+3   :   Generate relative angle Plot,
+-1  :   Generate histogram based single D-Spacing plots 
+"""
 
-    print("Detections with below Threshold Area :", dropCount)
-    # print("After Area Filtering row count       :", df.shape[0])
+plotType        = 0                                 
+csvPath         = 'Results/all/version_4'           # Compulsory to fill
+filename        = 'overall_0p7.csv'                 # Compulsory to fill
+filename1       = 'overall_0p7.csv'                 # Fill value only if plotType == 1
+showFig         = 'no'                              # 'yes' or 'no'
+d_space         = 0.7
+# dsRange         = [1.52, 2.28]
 
-    TotDspaceArea, dsRangeCount = totalAreaInDSRange(df, dSpace_range)
+# d_space = 0.7
+# dsRange = [0.56, 0.84]
 
-    print("DS Range Count                       :", dsRangeCount)
-    print("Area in Range                        :", round(TotDspaceArea,2))
-
-    plotfig(df['Crystal Area (nm^2)'], csvPath, "area.png", 200, semilog=1)
-    plotfig(df['Crystal Angle (zero at X-axis and clockwise positive)'],  csvPath, "angle.png", 150, semilog=0)
-    plotfig(df['D-Spacing(FFT, nm)'], csvPath, "dspace.png", 200, semilog=1)
-    plotfig(df['D-Spacing(FFT, nm)'], csvPath, "dspaceVsArea.png", 200, df['Crystal Area (nm^2)'], semilog=1)
-    plotfig(df['Crystal Area (nm^2)'], csvPath, "AreaVsdspace.png", 200, df['D-Spacing(FFT, nm)'], semilog=1)
-
-csvPath         = 'Results/all/fixedDspacing/overall'
-filename        = 'dspacing_1p9.csv'
-plotting_relDist = 0    # 0: Generating other plots, 1: Generating Relative Distance Plots.
-
-factor  = 4
-
-d_space = 1.9
-dsRange = [1.8, 2.5]
-
-# d_space =  0.7
-# dsRange = [0.5, 1.5]
-
+d_space_string  = filename[-7:-4] 
 projectPath     = os.path.dirname(os.path.abspath(__file__))
 df              = pd.read_csv(os.path.join(projectPath,csvPath,filename))
 
-if plotting_relDist == 1:
-    plotfig( df['Distances'], csvPath, "Relative_Distances.png", 300, semilog=1)
-elif plotting_relDist == 0:
-    plotsExceptRelDistance(df, factor, d_space, dsRange, csvPath)
+if plotType == 1: df1 = pd.read_csv(os.path.join(projectPath,csvPath,filename1))
+
+plotSavePath    = createVersionDirectory(projectPath, csvPath, 'Plot_version')
+
+
+if plotType == 0:
+    df              = filterThreshArea(df, { 'Threshold area factor': 10, 'd space nm': d_space,})
+    df_len          = len(df['Crystal Area (nm^2)']) 
+
+    """ ## Data Sufficiency Test
+    for i in np.linspace(10,100, 10,endpoint=True):
+        plotKDE(    value       = df['Crystal Area (nm^2)'][:int(df_len*i/100)],
+                    wght        = None,
+                    path        = plotSavePath,
+                    filename    = str(i) + "_" + d_space_string + "_area_logx_KDE.png",
+                    kernel      = 'gaussian',
+                    bandwidth   = 10,
+                    logscaling  = 'x',
+                    xLabel      = 'Crystal Area (nm^2)',
+                    yLabel      = 'Normalized Density',
+                    show        = showFig) """
+    
+    
+    plotKDE(    value       = df['Crystal Area (nm^2)'],
+                wght        = None,
+                path        = plotSavePath,
+                filename    = d_space_string + "_area_logx_KDE.png",
+                kernel      = 'gaussian',
+                bandwidth   = None,
+                logscaling  = 'x',
+                xLabel      = 'Crystal Area (nm^2)',
+                yLabel      = 'Normalized Density',
+                show        = showFig)
+
+    plotKDE(    value       = df['D-Spacing(FFT, nm)'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = d_space_string + '_dspace_KDE.png', 
+                kernel      = 'gaussian',
+                bandwidth   = 0.1, 
+                logscaling  = None, 
+                xLabel      = 'D-Spacing(FFT, nm)', 
+                yLabel      = 'Normalized Density', 
+                show        = showFig)
+
+    plotKDE_2D( value       = df['D-Spacing(FFT, nm)'], 
+                wght        = df['Crystal Area (nm^2)'], 
+                path        = plotSavePath, 
+                filename    = d_space_string + "_dspaceVsArea_KDE.png",
+                kernel      = 'gaussian',
+                bandwidth   = None, 
+                logscaling  = None, 
+                xLabel      = 'D-Spacing(FFT, nm)', 
+                yLabel      = 'Crystal Area (nm^2)', 
+                show        = showFig)
+    
+    """ plotKDE(    value       = df['Crystal Angle (zero at X-axis and clockwise positive)'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = d_space_string + "_angle_KDE.png",
+                kernel      = 'gaussian',
+                bandwidth   = None,
+                logscaling  = None, 
+                xLabel      = 'Crystal Angle', 
+                yLabel      = 'Normalized Density', 
+                show        = showFig) """
+
+elif plotType == 1:
+    frames = [df, df1]
+    resultDF = pd.concat(frames)
+
+    plotHist(   value       = resultDF['D-Spacing(FFT, nm)'], 
+                wght        = resultDF['Crystal Area (nm^2)'],
+                path        = plotSavePath, 
+                filename    = "combined_dspaceVsArea_log.png", 
+                numBins     = 20, 
+                logscaling  = 'y',
+                xLabel      = 'D-Spacing(FFT, nm)',
+                yLabel      = 'Crystal Area (nm^2)', 
+                show        = showFig)
+
+    plotHist(   value       = resultDF['D-Spacing(FFT, nm)'],
+                wght        = resultDF['Crystal Area (nm^2)'],
+                path        = plotSavePath,
+                filename    = 'combined_dspaceVsArea.png',
+                numBins     = 20,
+                logscaling  = None,
+                xLabel      = 'D-Spacing(FFT, nm)',
+                yLabel      = 'Crystal Area (nm^2)',
+                show        = showFig)
+
+elif plotType == 2:
+
+    plotKDE(    value       = df['Metric Distances'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = filename[:-4] +'_logx_KDE.png', 
+                kernel      = 'gaussian',
+                bandwidth   = 0.2, 
+                logscaling  = 'x', 
+                xLabel      = 'Relative Distances (nm)', 
+                yLabel      = 'Normalized Density', 
+                show        = showFig)
+
+    plotHist(   value       = df['Metric Distances'],
+                wght        = None,
+                path        = plotSavePath,
+                filename    = filename[:-4] +'_logx.png',
+                numBins     = 300,
+                logscaling  = 'x',
+                xLabel      = 'Relative Distances (nm)',
+                yLabel      = 'Frequency',
+                show        = showFig)
+
+elif plotType == 3:
+
+    plotKDE(    value       = df['relModAngle'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = 'relModAngle_KDE.png', 
+                kernel      = 'gaussian',
+                bandwidth   = 2.55, 
+                logscaling  = None, 
+                xLabel      = 'Relative Angle', 
+                yLabel      = 'Normalized Density', 
+                show        = showFig)
+    
+    plotHist(   value       = df['relModAngle'],
+                wght        = None,
+                path        = plotSavePath,
+                filename    = 'relModAngle.png',
+                numBins     = 36,
+                logscaling  = None,
+                xLabel      = 'Relative Angle',
+                yLabel      = 'Frequency',
+                show        = showFig)
+    
+    plotKDE_2D( value       = df['relModAngle'],
+                wght        = df['distance'],
+                path        = plotSavePath,
+                filename    = 'relAngleVsCrystalDist.png',
+                logscaling  = None,
+                xLabel      = 'Relative Angle',
+                yLabel      = 'crystal distance',
+                show        = showFig)
+    
+elif plotType == -1:
+    df              = filterThreshArea(df, { 'Threshold area factor': 10, 'd space nm': d_space,})
+    
+    plotHist(   value       = df['Crystal Area (nm^2)'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = d_space_string + "_area_bothLog.png", 
+                numBins     = 400, 
+                logscaling  = 'both', 
+                xLabel      = 'Crystal Area (nm^2)', 
+                yLabel      = 'Frequency', 
+                show        = showFig)
+
+    plotHist(   value       = df['Crystal Area (nm^2)'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = d_space_string + "_area_logx.png", 
+                numBins     = 300, 
+                logscaling  = 'x', 
+                xLabel      = 'Crystal Area (nm^2)', 
+                yLabel      = 'Frequency', 
+                show        = showFig)
+
+    plotHist(   value       = df['Crystal Angle (zero at X-axis and clockwise positive)'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = d_space_string + "_angle.png",
+                numBins     = 36, 
+                logscaling  = None, 
+                xLabel      = 'Crystal Angle', 
+                yLabel      = 'Frequency', 
+                show        = showFig)
+
+    plotHist(   value       = df['D-Spacing(FFT, nm)'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = d_space_string + '_dspace.png', 
+                numBins     = 20, 
+                logscaling  = None, 
+                xLabel      = 'D-Spacing(FFT, nm)', 
+                yLabel      = 'Frequency', 
+                show        = showFig)
+
+    plotHist(   value       = df['D-Spacing(FFT, nm)'], 
+                wght        = df['Crystal Area (nm^2)'], 
+                path        = plotSavePath, 
+                filename    = d_space_string + "_dspaceVsArea.png",
+                numBins     = 20, 
+                logscaling  = None, 
+                xLabel      = 'D-Spacing(FFT, nm)', 
+                yLabel      = 'Crystal Area (nm^2)', 
+                show        = showFig)
