@@ -40,7 +40,7 @@ ellipseAspectRatio      = 5                     # Threshold ellipse aspect Ratio
 thresh_dist             = int(2*dspace_pix)     # Distance threshold for adjacency matrix 
 thresh_theta            = 10                    # delta Theta threshold for adjacency matrix 
 clusterSize             = 7                     # Threshold ellipse in Crystal cluster
-powSpec_peak_thresk     = 1.20                  # 1.20 works for all
+powSpec_peak_thresk     = 1.15                  # 1.20 works for all
 Thresh_area_factor      = 4
 
 
@@ -87,9 +87,8 @@ print("\nd space:", dspace_nm)
 
 for f in onlyfiles:
 
-    if f[-4:] == ".tif":# and f == "FoilHole_21836390_Data_21829764_21829765_20200123_0115.tif":
+    if f[-4:] == ".tif" :#and f == "FoilHole_21830219_Data_21829764_21829765_20200122_1016.tif":
         print("Img Name: ", f, "\n")
-        # print("Full Img Path: ",join(projectPath,dataDir,f))
         t0 = time.time()    
         df_crystalProps = GRATE(projectPath, dataDir, f, resultDir, ResultImageDir, ResultCSVDir, ResultAnnotationDir, parameters)
         t1 = time.time()
@@ -97,4 +96,4 @@ for f in onlyfiles:
         print("Overall GRATE Time:", round(total,2), "\n")
         df_overall = df_overall.append(df_crystalProps, ignore_index=True,)
 
-df_overall.to_csv(join(projectPath, resultDir, ResultCSVDir, 'overall_'+str(int(dspace_nm))+'p'+str(int((dspace_nm-int(dspace_nm))*10)) +'.csv'))
+df_overall.to_csv(join(projectPath, resultDir, ResultCSVDir, 'overall.csv'))
