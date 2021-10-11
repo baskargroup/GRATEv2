@@ -26,6 +26,9 @@
 	8.  **MajorAxisAngle** : In degrees, Angle of the major axis of the crystal. Angle is zero at X-axis and clockwise positive.
 	9.  **angleDifference**: In degrees (between 0 to 90), Difference between the angle of crystal pattern (point 4) and crystal major axis angle (point 8).
             
+**Note**: We filter out crystals with area smaller than:
+	- 7*Dspacing^2: for 1.9nm dspacing crystals
+	- 10*Dspacing^2: for 0.7nm dspacing crystals
 ## Metric distance:
 $Metric Distance$ = $\frac{C1C2}{r1+r2}$
 -   C1C2 : Distance between center 1 to center 2.
