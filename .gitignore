@@ -13,3 +13,6 @@ DATA/
 Annotations/
 utils.pyc
 .DS_Store
+*.sh
+*.SLURM
+*.out
