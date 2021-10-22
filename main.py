@@ -9,8 +9,8 @@ from os import listdir
 from os.path import isfile
 
 projectPath     = os.path.dirname(os.path.abspath(__file__))
-dataDir         = 'DATA/sampleData/'
-BaseResultDir   = 'Results/temp/'
+dataDir         = 'DATA/allCombined/'
+BaseResultDir   = 'Results/all/'
 
 ResultImageDir      = 'Images'
 ResultCSVDir        = 'CSV'
@@ -40,7 +40,7 @@ ellipseAspectRatio      = 5                     # Threshold ellipse aspect Ratio
 thresh_dist             = int(2*dspace_pix)     # Distance threshold for adjacency matrix 
 thresh_theta            = 10                    # delta Theta threshold for adjacency matrix 
 clusterSize             = 7                     # Threshold ellipse in Crystal cluster
-powSpec_peak_thresk     = 1.20                  # 1.20 works for all
+powSpec_peak_thresk     = 1.15                  # 1.20 works for all
 Thresh_area_factor      = 4
 
 
