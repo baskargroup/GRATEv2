@@ -16,3 +16,6 @@ utils.pyc
 *.sh
 *.SLURM
 *.out
+concCircle.py
+d_spaceTesting.py
+patternGeneration.py

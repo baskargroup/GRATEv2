@@ -100,9 +100,18 @@ def plotHist(value=None, wght=None, path=None, filename=None, numBins=100, logsc
 
 def plotScatter(value=None, wght=None, path=None, filename=None, logscaling=None, xLabel = None, yLabel=None, show='no'):
 
-    _ = plt.plot(value, wght, 'o', color = 'black')
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.plot(value, wght, 'o', color = 'black')
     # plt.title(filename[:-4])
     
+    lowerLim = min([min(value), min(wght)])
+    higherLim = max([max(value), max(wght)])
+    
+    plt.ylim((lowerLim, higherLim))
+    plt.xlim((lowerLim, higherLim))
+    ax.set_aspect('equal', adjustable='box')
+
     if logscaling == 'x':
         plt.xscale('log')
     elif logscaling == 'y':
@@ -117,6 +126,7 @@ def plotScatter(value=None, wght=None, path=None, filename=None, logscaling=None
         plt.ylabel(yLabel)
     
     plt.savefig(os.path.join(path, filename))
+    
     if show=='yes':
         plt.show()
     plt.close()
@@ -299,7 +309,15 @@ def getCrystalSizeAndOrientation(convHull):
 
     return major_scale, minor_scale, angle
 
+def getEquivalentAngle(ang):
+    ## Return's angle in [-180, 0]
+    if ang > 0:
+        ang = -(180-ang)
+    return ang
+
 def getAngleDifference(ang1, ang2):
+    ang1 = getEquivalentAngle(ang1)
+    ang2 = getEquivalentAngle(ang2)
     diff = abs(ang1-ang2) 
     if diff > 90:
         return 180 - diff
@@ -349,3 +367,11 @@ def createVersionDirectory(projectPath, BaseResultDir, name):
     print(ResFolderName + str(latestVersion + 1) + '\n')
     resultDir = join(BaseResultDir,ResFolderName + str(latestVersion + 1))
     return resultDir
+    
+def filterThreshArea(df, params):
+    for ind, row in df.iterrows():
+        TorF_area = isAreaSmall(row['Crystal Area (nm^2)'], params, areaInPix=False)
+        if TorF_area == True:# or row['D-Spacing(FFT, nm)']<1.5:
+            df.drop(ind, inplace = True)
+    
+    return df

@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from utils import plotHist, createVersionDirectory, totalAreaInDSRange, isAreaSmall, plotScatter, plotKDE, plotKDE_2D
-
+from utils import plotHist, createVersionDirectory, totalAreaInDSRange, isAreaSmall, plotScatter, plotKDE, plotKDE_2D, filterThreshArea
+from utils import getEquivalentAngle, getAngleDifference
+from scipy.stats import wasserstein_distance
 
 def Hist_outside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
     outOfRangeDS    = []
@@ -12,14 +13,6 @@ def Hist_outside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
             outOfRangeDS.append(row[ 'D-Spacing(FFT, nm)' ])
     
     plotHist(value = outOfRangeDS, path = savePath, filename = str(d_space)+"_outOfRangedspace.png", numBins=200, logscaling=None, xLabel= 'DSpacing out of range', yLabel='Frequency', show=showFig)
-
-def filterThreshArea(df, params):
-    for ind, row in df.iterrows():
-        TorF_area = isAreaSmall(row['Crystal Area (nm^2)'], params, areaInPix=False)
-        if TorF_area == True:# or row['D-Spacing(FFT, nm)']<1.5:
-            df.drop(ind, inplace = True)
-    
-    return df
 
 
 """ 
@@ -36,15 +29,16 @@ Lookup table for "plotType":
 """
 
 plotType        = 0                                 
-csvPath         = 'Results/all/version_4'           # Compulsory to fill
-filename        = 'overall_0p7.csv'                 # Compulsory to fill
-filename1       = 'overall_0p7.csv'                 # Fill value only if plotType == 1
-showFig         = 'no'                              # 'yes' or 'no'
+csvPath         = 'Results/all/combined_v3/version_8/0.7/CSV'           # Compulsory to fill
+filename        = 'overall.csv'                                         # Compulsory to fill
+filename1       = 'overall_0p7.csv'                                     # Fill value only if plotType == 1
+showFig         = 'no'                                                  # 'yes' or 'no'
 d_space         = 0.7
-# dsRange         = [1.52, 2.28]
 
-# d_space = 0.7
-# dsRange = [0.56, 0.84]
+if d_space == 1.9:
+    ThresholdFactorArea = 7
+elif d_space == 0.7: 
+    ThresholdFactorArea = 10
 
 d_space_string  = filename[-7:-4] 
 projectPath     = os.path.dirname(os.path.abspath(__file__))
@@ -54,14 +48,15 @@ if plotType == 1: df1 = pd.read_csv(os.path.join(projectPath,csvPath,filename1))
 
 plotSavePath    = createVersionDirectory(projectPath, csvPath, 'Plot_version')
 
-
 if plotType == 0:
-    df              = filterThreshArea(df, { 'Threshold area factor': 10, 'd space nm': d_space,})
+    df              = filterThreshArea(df, { 'Threshold area factor': ThresholdFactorArea, 'd space nm': d_space,})
     df_len          = len(df['Crystal Area (nm^2)']) 
 
     """ ## Data Sufficiency Test
+    df_last = df['Crystal Area (nm^2)'][:int(df_len*10/100)]
     for i in np.linspace(10,100, 10,endpoint=True):
-        plotKDE(    value       = df['Crystal Area (nm^2)'][:int(df_len*i/100)],
+        df_current = df['Crystal Area (nm^2)'][:int(df_len*i/100)]
+        plotKDE(    value       = df_current,
                     wght        = None,
                     path        = plotSavePath,
                     filename    = str(i) + "_" + d_space_string + "_area_logx_KDE.png",
@@ -70,8 +65,16 @@ if plotType == 0:
                     logscaling  = 'x',
                     xLabel      = 'Crystal Area (nm^2)',
                     yLabel      = 'Normalized Density',
-                    show        = showFig) """
-    
+                    show        = showFig)
+        
+        if i == 00: 
+            continue
+        else: 
+            ws_dist = wasserstein_distance(df_last, df_current)
+            # ws_dist = wasserstein_distance(df['Crystal Area (nm^2)'], df_current)
+            df_last = df_current
+            print(ws_dist) """
+
     
     plotKDE(    value       = df['Crystal Area (nm^2)'],
                 wght        = None,
@@ -106,16 +109,37 @@ if plotType == 0:
                 yLabel      = 'Crystal Area (nm^2)', 
                 show        = showFig)
     
-    """ plotKDE(    value       = df['Crystal Angle (zero at X-axis and clockwise positive)'], 
+    plotScatter(value       = df['crystalMajorAxis_length (nm)'], 
+                wght        = df['crystalMinorAxis_length (nm)'], 
+                path        = plotSavePath, 
+                filename    = 'crystal_MajorVsMinor_scatter.png', 
+                logscaling  = None, 
+                xLabel      = 'crystalMajorAxis_length (nm)', 
+                yLabel      = 'crystalMinorAxis_length (nm)', 
+                show        = showFig)
+
+    plotKDE(    value       = df['crystalMajorAxis_length (nm)']/df['crystalMinorAxis_length (nm)'], 
                 wght        = None,
                 path        = plotSavePath, 
-                filename    = d_space_string + "_angle_KDE.png",
+                filename    = "AspectRatio_MajorbyMinor_KDE.png",
                 kernel      = 'gaussian',
                 bandwidth   = None,
                 logscaling  = None, 
-                xLabel      = 'Crystal Angle', 
+                xLabel      = 'AspectRatio_MajorbyMinor', 
                 yLabel      = 'Normalized Density', 
-                show        = showFig) """
+                show        = showFig)
+    
+    plotKDE(    value       = df['angleDifference'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = "angleDifference_crystalOrientationVsMajorAxis_KDE.png",
+                kernel      = 'gaussian',
+                bandwidth   = 2,
+                logscaling  = None, 
+                xLabel      = 'Angle Difference B/W crystal Pattern vs Major Axis', 
+                yLabel      = 'Normalized Density', 
+                show        = showFig)
+
 
 elif plotType == 1:
     frames = [df, df1]
@@ -146,30 +170,69 @@ elif plotType == 2:
     plotKDE(    value       = df['Metric Distances'], 
                 wght        = None,
                 path        = plotSavePath, 
-                filename    = filename[:-4] +'_logx_KDE.png', 
+                filename    = filename[:-4] +'_MetricDistances_logx_KDE.png', 
                 kernel      = 'gaussian',
                 bandwidth   = 0.2, 
                 logscaling  = 'x', 
-                xLabel      = 'Relative Distances (nm)', 
+                xLabel      = 'Metric Distances (nm)', 
                 yLabel      = 'Normalized Density', 
                 show        = showFig)
 
     plotHist(   value       = df['Metric Distances'],
                 wght        = None,
                 path        = plotSavePath,
-                filename    = filename[:-4] +'_logx.png',
+                filename    = filename[:-4] +'_MetricDistances_logx.png',
                 numBins     = 300,
                 logscaling  = 'x',
-                xLabel      = 'Relative Distances (nm)',
+                xLabel      = 'Metric Distances (nm)',
                 yLabel      = 'Frequency',
+                show        = showFig)
+
+    plotKDE(    value       = df['Direct Distances'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = filename[:-4] +'_DirectDistances_logx_KDE.png', 
+                kernel      = 'gaussian',
+                bandwidth   = 0.9, 
+                logscaling  = 'x', 
+                xLabel      = 'Direct Distances (nm)', 
+                yLabel      = 'Normalized Density', 
+                show        = showFig)
+
+    plotHist(   value       = df['Direct Distances'],
+                wght        = None,
+                path        = plotSavePath,
+                filename    = filename[:-4] +'_DirectDistances_logx.png',
+                numBins     = 300,
+                logscaling  = 'x',
+                xLabel      = 'Direct Distances (nm)',
+                yLabel      = 'Frequency',
+                show        = showFig)
+    
+    plotKDE_2D( value       = df['Direct Distances'],
+                wght        = df['Relative Angle'],
+                path        = plotSavePath,
+                filename    = filename[:-4] +'_relAngleVsDirectDist.png',
+                logscaling  = None,
+                xLabel      = 'Direct Distance (nm)',
+                yLabel      = 'Relative Angle',
+                show        = showFig)
+    
+    plotKDE_2D( value       = df['Metric Distances'],
+                wght        = df['Relative Angle'],
+                path        = plotSavePath,
+                filename    = filename[:-4] +'_relAngleVsMetricDist.png',
+                logscaling  = None,
+                xLabel      = 'Metric Distance (nm)',
+                yLabel      = 'Relative Angle',
                 show        = showFig)
 
 elif plotType == 3:
 
-    plotKDE(    value       = df['relModAngle'], 
+    plotKDE(    value       = df['Relative Angle'], 
                 wght        = None,
                 path        = plotSavePath, 
-                filename    = 'relModAngle_KDE.png', 
+                filename    = 'Relative_Angle_KDE.png', 
                 kernel      = 'gaussian',
                 bandwidth   = 2.55, 
                 logscaling  = None, 
@@ -177,23 +240,23 @@ elif plotType == 3:
                 yLabel      = 'Normalized Density', 
                 show        = showFig)
     
-    plotHist(   value       = df['relModAngle'],
+    plotHist(   value       = df['Relative Angle'],
                 wght        = None,
                 path        = plotSavePath,
-                filename    = 'relModAngle.png',
+                filename    = 'Relative_Angle.png',
                 numBins     = 36,
                 logscaling  = None,
                 xLabel      = 'Relative Angle',
                 yLabel      = 'Frequency',
                 show        = showFig)
     
-    plotKDE_2D( value       = df['relModAngle'],
-                wght        = df['distance'],
+    plotKDE_2D( value       = df['Relative Angle'],
+                wght        = df['Direct Distances'],
                 path        = plotSavePath,
-                filename    = 'relAngleVsCrystalDist.png',
+                filename    = 'Relative_AngleVsDirect_Distance.png',
                 logscaling  = None,
                 xLabel      = 'Relative Angle',
-                yLabel      = 'crystal distance',
+                yLabel      = 'Direct Distance',
                 show        = showFig)
     
 elif plotType == -1:
@@ -202,30 +265,10 @@ elif plotType == -1:
     plotHist(   value       = df['Crystal Area (nm^2)'], 
                 wght        = None,
                 path        = plotSavePath, 
-                filename    = d_space_string + "_area_bothLog.png", 
-                numBins     = 400, 
-                logscaling  = 'both', 
-                xLabel      = 'Crystal Area (nm^2)', 
-                yLabel      = 'Frequency', 
-                show        = showFig)
-
-    plotHist(   value       = df['Crystal Area (nm^2)'], 
-                wght        = None,
-                path        = plotSavePath, 
                 filename    = d_space_string + "_area_logx.png", 
                 numBins     = 300, 
                 logscaling  = 'x', 
                 xLabel      = 'Crystal Area (nm^2)', 
-                yLabel      = 'Frequency', 
-                show        = showFig)
-
-    plotHist(   value       = df['Crystal Angle (zero at X-axis and clockwise positive)'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = d_space_string + "_angle.png",
-                numBins     = 36, 
-                logscaling  = None, 
-                xLabel      = 'Crystal Angle', 
                 yLabel      = 'Frequency', 
                 show        = showFig)
 
@@ -247,4 +290,24 @@ elif plotType == -1:
                 logscaling  = None, 
                 xLabel      = 'D-Spacing(FFT, nm)', 
                 yLabel      = 'Crystal Area (nm^2)', 
+                show        = showFig)
+
+    plotHist(   value       = df['crystalMajorAxis_length (nm)']/df['crystalMinorAxis_length (nm)'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = "AspectRatio_MajorbyMinor_histogram.png",
+                numBins     = 50,
+                logscaling  = None, 
+                xLabel      = 'AspectRatio_MajorbyMinor', 
+                yLabel      = 'Frequency', 
+                show        = showFig)
+    
+    plotHist(   value       = df['angleDifference'], 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = "angleDifference_crystalOrientationVsMajorAxis_Histogram.png",
+                numBins     = 36,
+                logscaling  = None, 
+                xLabel      = 'Angle Difference B/W crystal Pattern vs Major Axis', 
+                yLabel      = 'Normalized Density', 
                 show        = showFig)

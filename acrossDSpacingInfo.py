@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 from os import listdir
 from os.path import join, splitext
+from utils import getAngleDifference, filterThreshArea
 
 def listIntersection(lst1, lst2):
     lst3 = [value for value in lst1 if value in lst2]
@@ -27,10 +28,10 @@ def radFromArea(area):
     return rad
 
 projectPath     = os.path.dirname(os.path.abspath(__file__))
-dataDir = 'Results/all'
-d_spaceDir1 = join(projectPath, dataDir, "version_4/0.7")
-d_spaceDir2 = join(projectPath, dataDir, "version_3/1.9")
-pix2nm      = 78.5
+dataDir         = 'Results/all/combined_v3'
+d_spaceDir1     = join(projectPath, dataDir, "version_7/1.9/CSV")       ## Set 1.9nm Directory Here
+d_spaceDir2     = join(projectPath, dataDir, "version_8/0.7/CSV")       ## Set 0.7nm Directory Here
+pix2nm          = 78.5
 
 files1 = [f for f in listdir(d_spaceDir1) if splitext(f)[1] == ".csv"]
 files2 = [f for f in listdir(d_spaceDir2) if splitext(f)[1] == ".csv"]
@@ -47,9 +48,12 @@ ModRelAngle     = []
 for filename in commonCSV:
     if filename == "overall.csv":
         continue
-    print("File name:   ", filename)
+    # print("File name:   ", filename)
     df1 = pd.read_csv(join(d_spaceDir1, filename))
+    df1 = filterThreshArea(df1, { 'Threshold area factor': 7, 'd space nm': 1.9})
+    
     df2 = pd.read_csv(join(d_spaceDir2, filename))
+    df2 = filterThreshArea(df2, { 'Threshold area factor': 10, 'd space nm': 0.7})
 
     for ind1, row1 in df1.iterrows():
         centroid1   = numericFromString(row1['Centroid'], pix2nm) 
@@ -66,11 +70,12 @@ for filename in commonCSV:
             CCdist      = centroidDist(centroid1, centroid2)
             MetricDist   = CCdist/ (rad1 + rad2)
             
-            MetricDistances.append(MetricDist)              ## Metric Distance
-            DirectDistances.append(CCdist)                  ## Direct Distance
-            ModRelAngle.append(abs(ang1 - ang2))            ## Absolute Value of the Angle Difference 
+            MetricDistances.append(MetricDist)                              ## Metric Distance
+            DirectDistances.append(CCdist)                                  ## Direct Distance
+            ModRelAngle.append(getAngleDifference(ang1, ang2))              ## Absolute Value of the Angle Difference
 
 print("len distances:   ", len(DirectDistances))
 
-df_dist = pd.DataFrame(list(zip(MetricDistances, DirectDistances, ModRelAngle)), columns=['Metric Distances','Direct Distances','Modulus Relative Angle'])
+df_dist = pd.DataFrame(list(zip(MetricDistances, DirectDistances, ModRelAngle)), columns=['Metric Distances','Direct Distances','Relative Angle'])
+df_dist = df_dist.round(2)
 df_dist.to_csv(join(projectPath, dataDir, "acrossDSpacingInfo.csv"))
