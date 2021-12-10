@@ -7,70 +7,61 @@ import os
 import re
 from os import listdir
 from os.path import isfile
-
-projectPath     = os.path.dirname(os.path.abspath(__file__))
-dataDir         = 'DATA/allCombined/'
-BaseResultDir   = 'Results/all/'
-
-ResultImageDir      = 'Images'
-ResultCSVDir        = 'CSV'
-ResultAnnotationDir = 'Annotations'
-
-BaseResultDir   = createVersionDirectory(projectPath, BaseResultDir, 'version')
+import io, libconf
 
 '''
 Command Line Arguments:
-sys.argv[1] : The D-Spacing value (eg. 1.9, 0.7) at which the algorithm will run. 
+sys.argv[1] : .cfg file name present inside the configFiles directory.  
 '''
 
-# dataDir     = join(dataDir, str(sys.argv[1]))
-resultDir   = join(BaseResultDir, str(sys.argv[1]))
-dspace_nm   = float(sys.argv[1]) # 1.9nm, 7A == 0.7nm, 4A == 0.4nm
+projectPath     = os.path.dirname(os.path.abspath(__file__))
 
-pix2nm      = 78.5
-dspace_pix  = int(dspace_nm*pix2nm)
+with io.open(join(projectPath,'configFiles', sys.argv[1])) as f:
+    config = libconf.load(f)
 
-blur_iteration          = 15                    # Number of Blur Iteration 
-Blur_kernel             = int(0.15*dspace_pix)  # Fraction of dspace for the blur kernel size 
-closing_k_size          = 15                    # Closing Kernel Size
-opening_k_size          = 17                    # Opening Kernel Size
-pixThresh               = int(0.625*dspace_pix) # Threshold number of pixels consituting Backbone
-ellipse_len             = int(1.5*dspace_pix)   # Breaking Backbone into uniform size before constructing ellipse 
-ellipseAspectRatio      = 5                     # Threshold ellipse aspect Ratio 
-thresh_dist             = int(2*dspace_pix)     # Distance threshold for adjacency matrix 
-thresh_theta            = 10                    # delta Theta threshold for adjacency matrix 
-clusterSize             = 7                     # Threshold ellipse in Crystal cluster
-powSpec_peak_thresh     = 1.15                  # 1.20 works for all
-Thresh_area_factor      = 4
+dataDir             = config['dataDir']
+BaseResultDir       = config['BaseResultDir']
+ResultImageDir      = config['ResultImageDir']
+ResultCSVDir        = config['ResultCSVDir']
+ResultAnnotationDir = config['ResultAnnotationDir']
 
+dspace_nm           = config['dspace_nm']                       # 1.9nm, 7A == 0.7nm, 4A == 0.4nm
+pix2nm              = config['pix2nm']
 
-debug               = 0     # To show images: 1, Not to:0
-saveImg             = 0     # To save intermediate step images: 1, Not to:0
-save_BB             = 0     # To save Bounding box coordinates: 1, Not to: 0
-ResultDisp          = 0     # To display final result in notebook: 1, Not to:0
-image_scale_percent = 50    # Scaling the image before display
+Blur_kernel_propCons    = config['Blur_kernel_propCons'] 
+pixThresh_propCons      = config['pixThresh_propCons']
+ellipse_len_propCons    = config['ellipse_len_propCons'] 
+thresh_dist_propCons    = config['thresh_dist_propCons']
+
+dspace_pix              = int(dspace_nm*pix2nm)
+Blur_kernel             = int(Blur_kernel_propCons*dspace_pix)      # Fraction of dspace for the blur kernel size
+pixThresh               = int(pixThresh_propCons*dspace_pix)        # Threshold number of pixels consituting Backbone
+ellipse_len             = int(ellipse_len_propCons*dspace_pix)      # Breaking Backbone into uniform size before constructing ellipse
+thresh_dist             = int(thresh_dist_propCons*dspace_pix)      # Distance threshold for adjacency matrix
+
+BaseResultDir   = createVersionDirectory(projectPath, BaseResultDir, 'version')
+resultDir       = join(BaseResultDir, str(dspace_nm))
 
 parameters = {'d space nm':                     dspace_nm,
              'd space pix':                     dspace_pix, 
              'pix to nm':                       pix2nm,
-             'blur iterations':                 blur_iteration, 
+             'blur iterations':                 config['blur_iteration'], 
              'blur k size':                     Blur_kernel,
-             'closing k size':                  closing_k_size,
-             'opening k size':                  opening_k_size, 
+             'closing k size':                  config['closing_k_size'],
+             'opening k size':                  config['opening_k_size'], 
              'backbone threshold length':       pixThresh, 
              'ellipse pixel size':              ellipse_len,
-             'ellipse threshold aspect ratio':  ellipseAspectRatio,
+             'ellipse threshold aspect ratio':  config['ellipseAspectRatio'],
              'adjacency threshold distance':    thresh_dist,
-             'adjacency threshold angle':       thresh_theta, 
-             'cluster threshold size':          clusterSize,
-             'pow spec peak vs mean factor':    powSpec_peak_thresh,
-             'show intermediate images':        debug,
-             'save intermediate images':        saveImg,
-             'save bounding box':               save_BB,
-             'show final image':                ResultDisp,
-             'display image scaling':           image_scale_percent,
-             'Threshold area factor':           Thresh_area_factor}
-
+             'adjacency threshold angle':       config['thresh_theta'], 
+             'cluster threshold size':          config['clusterSize'],
+             'pow spec peak vs mean factor':    config['powSpec_peak_thresh'],
+             'show intermediate images':        config['debug'],
+             'save intermediate images':        config['saveImg'],
+             'save bounding box':               config['save_BB'],
+             'show final image':                config['ResultDisp'],
+             'display image scaling':           config['image_scale_percent'],
+             'Threshold area factor':           config['Thresh_area_factor']}
 
 df_overall = pd.DataFrame(columns =['Image Name', 'Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)'])
 
@@ -78,7 +69,7 @@ if os.path.isdir(join(projectPath, resultDir)) == False: os.mkdir(join(projectPa
 if os.path.isdir(join(projectPath, resultDir, ResultCSVDir)) == False: os.mkdir(join(projectPath, resultDir, ResultCSVDir))
 if os.path.isdir(join(projectPath, resultDir, ResultImageDir)) == False: os.mkdir(join(projectPath, resultDir, ResultImageDir))
 
-if save_BB == 1: 
+if parameters['save bounding box'] == 1: 
     if os.path.isdir(join(projectPath, resultDir, ResultAnnotationDir)) == False: os.mkdir(join(projectPath, resultDir, ResultAnnotationDir))
 
 onlyfiles = [f for f in listdir(join(projectPath,dataDir)) if isfile(join(projectPath,dataDir,f))]
