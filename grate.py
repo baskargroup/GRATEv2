@@ -28,7 +28,7 @@ def GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir
         print("Closing Opening and Skeletonization Time :", round(total,2))
 
     # t0 = time.time()
-    skeleton = BreakBraches(skeleton, parameters, resultDir)
+    skeleton = BreakBranches(skeleton, parameters, resultDir)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0

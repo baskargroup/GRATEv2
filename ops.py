@@ -81,7 +81,7 @@ def Skeletonize(img, params, resultDir):
     return output
 
 ## Finds branching points for images with black background and white lines receive a degree matrix
-def BreakBraches(img, params, resultDir):
+def BreakBranches(img, params, resultDir):
 
     input                               = np.copy( img )
     _, _, degrees                       = skeleton_to_csgraph( input )
