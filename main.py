@@ -21,9 +21,10 @@ with io.open(join(projectPath,'configFiles', sys.argv[1])) as f:
 
 dataDir             = config['dataDir']
 BaseResultDir       = config['BaseResultDir']
-ResultImageDir      = config['ResultImageDir']
-ResultCSVDir        = config['ResultCSVDir']
-ResultAnnotationDir = config['ResultAnnotationDir']
+
+ResultImageDir      = "Images";         # Directory name storing the output images, created inside the BaseResultDir/version_#/<dspace_nm>/
+ResultCSVDir        = "CSV";            # Directory name storing the CSV output, created inside the BaseResultDir/version_#/<dspace_nm>/
+ResultAnnotationDir = "Annotations";    # Directory name storing the annotations, created inside the BaseResultDir/version_#/<dspace_nm>/
 
 dspace_nm           = config['dspace_nm']                       # 1.9nm, 7A == 0.7nm, 4A == 0.4nm
 pix2nm              = config['pix2nm']
@@ -61,7 +62,11 @@ parameters = {'d space nm':                     dspace_nm,
              'save bounding box':               config['save_BB'],
              'show final image':                config['ResultDisp'],
              'display image scaling':           config['image_scale_percent'],
-             'Threshold area factor':           config['Thresh_area_factor']}
+             'Threshold area factor':           config['Thresh_area_factor'],
+             'result directory'     :           resultDir, 
+             'result image directory':          ResultImageDir,
+             'result CSV directory':            ResultCSVDir,
+             'result Annotation directory':     ResultAnnotationDir}
 
 df_overall = pd.DataFrame(columns =['Image Name', 'Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)'])
 

@@ -107,15 +107,15 @@ def SkeletonSegmentation(img):
 def Filtered_Uniform_BB(img, obj_list, params, resultDir):
     
     bb              = np.zeros( img.shape )
-    residualFrac    = 0.3
-    count           = 0
-    minResidual     = int( residualFrac * params[ 'ellipse pixel size' ] )
+    # residualFrac    = 0.3
+    # count           = 0
+    # minResidual     = int( residualFrac * params[ 'ellipse pixel size' ] )
 
     for i in range(len(obj_list)):
          
         BoneLen = len(obj_list[i].coords)
         if BoneLen > params['backbone threshold length']: #and BoneLen>minResidual:
-            count += 1
+            # count += 1
             for ind,value in enumerate(obj_list[i].coords):
                 
                 if (ind+1)%params['ellipse pixel size'] == 0:
