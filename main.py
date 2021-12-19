@@ -1,3 +1,4 @@
+from numpy import copy
 from utils import *
 from ops import *
 from grate import *
@@ -8,6 +9,7 @@ import re
 from os import listdir
 from os.path import isfile
 import io, libconf
+from shutil import copy2
 
 '''
 Command Line Arguments:
@@ -25,68 +27,58 @@ BaseResultDir       = config['BaseResultDir']
 ResultImageDir      = "Images";         # Directory name storing the output images, created inside the BaseResultDir/version_#/<dspace_nm>/
 ResultCSVDir        = "CSV";            # Directory name storing the CSV output, created inside the BaseResultDir/version_#/<dspace_nm>/
 ResultAnnotationDir = "Annotations";    # Directory name storing the annotations, created inside the BaseResultDir/version_#/<dspace_nm>/
+ResultBackboneCoordDir = "BackboneCoord";    # Directory name storing the BackboneCoord, created inside the BaseResultDir/version_#/<dspace_nm>/
 
-dspace_nm           = config['dspace_nm']                       # 1.9nm, 7A == 0.7nm, 4A == 0.4nm
-pix2nm              = config['pix2nm']
-
-Blur_kernel_propCons    = config['Blur_kernel_propCons'] 
-pixThresh_propCons      = config['pixThresh_propCons']
-ellipse_len_propCons    = config['ellipse_len_propCons'] 
-thresh_dist_propCons    = config['thresh_dist_propCons']
-
-dspace_pix              = int(dspace_nm*pix2nm)
-Blur_kernel             = int(Blur_kernel_propCons*dspace_pix)      # Fraction of dspace for the blur kernel size
-pixThresh               = int(pixThresh_propCons*dspace_pix)        # Threshold number of pixels consituting Backbone
-ellipse_len             = int(ellipse_len_propCons*dspace_pix)      # Breaking Backbone into uniform size before constructing ellipse
-thresh_dist             = int(thresh_dist_propCons*dspace_pix)      # Distance threshold for adjacency matrix
+dspace_pix              = int(config['dspace_nm']*config['pix2nm'])
 
 BaseResultDir   = createVersionDirectory(projectPath, BaseResultDir, 'version')
-resultDir       = join(BaseResultDir, str(dspace_nm))
+copy2(join(projectPath,'configFiles', sys.argv[1]), join(projectPath, BaseResultDir)) # Copying the .cfg file to the result directory.
+resultDir       = join(BaseResultDir, str(config['dspace_nm']))
 
-parameters = {'d space nm':                     dspace_nm,
+parameters = {'d space nm':                     config['dspace_nm'],
              'd space pix':                     dspace_pix, 
-             'pix to nm':                       pix2nm,
+             'pix to nm':                       config['pix2nm'],
              'blur iterations':                 config['blur_iteration'], 
-             'blur k size':                     Blur_kernel,
+             'blur k size':                     int( config['Blur_kernel_propCons'] * dspace_pix ),
              'closing k size':                  config['closing_k_size'],
              'opening k size':                  config['opening_k_size'], 
-             'backbone threshold length':       pixThresh, 
-             'ellipse pixel size':              ellipse_len,
+             'backbone threshold length':       int( config['pixThresh_propCons']   * dspace_pix ), 
+             'ellipse pixel size':              int( config['ellipse_len_propCons'] * dspace_pix ),
              'ellipse threshold aspect ratio':  config['ellipseAspectRatio'],
-             'adjacency threshold distance':    thresh_dist,
+             'adjacency threshold distance':    int( config['thresh_dist_propCons'] * dspace_pix ),
              'adjacency threshold angle':       config['thresh_theta'], 
              'cluster threshold size':          config['clusterSize'],
              'pow spec peak vs mean factor':    config['powSpec_peak_thresh'],
-             'show intermediate images':        config['debug'],
-             'save intermediate images':        config['saveImg'],
+             'debug':                           config['debug'],
              'save bounding box':               config['save_BB'],
+             'save backbone coords':            config['save_backbone_coords'],
              'show final image':                config['ResultDisp'],
              'display image scaling':           config['image_scale_percent'],
              'Threshold area factor':           config['Thresh_area_factor'],
+             'Project path':                    projectPath,
              'result directory'     :           resultDir, 
              'result image directory':          ResultImageDir,
              'result CSV directory':            ResultCSVDir,
-             'result Annotation directory':     ResultAnnotationDir}
+             'result annotation directory':     ResultAnnotationDir,
+             'result backbone coords':          ResultBackboneCoordDir,
+             'Data directory':                  config['dataDir'],
+             'Base result directory':           config['BaseResultDir']}
+
+CreateDirectories(parameters)
+print("\nd space:", config['dspace_nm'])
 
 df_overall = pd.DataFrame(columns =['Image Name', 'Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)'])
-
-if os.path.isdir(join(projectPath, resultDir)) == False: os.mkdir(join(projectPath, resultDir))
-if os.path.isdir(join(projectPath, resultDir, ResultCSVDir)) == False: os.mkdir(join(projectPath, resultDir, ResultCSVDir))
-if os.path.isdir(join(projectPath, resultDir, ResultImageDir)) == False: os.mkdir(join(projectPath, resultDir, ResultImageDir))
-
-if parameters['save bounding box'] == 1: 
-    if os.path.isdir(join(projectPath, resultDir, ResultAnnotationDir)) == False: os.mkdir(join(projectPath, resultDir, ResultAnnotationDir))
-
 onlyfiles = [f for f in listdir(join(projectPath,dataDir)) if isfile(join(projectPath,dataDir,f))]
 
-print("\nd space:", dspace_nm)
+if parameters['debug'] == 1: 
+    onlyfiles = onlyfiles[0:1]
+    print("DEBUG MODE ON")
 
 for f in onlyfiles:
-
-    if f[-4:] == ".tif" :#and f == "FoilHole_21830219_Data_21829764_21829765_20200122_1016.tif":
+    if f[-4:] == ".tif":
         print("Img Name: ", f, "\n")
         t0 = time.time()    
-        df_crystalProps = GRATE(projectPath, dataDir, f, resultDir, ResultImageDir, ResultCSVDir, ResultAnnotationDir, parameters)
+        df_crystalProps = GRATE(f, parameters)
         t1 = time.time()
         total = t1-t0
         print("Overall GRATE Time:", round(total,2), "\n")

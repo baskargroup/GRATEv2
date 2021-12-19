@@ -2,13 +2,13 @@ from utils import *
 from ops import *
 import time
 
-def GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir, ResultAnnotationDir, parameters):
-    img = cv2.imread(join(projectPath, dataDir, imgName),0)
+def GRATE(imgName, parameters):#GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir, ResultAnnotationDir, parameters)
+    img = cv2.imread(join(parameters['Project path'], parameters['Data directory'], imgName),0)#cv2.imread(join(projectPath, dataDir, imgName),0)
     
     timeCode = 0
     
     t0 = time.time()
-    thresh = BlurThresh(img, parameters, resultDir)
+    thresh = BlurThresh(img, parameters)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0
@@ -16,11 +16,11 @@ def GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir
 
     # t0 = time.time()
     if parameters['d space pix'] < 78:
-        skeleton = Skeletonize(thresh, parameters, resultDir)
+        skeleton = Skeletonize(thresh, parameters)
     else:
-        closing = Closing(thresh, parameters, resultDir)
-        opening = Opening(closing, parameters, resultDir)
-        skeleton = Skeletonize(opening, parameters, resultDir)
+        closing = Closing(thresh, parameters)
+        opening = Opening(closing, parameters)
+        skeleton = Skeletonize(opening, parameters)
     
     if timeCode == 1:
         t0 = time.time()
@@ -28,7 +28,7 @@ def GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir
         print("Closing Opening and Skeletonization Time :", round(total,2))
 
     # t0 = time.time()
-    skeleton = BreakBranches(skeleton, parameters, resultDir)
+    skeleton = BreakBranches(skeleton, parameters)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0
@@ -42,7 +42,7 @@ def GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir
         total = t1-t0
         print("Segmentation Time                        :", round(total,2))
 
-    Broken_backbone_img = Filtered_Uniform_BB(img, temp, parameters, resultDir)
+    Broken_backbone_img = Filtered_Uniform_BB(img, temp, parameters)
     if timeCode == 1:
         t0 = time.time()
         total = t0-t1
@@ -57,7 +57,7 @@ def GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir
 #     restructuredFP = RemovingDim(filteredPolys1)
     
     # t0 = time.time()
-    bb_ellipse1, bb_ellipse_props = EllipseConstruction(Broken_backbone_img, parameters, resultDir)
+    bb_ellipse1, bb_ellipse_props = EllipseConstruction(Broken_backbone_img, parameters)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0
@@ -65,21 +65,21 @@ def GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir
 
 
     # t0 = time.time()
-    adjacencyMat = AdjacencyMat(Broken_backbone_img, bb_ellipse_props, parameters, resultDir)
+    adjacencyMat = AdjacencyMat(Broken_backbone_img, bb_ellipse_props, parameters)
     if timeCode == 1:
         t0 = time.time()
         total = t0-t1
         print("Adjacency Matrix Time                    :", round(total,2))
 
     # t0 = time.time()
-    ellipseCluster, AllClusterPointCloud, crystalAngles = ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters, resultDir)
+    ellipseCluster, AllClusterPointCloud, crystalAngles = ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters, imgName)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0
         print("Connected Component Time                 :", round(total,2))
 
     # t0 = time.time()
-    crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = PlottingAndSaving(img, AllClusterPointCloud, projectPath, resultDir, ResultImageDir, imgName, crystalAngles, parameters)
+    crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = PlottingAndSaving(img, AllClusterPointCloud, imgName, crystalAngles, parameters)
     if timeCode == 1:
         t0 = time.time()
         total = t0-t1
@@ -96,11 +96,11 @@ def GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir
     df = df.round(2)
 
 #     print("Saving results to: ",join(projectPath, resultDir,imgName[:-4]+'.csv'))
-    df.to_csv(join(projectPath, resultDir, ResultCSVDir, imgName[:-4]+'.csv'))
+    df.to_csv(join(parameters['Project path'], parameters['result directory'], parameters['result CSV directory'], imgName[:-4]+'.csv'))
     
     if parameters['save bounding box'] == 1: 
 #         print("Saving BB Annotations to: ",join(projectPath, annotationDir, imgName[:-4]+'.csv'))
         df_BB = pd.DataFrame( list( zip( df_boundBox ) ) , columns = [ "Top Left(x_y) Bottom Right(x_y)" ] )
-        df_BB.to_csv(join(projectPath, resultDir, ResultAnnotationDir, imgName[:-4]+'.csv'))
+        df_BB.to_csv(join(parameters['Project path'], parameters['result directory'], parameters['result annotation directory'], imgName[:-4]+'.csv'))
     
     return df 
