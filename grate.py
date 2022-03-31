@@ -1,10 +1,12 @@
 from utils import *
 from ops import *
 import time
+from skimage import io
 
 def GRATE(imgName, parameters):#GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir, ResultAnnotationDir, parameters)
-    img = cv2.imread(join(parameters['Project path'], parameters['Data directory'], imgName),0)#cv2.imread(join(projectPath, dataDir, imgName),0)
-    
+    # img = cv2.imread(join(parameters['Project path'], parameters['Data directory'], imgName),0)#cv2.imread(join(projectPath, dataDir, imgName),0)
+    img = io.imread(join(parameters['Project path'], parameters['Data directory'], imgName))
+    img = img.astype('float64')
     timeCode = 0
     
     t0 = time.time()

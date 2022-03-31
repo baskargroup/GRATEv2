@@ -45,7 +45,7 @@ def show_scalled_img(img_arr, scalePercent=100):
 
 def debugORSave(initial, final, params, concat, text):
     if params['debug'] == 1:
-        cv2.imwrite(params['result directory'] + "/"+ text+".png", final)
+        cv2.imwrite(params['result directory'] + "/"+ text + "_" + params['img name']+ ".png", final)
 
 def imgLength(freqCoord, imgSize):
     freqCoord = freqCoord.astype(np.int32)

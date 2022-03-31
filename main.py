@@ -77,6 +77,7 @@ if parameters['debug'] == 1:
 for f in onlyfiles:
     if f[-4:] == ".tif":
         print("Img Name: ", f, "\n")
+        parameters['img name'] = f
         t0 = time.time()    
         df_crystalProps = GRATE(f, parameters)
         t1 = time.time()

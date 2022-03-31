@@ -302,8 +302,10 @@ def ConnecComp(img, A_Mat, props, params, imgName):
                 ellipseAngels.append(poly[2])
             AllClusterPointCloud.append(majorsAxisPointCloud)
             crystalAngles.append(mean(ellipseAngels))
-    filehandler = open(join( params['result directory'], params['result backbone coords'], imgName[:-4]+'.pickle'),"wb")
-    pickle.dump(backboneCoords, filehandler)
+    
+    if params['save backbone coords'] == 1:
+        filehandler = open(join( params['result directory'], params['result backbone coords'], imgName[:-4]+'.pickle'),"wb")
+        pickle.dump(backboneCoords, filehandler)
     InvCcImg        = invertBinaryImage(ccImg)
     debugORSave(img, InvCcImg, params, 0, "9_CLUSTERS")
     
