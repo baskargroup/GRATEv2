@@ -326,6 +326,7 @@ def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
     return temp
 
 def PlottingAndSaving(img, ClusterPointCloud, ImgName, crystalAng, params):
+    img = img.astype( 'uint8' )
     RGBImg          = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
     # CrystalImg      = img       #invertBinaryImage(finalImg)
     

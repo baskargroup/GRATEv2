@@ -70,9 +70,9 @@ print("\nd space:", config['dspace_nm'])
 df_overall = pd.DataFrame(columns =['Image Name', 'Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)'])
 onlyfiles = [f for f in listdir(join(projectPath,dataDir)) if isfile(join(projectPath,dataDir,f))]
 
-if parameters['debug'] == 1: 
-    onlyfiles = onlyfiles[0:1]
-    print("DEBUG MODE ON")
+# if parameters['debug'] == 1: 
+#     onlyfiles = onlyfiles[0:1]
+#     print("DEBUG MODE ON")
 
 for f in onlyfiles:
     if f[-4:] == ".tif":
