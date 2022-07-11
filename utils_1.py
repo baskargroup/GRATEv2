@@ -1,18 +1,11 @@
 import numpy as np
-import cv2
 import matplotlib.pyplot as plt
-from sklearn.neighbors import KernelDensity
-from sklearn.model_selection import GridSearchCV, LeaveOneOut, KFold
 import scipy.stats as st
-from sklearn.decomposition import PCA
-import math
 
 import os
 import re
 from os.path import join
 
-from descartes import PolygonPatch
-import alphashape
 
 def plotKDE_2D(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', bandwidth = None, logscaling=None, xLabel = None, yLabel=None, show='no'):
     
