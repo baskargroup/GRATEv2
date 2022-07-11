@@ -27,9 +27,9 @@ Lookup table for "plotType":
 -1  :   Generate histogram based single D-Spacing plots 
 """
 
-plotType        = 0                                 
-csvPath         = 'Results/all/combined_v3/version_7/1.9/CSV'           # Compulsory to fill
-filename        = 'overall.csv'                                         # Compulsory to fill
+plotType        = 2                                 
+csvPath         = 'Results/all/combined_v3/version_7/'           # Compulsory to fill
+filename        = 'sameDSpacingInfo.csv'                                         # Compulsory to fill
 filename1       = 'overall_0p7.csv'                                     # Fill value only if plotType == 1
 showFig         = 'no'                                                  # 'yes' or 'no'
 d_space         = 1.9
