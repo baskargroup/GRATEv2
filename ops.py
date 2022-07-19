@@ -415,23 +415,40 @@ def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
     col_high        = int( ( img.shape[1] + smallerDim ) / 2 )
 
     square_region   = img[ row_low : row_high, col_low : col_high ]
+
+    # debugORSave( img, square_region, params, 0, "DS_1_squareRegion")
     
     f               = np.fft.fft2( square_region )
     fshift          = np.fft.fftshift( f )
+
+    # debugORSave( img, fshift, params, 0, "DS_2_shiftedFFT")
+    
     power_spectrum  = 1 * np.log( np.abs( fshift ) + 1 )
+
+    #
+    # siz = 40
+    # debugORSave( img, power_spectrum, params, 0, "DS_3_power_spectrum")
+    # debugORSave( img, power_spectrum[986-siz:986+siz, 986-siz:986+siz], params, 0, "DS_6_power_spectrum_crop")
     
     # plot3d(power_spectrum)
 
     arrSiz          = np.asarray( power_spectrum.shape )
     qIn, qOut       = ringSize( arrSiz , params )
     TFring, nonZero = draw_ring( shape = power_spectrum.shape , rIn = qIn , rOut = qOut )
-    power_spectrum  = filter_ring( TFring , power_spectrum )
     
+    # debugORSave( img, TFring[986-siz:986+siz, 986-siz:986+siz], params, 0, "DS_4_TFring")
+    
+    power_spectrum  = filter_ring( TFring , power_spectrum )
+
+    # debugORSave( img, power_spectrum[986-siz:986+siz, 986-siz:986+siz], params, 0, "DS_5_BSfiltered")
+
     ps_maxMag = np.max(power_spectrum)
     
     bandpass_pow_spec_mean      = np.sum( power_spectrum ) / nonZero
+    # print( "bandpass_pow_spec_mean: ", bandpass_pow_spec_mean )
+    # print("peak*bandpass_pow_spec_mean: ", peak_cutoff_factor * bandpass_pow_spec_mean )
 
-    if np.max( power_spectrum ) >= peak_cutoff_factor * bandpass_pow_spec_mean:
+    if ps_maxMag >= peak_cutoff_factor * bandpass_pow_spec_mean:
         
         # plt.subplots(nrows=1, ncols=1, figsize = (50,50))
         # plt.imshow(power_spectrum, cmap = cm.coolwarm)
