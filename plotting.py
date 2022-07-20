@@ -2,8 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from utils import plotHist, createVersionDirectory, totalAreaInDSRange, isAreaSmall, plotScatter, plotKDE, plotKDE_2D, filterThreshArea
-from utils import getEquivalentAngle, getAngleDifference
+from utils import plotHist, createVersionDirectory,plotScatter, plotKDE, plotKDE_2D, filterThreshArea
 from scipy.stats import wasserstein_distance
 
 def Hist_outside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
@@ -28,19 +27,20 @@ Lookup table for "plotType":
 -1  :   Generate histogram based single D-Spacing plots 
 """
 
-plotType        = 0                                 
-csvPath         = 'Results/all/combined_v3/version_8/0.7/CSV'           # Compulsory to fill
-filename        = 'overall.csv'                                         # Compulsory to fill
+plotType        = 2                                 
+csvPath         = 'Results/all/combined_v3/version_7/'           # Compulsory to fill
+filename        = 'sameDSpacingInfo.csv'                                         # Compulsory to fill
 filename1       = 'overall_0p7.csv'                                     # Fill value only if plotType == 1
 showFig         = 'no'                                                  # 'yes' or 'no'
-d_space         = 0.7
+d_space         = 1.9
 
 if d_space == 1.9:
     ThresholdFactorArea = 7
 elif d_space == 0.7: 
     ThresholdFactorArea = 10
 
-d_space_string  = filename[-7:-4] 
+# d_space_string  = filename[-7:-4]
+d_space_string  = str(d_space) 
 projectPath     = os.path.dirname(os.path.abspath(__file__))
 df              = pd.read_csv(os.path.join(projectPath,csvPath,filename))
 
@@ -51,8 +51,10 @@ plotSavePath    = createVersionDirectory(projectPath, csvPath, 'Plot_version')
 if plotType == 0:
     df              = filterThreshArea(df, { 'Threshold area factor': ThresholdFactorArea, 'd space nm': d_space,})
     df_len          = len(df['Crystal Area (nm^2)']) 
-
-    """ ## Data Sufficiency Test
+    
+    """ # uniformDistFactor = 1
+    # uniformDist     = np.random.uniform(df['Crystal Area (nm^2)'].min(), df['Crystal Area (nm^2)'].max(), uniformDistFactor*len(df['Crystal Area (nm^2)']))
+    ## Data Sufficiency Test
     df_last = df['Crystal Area (nm^2)'][:int(df_len*10/100)]
     for i in np.linspace(10,100, 10,endpoint=True):
         df_current = df['Crystal Area (nm^2)'][:int(df_len*i/100)]
@@ -70,8 +72,9 @@ if plotType == 0:
         if i == 00: 
             continue
         else: 
-            ws_dist = wasserstein_distance(df_last, df_current)
+            # ws_dist = wasserstein_distance(df_last, df_current)
             # ws_dist = wasserstein_distance(df['Crystal Area (nm^2)'], df_current)
+            ws_dist = wasserstein_distance(uniformDist, df_current)
             df_last = df_current
             print(ws_dist) """
 

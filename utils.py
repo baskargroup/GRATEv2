@@ -43,15 +43,11 @@ def show_scalled_img(img_arr, scalePercent=100):
     plt.imshow(output, cmap='gray', vmin=0, vmax=255)
     plt.show() 
 
-def debugORSave(initial, final, params, concat, resultDir, text):
-    if params['show intermediate images'] == 1:
-        if concat == 1:
-            ConcatAndShow(initial, final, params['display image scaling'], text)
-        else:
-            print(text + "\n")
-            show_scalled_img(final, params['display image scaling'])
-    if params['save intermediate images'] == 1:
-        cv2.imwrite(resultDir + "/"+ text+".png", final)
+def debugORSave(initial, final, params, concat, text):
+    if params['debug'] == 1:
+        final = final.astype( 'uint8' )
+        final = cv2.equalizeHist( final )
+        cv2.imwrite(params['result directory'] + "/"+ text + "_" + params['img name']+ ".png", final)
 
 def imgLength(freqCoord, imgSize):
     freqCoord = freqCoord.astype(np.int32)
@@ -375,3 +371,22 @@ def filterThreshArea(df, params):
             df.drop(ind, inplace = True)
     
     return df
+
+def CreateDirectories(parameters):
+    projectPath             = parameters['Project path']
+    resultDir               = parameters['result directory']
+    ResultCSVDir            = parameters['result CSV directory']
+    ResultImageDir          = parameters['result image directory']
+    ResultBackboneCoordDir  = parameters['result backbone coords']
+    ResultAnnotationDir     = parameters['result annotation directory']
+
+    if os.path.isdir(join(projectPath, resultDir)) == False: os.mkdir(join(projectPath, resultDir))
+    if os.path.isdir(join(projectPath, resultDir, ResultCSVDir)) == False: os.mkdir(join(projectPath, resultDir, ResultCSVDir))
+    if os.path.isdir(join(projectPath, resultDir, ResultImageDir)) == False: os.mkdir(join(projectPath, resultDir, ResultImageDir))
+
+    ## Saving the coordinates. 
+    if parameters['save backbone coords'] == 1:
+        if os.path.isdir(join(projectPath, resultDir, ResultBackboneCoordDir)) == False: os.mkdir(join(projectPath, resultDir, ResultBackboneCoordDir))
+
+    if parameters['save bounding box'] == 1: 
+        if os.path.isdir(join(projectPath, resultDir, ResultAnnotationDir)) == False: os.mkdir(join(projectPath, resultDir, ResultAnnotationDir))

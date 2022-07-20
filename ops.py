@@ -24,10 +24,11 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import time
 from utils import *
+import pickle
 
 ############### Operations ############################3
 
-def BlurThresh(img, params, resultDir):
+def BlurThresh(img, params):
     blur_img    = img
     k_size      = params['blur k size']
     
@@ -41,34 +42,34 @@ def BlurThresh(img, params, resultDir):
     blur_img = cv2.equalizeHist( blur_img )
     _,thresh = cv2.threshold( blur_img , 0 , 255 , cv2.THRESH_BINARY + cv2.THRESH_OTSU )
     
-    debugORSave(img, thresh, params,1, resultDir,"1_BLURRING AND THRESHOLDING")
+    debugORSave(img, thresh, params,1, "1_BLURRING AND THRESHOLDING")#debugORSave(img, thresh, params,1, resultDir,"1_BLURRING AND THRESHOLDING")
     
     return thresh
 
 # Closing: Removing black spots from white regions. Basically Dilation followed by Erosion.
-def Closing(img, params, resultDir):
+def Closing(img, params):
     
     input   = img
     kernel  = np.ones( ( params[ 'closing k size' ] , params[ 'closing k size' ] ) , np.uint8 )
     output  = cv2.morphologyEx( input , cv2.MORPH_CLOSE , kernel )
     
-    debugORSave( input , output , params , 1, resultDir , "2_CLOSING" )
+    debugORSave( input , output , params , 1, "2_CLOSING" )
     
     return output
 
 ## Opening: Removing white spots from black regions. Basically Erosion followed by Dilation.
-def Opening(img, params, resultDir):
+def Opening(img, params):
 
     input   = img
     kernel  = np.ones(( params[ 'opening k size' ] , params[ 'opening k size' ] ) , np.uint8 )
     output  = cv2.morphologyEx( input , cv2.MORPH_OPEN , kernel )
     
-    debugORSave( input , output , params , 1, resultDir , "3_OPENING" )
+    debugORSave( input , output , params , 1, "3_OPENING" )
     
     return output 
 
 ## Skeletonize Image
-def Skeletonize(img, params, resultDir): 
+def Skeletonize(img, params): 
 
     input       = img 
     image       = invert( input / np.max( input ) )
@@ -76,12 +77,12 @@ def Skeletonize(img, params, resultDir):
     output      = ( skeleton / np.max( skeleton ) ) * 255 
     InvOutput   = invertBinaryImage( output )
 
-    debugORSave( input , InvOutput , params , 1, resultDir , "4_SKELETONIZED" )
+    debugORSave( input , InvOutput , params , 1,"4_SKELETONIZED" )
     
     return output
 
 ## Finds branching points for images with black background and white lines receive a degree matrix
-def BreakBranches(img, params, resultDir):
+def BreakBranches(img, params):
 
     input                               = np.copy( img )
     _, _, degrees                       = skeleton_to_csgraph( input )
@@ -89,7 +90,7 @@ def BreakBranches(img, params, resultDir):
     input[intersection_matrix==True]    = 0
     InvInput                            = invertBinaryImage( input )
     
-    debugORSave( img , InvInput , params , 0, resultDir , "5_BRANCHED SKELETON" )
+    debugORSave( img , InvInput , params , 0,"5_BRANCHED SKELETON" )
     
     return input
 
@@ -104,18 +105,18 @@ def SkeletonSegmentation(img):
     return props
 
 ## Filtering out small backbones using the pixThresh variable and breaking them into uniform size.
-def Filtered_Uniform_BB(img, obj_list, params, resultDir):
+def Filtered_Uniform_BB(img, obj_list, params):
     
     bb              = np.zeros( img.shape )
-    residualFrac    = 0.3
-    count           = 0
-    minResidual     = int( residualFrac * params[ 'ellipse pixel size' ] )
+    # residualFrac    = 0.3
+    # count           = 0
+    # minResidual     = int( residualFrac * params[ 'ellipse pixel size' ] )
 
     for i in range(len(obj_list)):
          
         BoneLen = len(obj_list[i].coords)
         if BoneLen > params['backbone threshold length']: #and BoneLen>minResidual:
-            count += 1
+            # count += 1
             for ind,value in enumerate(obj_list[i].coords):
                 
                 if (ind+1)%params['ellipse pixel size'] == 0:
@@ -129,7 +130,7 @@ def Filtered_Uniform_BB(img, obj_list, params, resultDir):
 
     Invbb = invertBinaryImage(bb)
     
-    debugORSave( img , Invbb , params , 0, resultDir , "6_FILTERED AND UNIFORM SIZED BACKBONE" )
+    debugORSave( img , Invbb , params, 0, "6_FILTERED AND UNIFORM SIZED BACKBONE" )
     
     return bb
 
@@ -157,11 +158,11 @@ def RemovingDim(lis):
 
 
 ################ SCIPY BASED ELLIPSE CONSTRUCTION FUNCTION ###############################
-def EllipseConstruction(img, params, resultDir):
+def EllipseConstruction(img, params):
 
     input                       = np.copy(img)
     label_img                   = label(input)
-    props                       = regionprops_table(label_img, properties = ( 'centroid' , 'orientation' , 'major_axis_length' , 'minor_axis_length' ) )
+    props                       = regionprops_table(label_img, properties = ( 'centroid' , 'orientation' , 'major_axis_length' , 'minor_axis_length', 'coords' ) )
     props                       = pd.DataFrame( props )
     props['orientation']        = - 90 - props[ 'orientation' ] * 180/np.pi
     props['major_axis_length']  = props[ 'major_axis_length' ] / 2
@@ -183,12 +184,12 @@ def EllipseConstruction(img, params, resultDir):
     bb_props_np         = bb_props.to_numpy()
     InvEllip_temp_img   = invertBinaryImage(ellip_temp_img)
     
-    debugORSave( img , InvEllip_temp_img , params , 0, resultDir , "7_ELLIPSE INSCRIBED" )
+    debugORSave( img , InvEllip_temp_img , params , 0, "7_ELLIPSE INSCRIBED" )
     
     return ellip_temp_img, bb_props_np
 
 ## Creating Adjacency Matrix based on distance between centroid and the orientation angle
-def AdjacencyMat(img, bb_props, params, resultDir):# distanceThresh, thetaThresh):
+def AdjacencyMat(img, bb_props, params):# distanceThresh, thetaThresh):
     
     bb_props_np     = bb_props
     centroid_coord  = bb_props_np[ : , : 2 ]
@@ -214,7 +215,7 @@ def AdjacencyMat(img, bb_props, params, resultDir):# distanceThresh, thetaThresh
     
     A_Mat = np.maximum( A_Mat , A_Mat.transpose() )
 
-    if params['show intermediate images'] == 1 or params['save intermediate images'] == 1:
+    if params['debug'] == 1:
         # Plotting the adjacent ellipse.
         A_Mat_img   = np.copy(img)
         for i in range(N):
@@ -225,7 +226,7 @@ def AdjacencyMat(img, bb_props, params, resultDir):# distanceThresh, thetaThresh
                     break
                     
         InvA_Mat_img = invertBinaryImage(A_Mat_img)
-        debugORSave(img, InvA_Mat_img, params, 0, resultDir, "8_ADJACENT ELLIPSES")
+        debugORSave(img, InvA_Mat_img, params, 0, "8_ADJACENT ELLIPSES")
                 
     return A_Mat
 
@@ -259,7 +260,7 @@ def minDist(pts1, pts2):
     return minD
 
 ## Connected Components:
-def ConnecComp(img, A_Mat, props, params, resultDir):
+def ConnecComp(img, A_Mat, props, params, imgName):
 
     polyProps   = props 
     N           = A_Mat.shape[0]
@@ -279,7 +280,7 @@ def ConnecComp(img, A_Mat, props, params, resultDir):
     endAngle = 360
     color = (255, 0, 0)
     thickness = 2 """
-
+    backboneCoords = []
     for i in range(len(cc)):
         if len(cc[i]) >= params['cluster threshold size']:
             majorsAxisPointCloud    = []
@@ -294,15 +295,19 @@ def ConnecComp(img, A_Mat, props, params, resultDir):
                 temp                        = temp.astype('int32')
                 #ccImg                      = cv2.circle(ccImg, (int(temp[0,0]),int(temp[0,1])), radius=5, color=(255, 0, 0), thickness=-1)
                 #ccImg                      = cv2.circle(ccImg, (int(temp[1,0]),int(temp[1,1])), radius=5, color=(255, 0, 0), thickness=-1)
-                
+                # print(polyProps[j][5].shape)
+                backboneCoords.append(polyProps[j][5])
                 majorsAxisPointCloud.append(temp[0,:])
                 majorsAxisPointCloud.append(temp[2,:])
                 ellipseAngels.append(poly[2])
             AllClusterPointCloud.append(majorsAxisPointCloud)
             crystalAngles.append(mean(ellipseAngels))
     
+    if params['save backbone coords'] == 1:
+        filehandler = open(join( params['result directory'], params['result backbone coords'], imgName[:-4]+'.pickle'),"wb")
+        pickle.dump(backboneCoords, filehandler)
     InvCcImg        = invertBinaryImage(ccImg)
-    debugORSave(img, InvCcImg, params, 0, resultDir, "9_CLUSTERS")
+    debugORSave(img, InvCcImg, params, 0, "9_CLUSTERS")
     
     return ccImg, AllClusterPointCloud, crystalAngles
 
@@ -320,7 +325,8 @@ def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
     #print(temp)
     return temp
 
-def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ResultImageDir, ImgName, crystalAng, params):
+def PlottingAndSaving(img, ClusterPointCloud, ImgName, crystalAng, params):
+    img = img.astype( 'uint8' )
     RGBImg          = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
     # CrystalImg      = img       #invertBinaryImage(finalImg)
     
@@ -386,7 +392,7 @@ def PlottingAndSaving(img, ClusterPointCloud, ProjectPath, ResultDir, ResultImag
 
     axes[0].imshow( img , cmap = 'gray')
     figure.tight_layout()
-    figure.savefig( join(ProjectPath, ResultDir, ResultImageDir, ImgName[:-4]+'.png') )
+    figure.savefig( join(params['Project path'], params['result directory'], params['result image directory'], ImgName[:-4]+'.png') )
 
     if params['show final image'] == 1:
         plt.show()
@@ -409,23 +415,40 @@ def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
     col_high        = int( ( img.shape[1] + smallerDim ) / 2 )
 
     square_region   = img[ row_low : row_high, col_low : col_high ]
+
+    # debugORSave( img, square_region, params, 0, "DS_1_squareRegion")
     
     f               = np.fft.fft2( square_region )
     fshift          = np.fft.fftshift( f )
+
+    # debugORSave( img, fshift, params, 0, "DS_2_shiftedFFT")
+    
     power_spectrum  = 1 * np.log( np.abs( fshift ) + 1 )
+
+    #
+    # siz = 40
+    # debugORSave( img, power_spectrum, params, 0, "DS_3_power_spectrum")
+    # debugORSave( img, power_spectrum[986-siz:986+siz, 986-siz:986+siz], params, 0, "DS_6_power_spectrum_crop")
     
     # plot3d(power_spectrum)
 
     arrSiz          = np.asarray( power_spectrum.shape )
     qIn, qOut       = ringSize( arrSiz , params )
     TFring, nonZero = draw_ring( shape = power_spectrum.shape , rIn = qIn , rOut = qOut )
-    power_spectrum  = filter_ring( TFring , power_spectrum )
     
+    # debugORSave( img, TFring[986-siz:986+siz, 986-siz:986+siz], params, 0, "DS_4_TFring")
+    
+    power_spectrum  = filter_ring( TFring , power_spectrum )
+
+    # debugORSave( img, power_spectrum[986-siz:986+siz, 986-siz:986+siz], params, 0, "DS_5_BSfiltered")
+
     ps_maxMag = np.max(power_spectrum)
     
     bandpass_pow_spec_mean      = np.sum( power_spectrum ) / nonZero
+    # print( "bandpass_pow_spec_mean: ", bandpass_pow_spec_mean )
+    # print("peak*bandpass_pow_spec_mean: ", peak_cutoff_factor * bandpass_pow_spec_mean )
 
-    if np.max( power_spectrum ) >= peak_cutoff_factor * bandpass_pow_spec_mean:
+    if ps_maxMag >= peak_cutoff_factor * bandpass_pow_spec_mean:
         
         # plt.subplots(nrows=1, ncols=1, figsize = (50,50))
         # plt.imshow(power_spectrum, cmap = cm.coolwarm)
