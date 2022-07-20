@@ -31,3 +31,7 @@ conda install -r <path>/<to>/<project>/<dir>/requirements.txt # Install all the 
 ```python
 python main.py para.cfg # Run the project
 ```
+
+# Contributors
+	- Dhruv Gamdha
+	- Baskar Ganapathysubramanian
