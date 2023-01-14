@@ -40,14 +40,15 @@ def plotHistWithKde(data, xLabel, fileName, xScale='log', binsType='fd', yScale=
     # save as png and pgf
     fig.savefig(fileName + '.png')
     fig.savefig(fileName + '.pgf')
+    fig.savefig(fileName + '.pdf')
 
 if __name__ == "__main__":
-    # fileName = 'overall_areaFiltered.csv'
-    fileName = '1p9_inRangedspace.csv'
+    fileName = 'overall_areaFiltered.csv'
+    # fileName = '1p9_inRangedspace.csv'
     filePath = 'forPaper/' + fileName
     
     df = pd.read_csv(filePath)
     
     # get crystalArea column
-    # crystalArea = df['CrystalArea']
-    plotHistWithKde(df, 'Crystal Area (nm$^2$)', 'histogram_crystalArea')
+    crystalArea = df['CrystalArea']
+    plotHistWithKde(crystalArea, 'Crystal Area (nm$^2$)', 'histogram_crystalArea')
