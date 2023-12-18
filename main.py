@@ -75,7 +75,10 @@ onlyfiles = [f for f in listdir(join(projectPath,dataDir)) if isfile(join(projec
 #     print("DEBUG MODE ON")
 
 for f in onlyfiles:
-    if f[-4:] == ".tif":
+    acceptedFormats = ['.tif', '.tiff', '.png']
+    
+    if f.endswith(tuple(acceptedFormats)):
+    # if f[-5:] == ".tiff":
         print("Img Name: ", f, "\n")
         parameters['img name'] = f
         t0 = time.time()    

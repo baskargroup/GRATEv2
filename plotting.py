@@ -12,24 +12,45 @@ def Hist_outside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
             outOfRangeDS.append(row[ 'D-Spacing(FFT, nm)' ])
     
     plotHist(value = outOfRangeDS, path = savePath, filename = str(d_space)+"_outOfRangedspace.png", numBins=200, logscaling=None, xLabel= 'DSpacing out of range', yLabel='Frequency', show=showFig)
+    
+def Hist_inside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
+    inRangeDS    = []
+    for ind, row in dataframe.iterrows():
+        if row[ 'D-Spacing(FFT, nm)' ] > dsRange[0] and row[ 'D-Spacing(FFT, nm)' ] < dsRange[1]:
+            inRangeDS.append(row[ 'D-Spacing(FFT, nm)' ])
+    
+    # save the list of D-Spacing values in the range
+    np.savetxt(os.path.join(savePath,str(d_space)+"_inRangedspace.csv"), inRangeDS, fmt='%10.5f')
+    
+    plotHist(value = inRangeDS, path = savePath, filename = str(d_space)+"_inRangedspace.png", numBins=200, logscaling=None, xLabel= 'DSpacing inside range', yLabel='Frequency', show=showFig)
 
+    plotKDE(    value       = inRangeDS, 
+                wght        = None,
+                path        = plotSavePath, 
+                filename    = d_space_string + '__inRangedspace_KDE.png', 
+                kernel      = 'gaussian',
+                bandwidth   = 0.1, 
+                logscaling  = None, 
+                xLabel      = 'D-Spacing(FFT, nm)', 
+                yLabel      = 'Normalized Density', 
+                show        = showFig)
 
 """ 
 Lookup table for "plotType": 
 0   :   Generate KDE based single D-Spacing plots, 
-    - Set "csvPath"
-    - Set "filename"
-    - Set "ShowFig"
-    - Set "d_space"
+    - Set <csvPath>
+    - Set <filename> # <filename> = overall.csv 
+    - Set <ShowFig>
+    - Set <d_space>
 1   :   Generate combined D-Spacing plots, 
 2   :   Generate relative Distance Plots., 
 3   :   Generate relative angle Plot,
 -1  :   Generate histogram based single D-Spacing plots 
 """
 
-plotType        = 2                                 
-csvPath         = 'Results/all/combined_v3/version_7/'           # Compulsory to fill
-filename        = 'sameDSpacingInfo.csv'                                         # Compulsory to fill
+plotType        = 0                                 
+csvPath         = 'Results/all/combined_v3/version_7/1.9/CSV/'           # Compulsory to fill
+filename        = 'overall.csv'                                         # Compulsory to fill
 filename1       = 'overall_0p7.csv'                                     # Fill value only if plotType == 1
 showFig         = 'no'                                                  # 'yes' or 'no'
 d_space         = 1.9
@@ -50,8 +71,14 @@ plotSavePath    = createVersionDirectory(projectPath, csvPath, 'Plot_version')
 
 if plotType == 0:
     df              = filterThreshArea(df, { 'Threshold area factor': ThresholdFactorArea, 'd space nm': d_space,})
-    df_len          = len(df['Crystal Area (nm^2)']) 
     
+    # Save updated dataframe
+    df.to_csv(os.path.join(plotSavePath,filename[:-4]+"_areaFiltered.csv"), index=False)
+    aspectRatio = df['crystalMajorAxis_length (nm)']/df['crystalMinorAxis_length (nm)']
+    
+    aspectRatio.to_csv(os.path.join(plotSavePath,filename[:-4]+"_aspectRatio.csv"), index=False)
+    
+    df_len          = len(df['Crystal Area (nm^2)']) 
     """ # uniformDistFactor = 1
     # uniformDist     = np.random.uniform(df['Crystal Area (nm^2)'].min(), df['Crystal Area (nm^2)'].max(), uniformDistFactor*len(df['Crystal Area (nm^2)']))
     ## Data Sufficiency Test
@@ -78,6 +105,7 @@ if plotType == 0:
             df_last = df_current
             print(ws_dist) """
 
+    Hist_inside_DS_range(df,d_space, [1.5, 4], plotSavePath, showFig)
     
     plotKDE(    value       = df['Crystal Area (nm^2)'],
                 wght        = None,
