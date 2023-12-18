@@ -3,9 +3,9 @@ from ops import *
 import time
 from skimage import io
 
-def GRATE(imgName, parameters):#GRATE(projectPath, dataDir, imgName, resultDir, ResultImageDir, ResultCSVDir, ResultAnnotationDir, parameters)
-    # img = cv2.imread(join(parameters['Project path'], parameters['Data directory'], imgName),0)#cv2.imread(join(projectPath, dataDir, imgName),0)
-    img = io.imread(join(parameters['Project path'], parameters['Data directory'], imgName))
+def GRATE(img_path, parameters):
+    # img = cv2.imread(join(imgName),0)
+    img = io.imread(img_path)
     img = img.astype('float64')
     timeCode = 0
     
@@ -74,14 +74,14 @@ def GRATE(imgName, parameters):#GRATE(projectPath, dataDir, imgName, resultDir, 
         print("Adjacency Matrix Time                    :", round(total,2))
 
     # t0 = time.time()
-    ellipseCluster, AllClusterPointCloud, crystalAngles = ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters, imgName)
+    ellipseCluster, AllClusterPointCloud, crystalAngles = ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters, img_path)
     if timeCode == 1:
         t1 = time.time()
         total = t1-t0
         print("Connected Component Time                 :", round(total,2))
 
     # t0 = time.time()
-    crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = PlottingAndSaving(img, AllClusterPointCloud, imgName, crystalAngles, parameters)
+    crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = PlottingAndSaving(img, AllClusterPointCloud, img_path, crystalAngles, parameters)
     if timeCode == 1:
         t0 = time.time()
         total = t0-t1
@@ -89,20 +89,20 @@ def GRATE(imgName, parameters):#GRATE(projectPath, dataDir, imgName, resultDir, 
 
 
     if len(centroid) == 0:
-        imgNamelist = [imgName]
+        imgNamelist = [img_path.name]
     else:
         imgNamelist = [None]*len(centroid)
-        imgNamelist[0] = imgName
+        imgNamelist[0] = img_path.name
     
     df = pd.DataFrame(list(zip(imgNamelist, centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference)), columns=['Image Name','Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)', 'crystalMajorAxis_length (nm)', 'crystalMinorAxis_length (nm)', 'MajorAxisAngle', 'angleDifference'])
     df = df.round(2)
 
 #     print("Saving results to: ",join(projectPath, resultDir,imgName[:-4]+'.csv'))
-    df.to_csv(join(parameters['Project path'], parameters['result directory'], parameters['result CSV directory'], imgName[:-4]+'.csv'))
+    df.to_csv(join(parameters['result CSV directory'], img_path.stem+'.csv'))
     
     if parameters['save bounding box'] == 1: 
 #         print("Saving BB Annotations to: ",join(projectPath, annotationDir, imgName[:-4]+'.csv'))
         df_BB = pd.DataFrame( list( zip( df_boundBox ) ) , columns = [ "Top Left(x_y) Bottom Right(x_y)" ] )
-        df_BB.to_csv(join(parameters['Project path'], parameters['result directory'], parameters['result annotation directory'], imgName[:-4]+'.csv'))
+        df_BB.to_csv(join(parameters['result annotation directory'], img_path.stem+'.csv'))
     
     return df 

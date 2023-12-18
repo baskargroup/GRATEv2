@@ -260,7 +260,7 @@ def minDist(pts1, pts2):
     return minD
 
 ## Connected Components:
-def ConnecComp(img, A_Mat, props, params, imgName):
+def ConnecComp(img, A_Mat, props, params, img_path):
 
     polyProps   = props 
     N           = A_Mat.shape[0]
@@ -304,7 +304,7 @@ def ConnecComp(img, A_Mat, props, params, imgName):
             crystalAngles.append(mean(ellipseAngels))
     
     if params['save backbone coords'] == 1:
-        filehandler = open(join( params['result directory'], params['result backbone coords'], imgName[:-4]+'.pickle'),"wb")
+        filehandler = open(join(params['result backbone coords'], img_path.stem+'.pickle'),"wb")
         pickle.dump(backboneCoords, filehandler)
     InvCcImg        = invertBinaryImage(ccImg)
     debugORSave(img, InvCcImg, params, 0, "9_CLUSTERS")
@@ -325,7 +325,7 @@ def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
     #print(temp)
     return temp
 
-def PlottingAndSaving(img, ClusterPointCloud, ImgName, crystalAng, params):
+def PlottingAndSaving(img, ClusterPointCloud, img_path, crystalAng, params):
     img = img.astype( 'uint8' )
     RGBImg          = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
     # CrystalImg      = img       #invertBinaryImage(finalImg)
@@ -392,7 +392,7 @@ def PlottingAndSaving(img, ClusterPointCloud, ImgName, crystalAng, params):
 
     axes[0].imshow( img , cmap = 'gray')
     figure.tight_layout()
-    figure.savefig( join(params['Project path'], params['result directory'], params['result image directory'], ImgName[:-4]+'.png') )
+    figure.savefig( join(params['result image directory'], img_path.stem +'.png') )
 
     if params['show final image'] == 1:
         plt.show()

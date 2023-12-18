@@ -6,6 +6,7 @@ from sklearn.model_selection import GridSearchCV, LeaveOneOut, KFold
 import scipy.stats as st
 from sklearn.decomposition import PCA
 import math
+from pathlib import Path
 
 import os
 import re
@@ -47,7 +48,9 @@ def debugORSave(initial, final, params, concat, text):
     if params['debug'] == 1:
         final = final.astype( 'uint8' )
         final = cv2.equalizeHist( final )
-        cv2.imwrite(params['result directory'] + "/"+ text + "_" + params['img name']+ ".png", final)
+        save_path = Path(params['result directory']) / f"{text}_{params['img name']}.png"
+        cv2.imwrite(str(save_path), final)
+        # cv2.imwrite(params['result directory'] + "/"+ text + "_" + params['img name']+ ".png", final)
 
 def imgLength(freqCoord, imgSize):
     freqCoord = freqCoord.astype(np.int32)
@@ -349,20 +352,18 @@ def pltAlphaShape(axes, pntCloud, params):
     return alpha_shape, TorF
 
 def createVersionDirectory(projectPath, BaseResultDir, name):
-    folderDir       = join(projectPath, BaseResultDir)
-    ResFolderName   = name + '_' #'version_'
-    lenFolderName   = len(ResFolderName)
-    dirlist         = [int(item[lenFolderName:]) for item in os.listdir(folderDir) if os.path.isdir(os.path.join(folderDir,item)) and re.search(ResFolderName, item) != None and len(item)> lenFolderName] 
-    
-    if len(dirlist) != 0:
-        latestVersion = max(dirlist)
-    else:
-        latestVersion = 0
+    folderDir = Path(projectPath) / BaseResultDir
+    ResFolderName = name + '_'  # 'version_'
+    lenFolderName = len(ResFolderName)
 
-    os.mkdir(join(folderDir, ResFolderName + str(latestVersion + 1)))
-    print(ResFolderName + str(latestVersion + 1) + '\n')
-    resultDir = join(BaseResultDir,ResFolderName + str(latestVersion + 1))
-    return resultDir
+    dirlist = [int(item.name[lenFolderName:]) for item in folderDir.iterdir() if item.is_dir() and re.search(ResFolderName, item.name) and len(item.name) > lenFolderName]
+
+    latestVersion = max(dirlist, default=0)
+    new_version_dir = folderDir / f"{ResFolderName}{latestVersion + 1}"
+    new_version_dir.mkdir()
+
+    print(f"{ResFolderName}{latestVersion + 1}\n")
+    return new_version_dir
     
 def filterThreshArea(df, params):
     for ind, row in df.iterrows():
@@ -370,23 +371,26 @@ def filterThreshArea(df, params):
         if TorF_area == True:# or row['D-Spacing(FFT, nm)']<1.5:
             df.drop(ind, inplace = True)
     
-    return df
+    return df        
 
 def CreateDirectories(parameters):
-    projectPath             = parameters['Project path']
-    resultDir               = parameters['result directory']
-    ResultCSVDir            = parameters['result CSV directory']
-    ResultImageDir          = parameters['result image directory']
-    ResultBackboneCoordDir  = parameters['result backbone coords']
-    ResultAnnotationDir     = parameters['result annotation directory']
+    project_path = Path(parameters['Project path'])
+    result_dir = Path(parameters['result directory'])
 
-    if os.path.isdir(join(projectPath, resultDir)) == False: os.mkdir(join(projectPath, resultDir))
-    if os.path.isdir(join(projectPath, resultDir, ResultCSVDir)) == False: os.mkdir(join(projectPath, resultDir, ResultCSVDir))
-    if os.path.isdir(join(projectPath, resultDir, ResultImageDir)) == False: os.mkdir(join(projectPath, resultDir, ResultImageDir))
+    # List of directories to be created
+    directories = [
+        result_dir,
+        project_path / result_dir / parameters['result CSV directory'],
+        project_path / result_dir / parameters['result image directory']
+    ]
 
-    ## Saving the coordinates. 
+    # Conditionally add directories based on parameters
     if parameters['save backbone coords'] == 1:
-        if os.path.isdir(join(projectPath, resultDir, ResultBackboneCoordDir)) == False: os.mkdir(join(projectPath, resultDir, ResultBackboneCoordDir))
+        directories.append(project_path / result_dir / parameters['result backbone coords'])
 
-    if parameters['save bounding box'] == 1: 
-        if os.path.isdir(join(projectPath, resultDir, ResultAnnotationDir)) == False: os.mkdir(join(projectPath, resultDir, ResultAnnotationDir))
+    if parameters['save bounding box'] == 1:
+        directories.append(project_path / result_dir / parameters['result annotation directory'])
+
+    # Create directories
+    for directory in directories:
+        directory.mkdir(parents=True, exist_ok=True)
