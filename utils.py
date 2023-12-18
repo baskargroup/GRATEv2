@@ -48,7 +48,7 @@ def debugORSave(initial, final, params, concat, text):
     if params['debug'] == 1:
         final = final.astype( 'uint8' )
         final = cv2.equalizeHist( final )
-        save_path = Path(params['result directory']) / f"{text}_{params['img name']}.png"
+        save_path = Path(params['result directory']) / f"{text}_{params['img path'].stem}.png"
         cv2.imwrite(str(save_path), final)
         # cv2.imwrite(params['result directory'] + "/"+ text + "_" + params['img name']+ ".png", final)
 

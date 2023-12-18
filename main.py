@@ -72,7 +72,7 @@ def setup_directories_and_parameters(project_path, config):
 def process_image(file_path, parameters):
     """Process a single image."""
     print("Img Name: ", file_path.name, "\n")
-    parameters['img name'] = file_path.name
+    parameters['img path'] = file_path
     start_time = time.time()
     df_crystal_props = GRATE(file_path, parameters)
     print("Overall GRATE Time:", round(time.time() - start_time, 2), "\n")
