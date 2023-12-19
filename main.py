@@ -18,6 +18,7 @@ ACCEPTED_FORMATS = ['.tif', '.tiff', '.png']
 
 def load_config(config_file_path):
     """Load the configuration file."""
+    
     with config_file_path.open() as f:
         return libconf.load(f)
     
@@ -26,8 +27,9 @@ def calculate_pixel_size(value, factor):
     
 def prepare_parameters(config, project_path, result_dir):
     """Prepare parameters for processing."""
-    # dspace_pix = int(config['dspace_nm'] * config['pix2nm'])
+    
     dspace_pix = calculate_pixel_size(config['dspace_nm'], config['pix2nm'])
+    
     return {
         'd space nm':                      config['dspace_nm'],
         'd space pix':                     dspace_pix, 
@@ -61,25 +63,30 @@ def prepare_parameters(config, project_path, result_dir):
     
 def setup_directories_and_parameters(project_path, config):
     """Setup directories and prepare parameters."""
+    
     base_result_dir = createVersionDirectory(project_path, config['BaseResultDir'], 'version')
     copy2(project_path / 'configFiles' / sys.argv[1], base_result_dir)
     result_dir = base_result_dir / str(config['dspace_nm'])
-
     parameters = prepare_parameters(config, project_path, result_dir)
     CreateDirectories(parameters)
+    
     return parameters, result_dir
 
 def process_image(file_path, parameters):
     """Process a single image."""
+    
     print("Img Name: ", file_path.name, "\n")
+    
     parameters['img path'] = file_path
     start_time = time.time()
     df_crystal_props = GRATE(file_path, parameters)
     print("Overall GRATE Time:", round(time.time() - start_time, 2), "\n")
+    
     return df_crystal_props
 
 def process_images(data_dir, parameters):
     """Process each image in the specified directory."""
+    
     df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
                                        'Crystal Angle (zero at X-axis and clockwise positive)', 
                                        'D-Spacing(FFT, nm)'])
@@ -87,9 +94,11 @@ def process_images(data_dir, parameters):
         if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS:
             df_crystal_props = process_image(file_path, parameters)
             df_overall = df_overall.append(df_crystal_props, ignore_index=True)
+    
     return df_overall
 
 def main():
+    
     project_path = Path(__file__).parent.resolve()
     config = load_config(project_path / 'configFiles' / sys.argv[1])
     print("\nd space:", config['dspace_nm'])
