@@ -70,7 +70,9 @@ def setup_directories_and_parameters(project_path, config):
     parameters = prepare_parameters(config, project_path, result_dir)
     CreateDirectories(parameters)
     
-    return parameters, result_dir
+    data_dir = project_path / parameters['Data directory']
+    
+    return parameters, result_dir, data_dir
 
 def process_image(file_path, parameters):
     """Process a single image."""
@@ -103,8 +105,8 @@ def main():
     config = load_config(project_path / 'configFiles' / sys.argv[1])
     print("\nd space:", config['dspace_nm'])
 
-    parameters, result_dir = setup_directories_and_parameters(project_path, config)
-    data_dir = project_path / parameters['Data directory']
+    parameters, result_dir, data_dir = setup_directories_and_parameters(project_path, config)
+    
     df_overall = process_images(data_dir, parameters)
     df_overall.to_csv(result_dir / 'overall.csv')
     
