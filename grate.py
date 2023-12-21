@@ -83,10 +83,12 @@ def process_connec_comp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, par
 def process_plotting_and_saving(img, AllClusterPointCloud, img_path, crystalAngles, parameters):
     timeCode = parameters.get('timeCode', 0)
     start_time = time.time()
-    crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = PlottingAndSaving(img, AllClusterPointCloud, img_path, crystalAngles, parameters)
+    
+    crystal_props = PlottingAndSaving(img, AllClusterPointCloud, img_path, crystalAngles, parameters)
+    
     if timeCode:
         print_time("Eval D-Spacing, Plotting and Saving", start_time)
-    return crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference
+    return crystal_props
 
 def process_and_save_dataframe(img_path, parameters, centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference):
     

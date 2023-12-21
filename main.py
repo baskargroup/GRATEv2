@@ -6,7 +6,7 @@ import libconf
 from shutil import copy2
 from pathlib import Path
 from utils import createVersionDirectory, CreateDirectories
-from grate import GRATE
+from grate import GRATE, print_time
 
 '''
 Command Line Arguments:
@@ -65,7 +65,10 @@ def setup_directories_and_parameters(project_path, config):
     """Setup directories and prepare parameters."""
     
     base_result_dir = createVersionDirectory(project_path, config['BaseResultDir'], 'version')
-    copy2(project_path / 'configFiles' / sys.argv[1], base_result_dir)
+
+    with open(base_result_dir / 'config.cfg', 'w') as config_file:
+        libconf.dump(config, config_file)
+
     result_dir = base_result_dir / str(config['dspace_nm'])
     parameters = prepare_parameters(config, project_path, result_dir)
     CreateDirectories(parameters)
@@ -82,7 +85,7 @@ def process_image(file_path, parameters):
     parameters['img path'] = file_path
     start_time = time.time()
     df_crystal_props = GRATE(file_path, parameters)
-    print("Overall GRATE Time:", round(time.time() - start_time, 2), "\n")
+    print_time("Overall GRATE Time", start_time)
     
     return df_crystal_props
 
@@ -103,6 +106,11 @@ def main():
     
     project_path = Path(__file__).parent.resolve()
     config = load_config(project_path / 'configFiles' / sys.argv[1])
+    
+    # Provide the dspace_nm as a command line argument
+    if len(sys.argv) > 2:
+        config['dspace_nm'] = float(sys.argv[2])
+    
     print("\nd space:", config['dspace_nm'])
 
     parameters, result_dir, data_dir = setup_directories_and_parameters(project_path, config)
