@@ -332,24 +332,21 @@ def getBoundingBox(convHull):
     y_minMax    = [np.amin(convHull.points[convHull.vertices,1]), np.amax(convHull.points[convHull.vertices,1])]
     return x_minMax, y_minMax
 
-def pltOrientationLine(axes, crystalIndex, crystalAngle, color, bb_x_minMax, bb_y_minMax, x_centroid, y_centroid):
+def pltOrientationLine(axes, crystalAngle, color, bb_x_minMax, bb_y_minMax, x_centroid, y_centroid):
     arrLen  = min( int( bb_x_minMax[1] - bb_x_minMax[0] ) , int( bb_y_minMax[1] - bb_y_minMax[0] ) ) / 6
-    axes[1].arrow( x_centroid, y_centroid , arrLen * np.cos( crystalAngle[ crystalIndex ] * np.pi/180 ) , arrLen * np.sin( crystalAngle[crystalIndex] * np.pi/180 ) , linewidth = 7.0 , color = color )
+    axes[1].arrow( x_centroid, y_centroid , arrLen * np.cos( crystalAngle * np.pi/180 ) , arrLen * np.sin( crystalAngle * np.pi/180 ) , linewidth = 7.0 , color = color )
 
 def pltConvexHull(axes, convHull, pntCloud, color):
     for simplex in convHull.simplices:
             axes[1].plot( pntCloud[ simplex , 0 ] , pntCloud[ simplex , 1 ] , linewidth = 7.0 , color = color )
 
-def pltAlphaShape(axes, pntCloud, params):
+def getAlphsShape(pntCloud):
     alpha_shape     = alphashape.alphashape( pntCloud , alpha = 0.005 )
+    return alpha_shape
 
-    ## Filtering out detections with very small area, Threshold area = factor*(d_space**2).
-    TorF = isAreaSmall(alpha_shape.area, params)
-    
-    if TorF == False:
-        axes[1].add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
-        
-    return alpha_shape, TorF
+
+def pltAlphaShape(axes, alpha_shape):
+    axes[1].add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
 
 def createVersionDirectory(projectPath, BaseResultDir, name):
     folderDir = Path(projectPath) / BaseResultDir

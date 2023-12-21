@@ -325,83 +325,123 @@ def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
     #print(temp)
     return temp
 
-def PlottingAndSaving(img, ClusterPointCloud, img_path, crystalAng, params):
-    img = img.astype( 'uint8' )
-    RGBImg          = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
-    # CrystalImg      = img       #invertBinaryImage(finalImg)
+# Additional modularized functions
+def create_rgb_image(img):
+    return cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB)
+
+def initialize_plot():
+    return plt.subplots(nrows=1, ncols=2, figsize=(50, 25))
+
+def process_cluster(OrigImg, cluster, crystal_ang, params, color):
+    point_cloud = np.array(cluster)
+    hull = ConvexHull(point_cloud)
+    cx, cy = getCentroid(hull)
+    x_min_max, y_min_max = getBoundingBox(hull)
+    d_space = evaluateDspacing(OrigImg, params, x_min_max, y_min_max)
     
-    figure, axes    = plt.subplots(nrows=1, ncols=2, figsize = (50,25))
+    alpha_shape = getAlphsShape(point_cloud)
+
+    if d_space == 0 or isAreaSmall(alpha_shape.area, params):
+        return None
+
+    major_len, minor_len, major_axes_angle = getCrystalSizeAndOrientation(hull)
+    angle_diff_val = getAngleDifference(major_axes_angle, crystal_ang)
+
+    crystal_properties = {
+        "centroid": [cx, cy],
+        "alpha_shape": alpha_shape,
+        "x_min_max": x_min_max,
+        "y_min_max": y_min_max,
+        "area": alpha_shape.area * (1 / params['pix to nm'] ** 2),
+        "angle": crystal_ang,
+        "d_space": d_space,
+        "major_len": major_len * (1 / params['pix to nm']),
+        "minor_len": minor_len * (1 / params['pix to nm']),
+        "major_axes_angle": major_axes_angle,
+        "angle_diff": angle_diff_val,
+        "color": color,
+        "hull": hull,
+        "point_cloud": point_cloud
+    }
+    
+    if params['save bounding box'] == 1:
+        crystal_properties['bounding_box'] = [int(x_min_max[0]), int(y_min_max[0]), int(x_min_max[1]), int(y_min_max[1])]
+    
+    return crystal_properties
+    
+def plot_results(axes, results, img):
+    
+    for result in results:
+        if result:
+            pltAlphaShape(axes, result['alpha_shape'])
+            pltOrientationLine(axes, result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
+            pltConvexHull(axes, result['hull'], result['point_cloud'], result['color'])
+            # Other plotting based on 'result'
+
+    axes[0].imshow(img, cmap='gray')
+    
+
+def extract_results(processed_clusters):
+    """
+    Extracts and aggregates results from processed clusters.
+
+    Args:
+        processed_clusters (list): List of dictionaries containing processed cluster data.
+
+    Returns:
+        tuple: Aggregated results including areas, centroids, angles, etc.
+    """
+    crystal_area = []
+    centroid = []
+    crystal_angles_final = []
+    d_spaces = []
+    bounding_box = []
+    crystal_major_axis_length = []
+    crystal_minor_axis_length = []
+    crystal_major_axis_angle = []
+    angle_difference = []
+
+    for result in processed_clusters:
+        if result is not None:
+            crystal_area.append(result['area'])
+            centroid.append(result['centroid'])
+            crystal_angles_final.append(result['angle'])
+            d_spaces.append(result['d_space'])
+            crystal_major_axis_length.append(result['major_len'])
+            crystal_minor_axis_length.append(result['minor_len'])
+            crystal_major_axis_angle.append(result['major_axes_angle'])
+            angle_difference.append(result['angle_diff'])
+
+            if 'bounding_box' in result:
+                bounding_box.append(result['bounding_box'])
+
+    return (crystal_area, centroid, crystal_angles_final, d_spaces, bounding_box,
+            crystal_major_axis_length, crystal_minor_axis_length,
+            crystal_major_axis_angle, angle_difference)
+
+
+def PlottingAndSaving(img, ClusterPointCloud, img_path, crystalAng, params):
+    RGBImg = create_rgb_image(img)
+    
+    figure, axes = initialize_plot()
     axes[1].imshow(RGBImg, vmin=0, vmax=255)
     
-    unitConv_pixSq2nmSq = 1/params['pix to nm']**2
-    crystalArea         = []
-    centroid            = []
-    boundingBox         = []
-    crystalAngles_final = []
-    dspaces             = []
-    crystalMajorAxis_length     = []
-    crystalMinorAxis_length     = []
-    crystalMajorAxisAngle       = []
-    angleDifference     = []
-
-    color               = ['b', 'g', 'r', 'c', 'm','y','w']
-
-    for ind, cluster in enumerate(ClusterPointCloud):
-        PointCloud  = np.array(cluster)
-        hull        = ConvexHull(PointCloud)
-        
-        cx, cy = getCentroid(hull)
-        x_minMax, y_minMax = getBoundingBox(hull)
-        
-        ## D Spacing Evaluation 
-        dspace     = evaluateDspacing(img, params, x_minMax, y_minMax)
-        
-        ## Skip the detection with incorrect D-Spacing
-        if dspace == 0:            
-            continue
-        
-        ## Picking up a color for the detection
-        c = random.choice(color)
-
-        ## Plotting Alpha Shape (Tight fitting boundry)
-        alpha_shape, smallArea = pltAlphaShape(axes, PointCloud, params)
-        
-        if smallArea == True:
-            continue
-        majorLen, minorLen, majorAxesAngle = getCrystalSizeAndOrientation(hull)
-        angleDiff_val = getAngleDifference(majorAxesAngle, crystalAng[ ind ])
-
-        ## Plotting the orientation line
-        pltOrientationLine(axes, ind, crystalAng, c, x_minMax, y_minMax, cx, cy)
-        
-        ## Plotting Convex Hull
-        pltConvexHull(axes, hull, PointCloud, c)
-        
-        centroid.append([cx, cy])
-        crystalArea.append( ( alpha_shape.area ) * unitConv_pixSq2nmSq )
-        crystalAngles_final.append(crystalAng[ ind ])
-        dspaces.append(dspace)
-        
-        crystalMajorAxis_length.append(majorLen * 1/params['pix to nm'])
-        crystalMinorAxis_length.append(minorLen * 1/params['pix to nm'])
-        crystalMajorAxisAngle.append(majorAxesAngle)
-        angleDifference.append(angleDiff_val)
-        
-        if params['save bounding box'] == 1:
-            boundingBox.append( [ int( x_minMax[0] ) , int( y_minMax[0] ) , int( x_minMax[1] ) , int( y_minMax[1] ) ] )
-
-    axes[0].imshow( img , cmap = 'gray')
+    color_options = ['b', 'g', 'r', 'c', 'm','y','w']
+    
+    processed_clusters = [process_cluster(img, cluster, crystalAng[ind], params, random.choice(color_options)) 
+                          for ind, cluster in enumerate(ClusterPointCloud)]
+    
+    plot_results(axes, processed_clusters, img)
+    
     figure.tight_layout()
     figure.savefig( join(params['result image directory'], img_path.stem +'.png') )
 
     if params['show final image'] == 1:
         plt.show()
-    figure.clf()
-    plt.close()
-    plt.clf()
+    plt.close(figure)
     gc.collect()
     
-    return crystalArea, centroid, crystalAngles_final, dspaces, boundingBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference 
+    return extract_results(processed_clusters)
 
 def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
     
