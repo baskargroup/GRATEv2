@@ -28,43 +28,61 @@ def calculate_pixel_size(value, factor):
 def prepare_parameters(config, project_path, result_dir):
     """Prepare parameters for processing."""
     
-    dspace_pix = calculate_pixel_size(config['dspace_nm'], config['pix2nm'])
+    dspace_pix = calculate_pixel_size(config['dspace_nm'], config['pix_2_nm'])
     
-    return {
-        'd space nm':                      config['dspace_nm'],
-        'd space pix':                     dspace_pix, 
-        'pix to nm':                       config['pix2nm'],
-        'blur iterations':                 config['blur_iteration'], 
-        'blur k size':                     calculate_pixel_size(config['Blur_kernel_propCons'], dspace_pix),
-        'closing k size':                  config['closing_k_size'],
-        'opening k size':                  config['opening_k_size'], 
-        'backbone threshold length':       calculate_pixel_size(config['pixThresh_propCons'], dspace_pix),
-        'ellipse pixel size':              calculate_pixel_size(config['ellipse_len_propCons'], dspace_pix),
-        'ellipse threshold aspect ratio':  config['ellipseAspectRatio'],
-        'adjacency threshold distance':    calculate_pixel_size(config['thresh_dist_propCons'], dspace_pix),
-        'adjacency threshold angle':       config['thresh_theta'], 
-        'cluster threshold size':          config['clusterSize'],
-        'pow spec peak vs mean factor':    config['powSpec_peak_thresh'],
-        'debug':                           config['debug'],
-        'save bounding box':               config['save_BB'],
-        'save backbone coords':            config['save_backbone_coords'],
-        'show final image':                config['ResultDisp'],
-        'display image scaling':           config['image_scale_percent'],
-        'Threshold area factor':           config['Thresh_area_factor'],
-        'Project path':                    project_path,
-        'result directory'     :           result_dir, 
-        'result image directory':          result_dir / "Images",
-        'result CSV directory':            result_dir / "CSV",
-        'result annotation directory':     result_dir / "Annotations",
-        'result backbone coords':          result_dir / "BackboneCoord",
-        'Data directory':                  config['dataDir'],
-        'Base result directory':           config['BaseResultDir']
+    # Resolution Parameters
+    resolution_params = {
+        'd space nm'        : config['dspace_nm'],
+        'd space pix'       : dspace_pix,
+        'pix to nm'         : config['pix_2_nm'],
     }
+    
+    # Image Processing Parameters
+    image_processing_params = {
+        'blur iterations'   : config['blur_iteration'],
+        'blur k size'       : calculate_pixel_size(config['Blur_kernel_propCons'], dspace_pix),
+        'closing k size'    : config['closing_k_size'],
+        'opening k size'    : config['opening_k_size'],
+        'backbone threshold length'     : calculate_pixel_size(config['pixThresh_propCons'], dspace_pix),
+        'ellipse pixel size'            : calculate_pixel_size(config['ellipse_len_propCons'], dspace_pix),
+        'ellipse threshold aspect ratio': config['ellipse_aspect_ratio'],
+        'adjacency threshold distance'  : calculate_pixel_size(config['thresh_dist_propCons'], dspace_pix),
+        'adjacency threshold angle'     : config['thresh_theta'],
+        'cluster threshold size'        : config['cluster_size'],
+        'pow spec peak vs mean factor'  : config['powSpec_peak_thresh'],
+        'Threshold area factor'         : config['Thresh_area_factor'],
+    }
+
+    # Filesystem and Path Parameters
+    filesystem_params = {
+        'Project path'          : project_path,
+        'result directory'      : result_dir,
+        'result image directory': result_dir / "Images",
+        'result CSV directory'  : result_dir / "CSV",
+        'result annotation directory': result_dir / "Annotations",
+        'result backbone coords': result_dir / "BackboneCoord",
+        'Data directory'        : config['data_dir'],
+        'Base result directory' : config['base_result_dir'],
+    }
+
+    # Miscellaneous Parameters
+    miscellaneous_params = {
+        'debug': config['debug'],
+        'save bounding box'     : config['save_BB'],
+        'save backbone coords'  : config['save_backbone_coords'],
+        'show final image'      : config['result_display'],
+        'display image scaling' : config['image_scale_percent']
+    }
+
+    # Merge all parameter groups into a single dictionary
+    all_params = {**resolution_params, **image_processing_params, **filesystem_params, **miscellaneous_params}
+    
+    return all_params
     
 def setup_directories_and_parameters(project_path, config):
     """Setup directories and prepare parameters."""
     
-    base_result_dir = createVersionDirectory(project_path, config['BaseResultDir'], 'version')
+    base_result_dir = createVersionDirectory(project_path, config['base_result_dir'], 'version')
 
     with open(base_result_dir / 'config.cfg', 'w') as config_file:
         libconf.dump(config, config_file)
