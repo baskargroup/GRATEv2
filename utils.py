@@ -348,8 +348,8 @@ def getAlphsShape(pntCloud):
 def pltAlphaShape(axes, alpha_shape):
     axes[1].add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
 
-def createVersionDirectory(projectPath, BaseResultDir, name):
-    folderDir = Path(projectPath) / BaseResultDir
+def createVersionDirectory(folderDir, name):
+    # folderDir = Path(projectPath) / BaseResultDir
     ResFolderName = name + '_'  # 'version_'
     lenFolderName = len(ResFolderName)
 
@@ -371,23 +371,16 @@ def filterThreshArea(df, params):
     return df        
 
 def CreateDirectories(parameters):
-    project_path = Path(parameters['Project path'])
     result_dir = Path(parameters['result directory'])
 
-    # List of directories to be created
     directories = [
         result_dir,
-        project_path / result_dir / parameters['result CSV directory'],
-        project_path / result_dir / parameters['result image directory']
+        parameters['result CSV directory'],
+        parameters['result image directory'],
+        parameters['result backbone coords'] if parameters['save backbone coords'] == 1 else None,
+        parameters['result annotation directory'] if parameters['save bounding box'] == 1 else None
     ]
 
-    # Conditionally add directories based on parameters
-    if parameters['save backbone coords'] == 1:
-        directories.append(project_path / result_dir / parameters['result backbone coords'])
-
-    if parameters['save bounding box'] == 1:
-        directories.append(project_path / result_dir / parameters['result annotation directory'])
-
-    # Create directories
     for directory in directories:
-        directory.mkdir(parents=True, exist_ok=True)
+        if directory is not None:
+            directory.mkdir(parents=True, exist_ok=True)

@@ -16,19 +16,38 @@ sys.argv[1] : .cfg file name present inside the configFiles directory.
 # Constants
 ACCEPTED_FORMATS = ['.tif', '.tiff', '.png']
 
-def load_config(config_file_path):
+def load_config():
     """Load the configuration file."""
     
+    project_path = Path(__file__).parent.resolve()
+    config_file_path = project_path / 'configFiles' / sys.argv[1]
+    
+    config = {}
+    
     with config_file_path.open() as f:
-        return libconf.load(f)
+        config = libconf.load(f)
+    
+    if len(sys.argv) > 2:
+        try:
+            float(sys.argv[2])
+            print("Overriding dspace_nm with command line argument.")
+            config['dspace_nm'] = float(sys.argv[2])
+        except ValueError:
+            print("Invalid dspace_nm argument. Please provide a float number.")
+            sys.exit(1)
+        
+    return config, project_path
     
 def calculate_pixel_size(value, factor):
     return int(value * factor)
     
-def prepare_parameters(config, project_path, result_dir):
+def prepare_parameters(config, project_path, base_result_dir):
     """Prepare parameters for processing."""
     
     dspace_pix = calculate_pixel_size(config['dspace_nm'], config['pix_2_nm'])
+    
+    result_dir  = base_result_dir / str(config['dspace_nm'])
+    data_dir    = project_path / str(config['data_dir'])
     
     # Resolution Parameters
     resolution_params = {
@@ -61,8 +80,8 @@ def prepare_parameters(config, project_path, result_dir):
         'result CSV directory'  : result_dir / "CSV",
         'result annotation directory': result_dir / "Annotations",
         'result backbone coords': result_dir / "BackboneCoord",
-        'Data directory'        : config['data_dir'],
-        'Base result directory' : config['base_result_dir'],
+        'Data directory'        : data_dir,
+        'Base result directory' : base_result_dir,
     }
 
     # Miscellaneous Parameters
@@ -77,21 +96,18 @@ def prepare_parameters(config, project_path, result_dir):
     # Merge all parameter groups into a single dictionary
     all_params = {**resolution_params, **image_processing_params, **filesystem_params, **miscellaneous_params}
     
-    return all_params
+    return all_params, result_dir, data_dir
     
 def setup_directories_and_parameters(project_path, config):
     """Setup directories and prepare parameters."""
     
-    base_result_dir = createVersionDirectory(project_path, config['base_result_dir'], 'version')
+    base_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 'version')
 
     with open(base_result_dir / 'config.cfg', 'w') as config_file:
         libconf.dump(config, config_file)
-
-    result_dir = base_result_dir / str(config['dspace_nm'])
-    parameters = prepare_parameters(config, project_path, result_dir)
-    CreateDirectories(parameters)
     
-    data_dir = project_path / parameters['Data directory']
+    parameters, result_dir, data_dir = prepare_parameters(config, project_path, base_result_dir)
+    CreateDirectories(parameters)
     
     return parameters, result_dir, data_dir
 
@@ -122,12 +138,7 @@ def process_images(data_dir, parameters):
 
 def main():
     
-    project_path = Path(__file__).parent.resolve()
-    config = load_config(project_path / 'configFiles' / sys.argv[1])
-    
-    # Provide the dspace_nm as a command line argument
-    if len(sys.argv) > 2:
-        config['dspace_nm'] = float(sys.argv[2])
+    config, project_path = load_config()
     
     print("\nd space:", config['dspace_nm'])
 
