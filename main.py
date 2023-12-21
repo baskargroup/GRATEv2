@@ -11,6 +11,7 @@ from grate import GRATE, print_time
 '''
 Command Line Arguments:
 sys.argv[1] : .cfg file name present inside the configFiles directory.  
+sys.argv[2] : (Optional) dspace_nm value. If not provided, then the value from the .cfg file is used.
 '''
 
 # Constants
@@ -49,14 +50,12 @@ def prepare_parameters(config, project_path, base_result_dir):
     result_dir  = base_result_dir / str(config['dspace_nm'])
     data_dir    = project_path / str(config['data_dir'])
     
-    # Resolution Parameters
     resolution_params = {
         'd space nm'        : config['dspace_nm'],
         'd space pix'       : dspace_pix,
         'pix to nm'         : config['pix_2_nm'],
     }
     
-    # Image Processing Parameters
     image_processing_params = {
         'blur iterations'   : config['blur_iteration'],
         'blur k size'       : calculate_pixel_size(config['Blur_kernel_propCons'], dspace_pix),
@@ -72,7 +71,6 @@ def prepare_parameters(config, project_path, base_result_dir):
         'Threshold area factor'         : config['Thresh_area_factor'],
     }
 
-    # Filesystem and Path Parameters
     filesystem_params = {
         'Project path'          : project_path,
         'result directory'      : result_dir,
@@ -84,7 +82,6 @@ def prepare_parameters(config, project_path, base_result_dir):
         'Base result directory' : base_result_dir,
     }
 
-    # Miscellaneous Parameters
     miscellaneous_params = {
         'debug': config['debug'],
         'save bounding box'     : config['save_BB'],
@@ -93,7 +90,6 @@ def prepare_parameters(config, project_path, base_result_dir):
         'display image scaling' : config['image_scale_percent']
     }
 
-    # Merge all parameter groups into a single dictionary
     all_params = {**resolution_params, **image_processing_params, **filesystem_params, **miscellaneous_params}
     
     return all_params, result_dir, data_dir
