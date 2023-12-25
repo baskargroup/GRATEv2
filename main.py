@@ -6,7 +6,7 @@ import libconf
 from shutil import copy2
 from pathlib import Path
 from utils import createVersionDirectory, CreateDirectories
-from grate import GRATE, print_time
+from grate import GRATE
 
 '''
 Command Line Arguments:

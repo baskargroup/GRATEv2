@@ -3,10 +3,6 @@ from ops import *
 import time
 from skimage import io
 
-    
-def process_image(img, parameters):
-    result = BlurThresh(img, parameters)
-    return result
 
 def process_skeleton(thresh, parameters):
     if parameters['d space pix'] < 78:
@@ -17,35 +13,6 @@ def process_skeleton(thresh, parameters):
         result = Skeletonize(opening, parameters)
         
     return result
-
-def process_break_branches(skeleton, parameters):
-    result = BreakBranches(skeleton, parameters)
-    
-    return result
-
-def process_skeleton_segmentation(skeleton, parameters):
-    temp = SkeletonSegmentation(skeleton)
-    return temp
-
-def process_filtered_uniform_bb(img, temp, parameters):
-    Broken_backbone_img = Filtered_Uniform_BB(img, temp, parameters)
-    return Broken_backbone_img
-
-def process_ellipse_construction(Broken_backbone_img, parameters):
-    bb_ellipse1, bb_ellipse_props = EllipseConstruction(Broken_backbone_img, parameters)
-    return bb_ellipse1, bb_ellipse_props
-
-def process_adjacency_mat(Broken_backbone_img, bb_ellipse_props, parameters):
-    adjacencyMat = AdjacencyMat(Broken_backbone_img, bb_ellipse_props, parameters)
-    return adjacencyMat
-
-def process_connec_comp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters, img_path):
-    ellipseCluster, AllClusterPointCloud, crystalAngles = ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters, img_path)
-    return ellipseCluster, AllClusterPointCloud, crystalAngles
-
-def process_plotting_and_saving(img, AllClusterPointCloud, img_path, crystalAngles, parameters):
-    crystal_props = PlottingAndSaving(img, AllClusterPointCloud, img_path, crystalAngles, parameters)
-    return crystal_props
 
 def process_and_save_dataframe(img_path, parameters, centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference):
     
@@ -84,23 +51,23 @@ def GRATE(img_path, parameters):
         print("Saving image as png to the result image directory")
         cv2.imwrite(str(parameters['result image directory'] / (img_path.stem+'.png')), cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB))
         
-    thresh = process_image(img, parameters)
+    thresh = BlurThresh(img, parameters)
     
     skeleton = process_skeleton(thresh, parameters)
     
-    skeleton = process_break_branches(skeleton, parameters)
+    skeleton = BreakBranches(skeleton, parameters)
     
-    temp = process_skeleton_segmentation(skeleton, parameters)
+    temp = SkeletonSegmentation(skeleton)
     
-    Broken_backbone_img = process_filtered_uniform_bb(img, temp, parameters)
+    Broken_backbone_img = Filtered_Uniform_BB(img, temp, parameters)
     
-    bb_ellipse1, bb_ellipse_props = process_ellipse_construction(Broken_backbone_img, parameters)
+    bb_ellipse1, bb_ellipse_props = EllipseConstruction(Broken_backbone_img, parameters)
     
-    adjacencyMat = process_adjacency_mat(Broken_backbone_img, bb_ellipse_props, parameters)
+    adjacencyMat = AdjacencyMat(Broken_backbone_img, bb_ellipse_props, parameters)
     
-    ellipseCluster, AllClusterPointCloud, crystalAngles = process_connec_comp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters, img_path)
+    ellipseCluster, AllClusterPointCloud, crystalAngles = ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props, parameters, img_path)
     
-    crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = process_plotting_and_saving(img, AllClusterPointCloud, img_path, crystalAngles, parameters)
+    crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = PlottingAndSaving(img, AllClusterPointCloud, img_path, crystalAngles, parameters)
     
     df = process_and_save_dataframe(img_path, parameters, centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference)
     
