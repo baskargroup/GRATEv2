@@ -25,14 +25,18 @@ from matplotlib import cm
 import time
 from utils import *
 import pickle
+from skimage.filters import threshold_otsu
+from skimage import exposure
 
 ############### Operations ############################3
 
 def histEq(img):
-    img = img.astype('uint8')
-    img = cv2.equalizeHist(img)
-    # from skimage import exposure
-    # img = exposure.equalize_hist(img)
+    # img = img.astype('uint8')
+    # img = cv2.equalizeHist(img)
+    
+    img_normalized = (img - np.min(img)) / (np.max(img) - np.min(img)) * 2 - 1
+    img_eq = exposure.equalize_adapthist(img_normalized, clip_limit=0.03)
+    img = (img_eq + 1) / 2
     return img
 
 def BlurThresh(img, params):
@@ -45,14 +49,13 @@ def BlurThresh(img, params):
     for i in range( params[ 'blur iterations' ] ):
         blur_img = cv2.blur( blur_img , ( k_size , k_size ) )
 
-    # blur_img = blur_img.astype( 'uint8' )
-    # blur_img = cv2.equalizeHist( blur_img )
     blur_img = histEq(blur_img)
-    _,thresh = cv2.threshold( blur_img , 0 , 255 , cv2.THRESH_BINARY + cv2.THRESH_OTSU )
+    thresh = threshold_otsu(blur_img)
+    binary = blur_img > thresh
     
-    debugORSave(img, thresh, params,1, "1_BLURRING AND THRESHOLDING")#debugORSave(img, thresh, params,1, resultDir,"1_BLURRING AND THRESHOLDING")
+    debugORSave(img, binary, params,1, "1_BLURRING AND THRESHOLDING")#debugORSave(img, thresh, params,1, resultDir,"1_BLURRING AND THRESHOLDING")
     
-    return thresh
+    return binary
 
 # Closing: Removing black spots from white regions. Basically Dilation followed by Erosion.
 def Closing(img, params):
@@ -106,7 +109,7 @@ def BreakBranches(img, params):
 def SkeletonSegmentation(img):
     
     input                       = np.copy( img )
-    input                       = input.astype( 'uint8' )
+    input                       = input.astype( 'uint16' )
     segmentedImg_temp           = label( input , connectivity = 2 )
     props                       = regionprops( segmentedImg_temp )
 
