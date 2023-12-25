@@ -28,6 +28,13 @@ import pickle
 
 ############### Operations ############################3
 
+def histEq(img):
+    img = img.astype('uint8')
+    img = cv2.equalizeHist(img)
+    # from skimage import exposure
+    # img = exposure.equalize_hist(img)
+    return img
+
 def BlurThresh(img, params):
     blur_img    = img
     k_size      = params['blur k size']
@@ -38,8 +45,9 @@ def BlurThresh(img, params):
     for i in range( params[ 'blur iterations' ] ):
         blur_img = cv2.blur( blur_img , ( k_size , k_size ) )
 
-    blur_img = blur_img.astype( 'uint8' )
-    blur_img = cv2.equalizeHist( blur_img )
+    # blur_img = blur_img.astype( 'uint8' )
+    # blur_img = cv2.equalizeHist( blur_img )
+    blur_img = histEq(blur_img)
     _,thresh = cv2.threshold( blur_img , 0 , 255 , cv2.THRESH_BINARY + cv2.THRESH_OTSU )
     
     debugORSave(img, thresh, params,1, "1_BLURRING AND THRESHOLDING")#debugORSave(img, thresh, params,1, resultDir,"1_BLURRING AND THRESHOLDING")
@@ -329,8 +337,14 @@ def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
 def create_rgb_image(img):
     return cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB)
 
+def load_img_result_dir(img_path, params):
+    return cv2.imread(join(params['result image directory'], img_path.stem+'.png'))
+
 def initialize_plot():
-    return plt.subplots(nrows=1, ncols=2, figsize=(50, 25))
+    orig_img_plt_idx = 0
+    result_img_plt_idx = 1
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(50, 25))
+    return fig, axes, orig_img_plt_idx, result_img_plt_idx
 
 def process_cluster(OrigImg, cluster, crystal_ang, params, color):
     point_cloud = np.array(cluster)
@@ -369,16 +383,18 @@ def process_cluster(OrigImg, cluster, crystal_ang, params, color):
     
     return crystal_properties
     
-def plot_results(axes, results, img):
+def plot_results(axes, results, orig_img, RGB_img, orig_img_plt_idx, result_img_plt_idx):
+    
+    axes[result_img_plt_idx].imshow(RGB_img, vmin=0, vmax=255)
     
     for result in results:
         if result:
-            pltAlphaShape(axes, result['alpha_shape'])
-            pltOrientationLine(axes, result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
-            pltConvexHull(axes, result['hull'], result['point_cloud'], result['color'])
+            pltAlphaShape(axes[result_img_plt_idx], result['alpha_shape'])
+            pltOrientationLine(axes[result_img_plt_idx], result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
+            pltConvexHull(axes[result_img_plt_idx], result['hull'], result['point_cloud'], result['color'])
             # Other plotting based on 'result'
 
-    axes[0].imshow(img, cmap='gray')
+    axes[orig_img_plt_idx].imshow(orig_img, cmap='gray')
     
 
 def extract_results(processed_clusters):
@@ -420,18 +436,18 @@ def extract_results(processed_clusters):
             crystal_major_axis_angle, angle_difference)
 
 
-def PlottingAndSaving(img, ClusterPointCloud, img_path, crystalAng, params):
-    RGBImg = create_rgb_image(img)
+def PlottingAndSaving(origImg, ClusterPointCloud, img_path, crystalAng, params):
+    # RGBImg = create_rgb_image(origImg)
+    RGBImg = load_img_result_dir(img_path, params)
     
-    figure, axes = initialize_plot()
-    axes[1].imshow(RGBImg, vmin=0, vmax=255)
+    figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot()
     
     color_options = ['b', 'g', 'r', 'c', 'm','y','w']
     
-    processed_clusters = [process_cluster(img, cluster, crystalAng[ind], params, random.choice(color_options)) 
+    processed_clusters = [process_cluster(origImg, cluster, crystalAng[ind], params, random.choice(color_options)) 
                           for ind, cluster in enumerate(ClusterPointCloud)]
     
-    plot_results(axes, processed_clusters, img)
+    plot_results(axes, processed_clusters, origImg, RGBImg, orig_img_plt_idx, result_img_plt_idx)
     
     figure.tight_layout()
     figure.savefig( join(params['result image directory'], img_path.stem +'.png') )

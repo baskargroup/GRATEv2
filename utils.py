@@ -332,21 +332,21 @@ def getBoundingBox(convHull):
     y_minMax    = [np.amin(convHull.points[convHull.vertices,1]), np.amax(convHull.points[convHull.vertices,1])]
     return x_minMax, y_minMax
 
-def pltOrientationLine(axes, crystalAngle, color, bb_x_minMax, bb_y_minMax, x_centroid, y_centroid):
+def pltOrientationLine(subplot, crystalAngle, color, bb_x_minMax, bb_y_minMax, x_centroid, y_centroid):
     arrLen  = min( int( bb_x_minMax[1] - bb_x_minMax[0] ) , int( bb_y_minMax[1] - bb_y_minMax[0] ) ) / 6
-    axes[1].arrow( x_centroid, y_centroid , arrLen * np.cos( crystalAngle * np.pi/180 ) , arrLen * np.sin( crystalAngle * np.pi/180 ) , linewidth = 7.0 , color = color )
+    subplot.arrow( x_centroid, y_centroid , arrLen * np.cos( crystalAngle * np.pi/180 ) , arrLen * np.sin( crystalAngle * np.pi/180 ) , linewidth = 7.0 , color = color )
 
-def pltConvexHull(axes, convHull, pntCloud, color):
+def pltConvexHull(subplot, convHull, pntCloud, color):
     for simplex in convHull.simplices:
-            axes[1].plot( pntCloud[ simplex , 0 ] , pntCloud[ simplex , 1 ] , linewidth = 7.0 , color = color )
+            subplot.plot( pntCloud[ simplex , 0 ] , pntCloud[ simplex , 1 ] , linewidth = 7.0 , color = color )
 
 def getAlphsShape(pntCloud):
     alpha_shape     = alphashape.alphashape( pntCloud , alpha = 0.005 )
     return alpha_shape
 
 
-def pltAlphaShape(axes, alpha_shape):
-    axes[1].add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
+def pltAlphaShape(subplot, alpha_shape):
+    subplot.add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
 
 def createVersionDirectory(folderDir, name):
     # folderDir = Path(projectPath) / BaseResultDir

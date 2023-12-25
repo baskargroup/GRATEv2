@@ -120,6 +120,13 @@ def GRATE(img_path, parameters):
     img = io.imread(img_path)
     img = img.astype('float64')
     
+    # Check if the file is already present in the result image directory else convert gray to RGB and save it
+    if (parameters['result image directory'] / (img_path.stem+'.png')).is_file():
+        print("Image already present in the result image directory")
+    else:
+        print("Saving image as png to the result image directory")
+        cv2.imwrite(str(parameters['result image directory'] / (img_path.stem+'.png')), cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB))
+        
     thresh = process_image(img, parameters)
     
     skeleton = process_skeleton(thresh, parameters)
