@@ -113,9 +113,8 @@ def process_image(file_path, parameters):
     print("Img Name: ", file_path.name, "\n")
     
     parameters['img path'] = file_path
-    start_time = time.time()
+    
     df_crystal_props = GRATE(file_path, parameters)
-    print_time("Overall GRATE Time", start_time)
     
     return df_crystal_props
 

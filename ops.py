@@ -28,6 +28,18 @@ import pickle
 from skimage.filters import threshold_otsu
 from skimage import exposure
 
+import functools
+
+def timeit(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"{func.__name__} executed in {end_time - start_time:.4f} seconds")
+        return result
+    return wrapper
+
 ############### Operations ############################3
 
 def histEq(img):
@@ -39,6 +51,7 @@ def histEq(img):
     img = (img_eq + 1) / 2
     return img
 
+@timeit
 def BlurThresh(img, params):
     blur_img    = img
     k_size      = params['blur k size']
@@ -58,6 +71,7 @@ def BlurThresh(img, params):
     return binary
 
 # Closing: Removing black spots from white regions. Basically Dilation followed by Erosion.
+@timeit
 def Closing(img, params):
     
     input   = img
@@ -69,6 +83,7 @@ def Closing(img, params):
     return output
 
 ## Opening: Removing white spots from black regions. Basically Erosion followed by Dilation.
+@timeit
 def Opening(img, params):
 
     input   = img
@@ -80,6 +95,7 @@ def Opening(img, params):
     return output 
 
 ## Skeletonize Image
+@timeit
 def Skeletonize(img, params): 
 
     input       = img 
@@ -93,6 +109,7 @@ def Skeletonize(img, params):
     return output
 
 ## Finds branching points for images with black background and white lines receive a degree matrix
+@timeit
 def BreakBranches(img, params):
 
     input                               = np.copy( img )
@@ -106,6 +123,7 @@ def BreakBranches(img, params):
     return input
 
 ## Skeleton Segmentation
+@timeit
 def SkeletonSegmentation(img):
     
     input                       = np.copy( img )
@@ -116,6 +134,7 @@ def SkeletonSegmentation(img):
     return props
 
 ## Filtering out small backbones using the pixThresh variable and breaking them into uniform size.
+@timeit
 def Filtered_Uniform_BB(img, obj_list, params):
     
     bb              = np.zeros( img.shape )
@@ -169,6 +188,7 @@ def RemovingDim(lis):
 
 
 ################ SCIPY BASED ELLIPSE CONSTRUCTION FUNCTION ###############################
+@timeit
 def EllipseConstruction(img, params):
 
     input                       = np.copy(img)
@@ -200,6 +220,7 @@ def EllipseConstruction(img, params):
     return ellip_temp_img, bb_props_np
 
 ## Creating Adjacency Matrix based on distance between centroid and the orientation angle
+@timeit
 def AdjacencyMat(img, bb_props, params):# distanceThresh, thetaThresh):
     
     bb_props_np     = bb_props
@@ -271,6 +292,7 @@ def minDist(pts1, pts2):
     return minD
 
 ## Connected Components:
+@timeit
 def ConnecComp(img, A_Mat, props, params, img_path):
 
     polyProps   = props 
@@ -438,7 +460,7 @@ def extract_results(processed_clusters):
             crystal_major_axis_length, crystal_minor_axis_length,
             crystal_major_axis_angle, angle_difference)
 
-
+@timeit
 def PlottingAndSaving(origImg, ClusterPointCloud, img_path, crystalAng, params):
     # RGBImg = create_rgb_image(origImg)
     RGBImg = load_img_result_dir(img_path, params)
