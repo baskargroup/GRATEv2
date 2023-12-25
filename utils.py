@@ -15,6 +15,9 @@ from os.path import join
 from descartes import PolygonPatch
 import alphashape
 
+import warnings
+from shapely.errors import ShapelyDeprecationWarning
+
 ##################### Utils ##################################
 
 def invertBinaryImage(im):
@@ -43,14 +46,6 @@ def show_scalled_img(img_arr, scalePercent=100):
     fig = plt.figure(figsize = (50,50))
     plt.imshow(output, cmap='gray', vmin=0, vmax=255)
     plt.show() 
-
-def debugORSave(initial, final, params, concat, text):
-    if params['debug'] == 1:
-        final = final.astype( 'uint8' )
-        final = cv2.equalizeHist( final )
-        save_path = Path(params['result directory']) / f"{text}_{params['img path'].stem}.png"
-        cv2.imwrite(str(save_path), final)
-        # cv2.imwrite(params['result directory'] + "/"+ text + "_" + params['img name']+ ".png", final)
 
 def imgLength(freqCoord, imgSize):
     freqCoord = freqCoord.astype(np.int32)
@@ -340,13 +335,15 @@ def pltConvexHull(subplot, convHull, pntCloud, color):
     for simplex in convHull.simplices:
             subplot.plot( pntCloud[ simplex , 0 ] , pntCloud[ simplex , 1 ] , linewidth = 7.0 , color = color )
 
-def getAlphsShape(pntCloud):
+def getAlphaShape(pntCloud):
     alpha_shape     = alphashape.alphashape( pntCloud , alpha = 0.005 )
     return alpha_shape
 
 
 def pltAlphaShape(subplot, alpha_shape):
-    subplot.add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
+        subplot.add_patch( PolygonPatch(alpha_shape, alpha = 0.2) )
 
 def createVersionDirectory(folderDir, name):
     # folderDir = Path(projectPath) / BaseResultDir

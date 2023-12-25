@@ -51,119 +51,6 @@ def histEq(img):
     img = (img_eq + 1) / 2
     return img
 
-@timeit
-def BlurThresh(img, params):
-    blur_img    = img
-    k_size      = params['blur k size']
-    
-    if k_size%2 != 1:
-        k_size = k_size+1
-
-    for i in range( params[ 'blur iterations' ] ):
-        blur_img = cv2.blur( blur_img , ( k_size , k_size ) )
-
-    blur_img = histEq(blur_img)
-    thresh = threshold_otsu(blur_img)
-    binary = blur_img > thresh
-    
-    debugORSave(img, binary, params,1, "1_BLURRING AND THRESHOLDING")#debugORSave(img, thresh, params,1, resultDir,"1_BLURRING AND THRESHOLDING")
-    
-    return binary
-
-# Closing: Removing black spots from white regions. Basically Dilation followed by Erosion.
-@timeit
-def Closing(img, params):
-    
-    input   = img
-    kernel  = np.ones( ( params[ 'closing k size' ] , params[ 'closing k size' ] ) , np.uint8 )
-    output  = cv2.morphologyEx( input , cv2.MORPH_CLOSE , kernel )
-    
-    debugORSave( input , output , params , 1, "2_CLOSING" )
-    
-    return output
-
-## Opening: Removing white spots from black regions. Basically Erosion followed by Dilation.
-@timeit
-def Opening(img, params):
-
-    input   = img
-    kernel  = np.ones(( params[ 'opening k size' ] , params[ 'opening k size' ] ) , np.uint8 )
-    output  = cv2.morphologyEx( input , cv2.MORPH_OPEN , kernel )
-    
-    debugORSave( input , output , params , 1, "3_OPENING" )
-    
-    return output 
-
-## Skeletonize Image
-@timeit
-def Skeletonize(img, params): 
-
-    input       = img 
-    image       = invert( input / np.max( input ) )
-    skeleton    = skeletonize( image )
-    output      = ( skeleton / np.max( skeleton ) ) * 255 
-    InvOutput   = invertBinaryImage( output )
-
-    debugORSave( input , InvOutput , params , 1,"4_SKELETONIZED" )
-    
-    return output
-
-## Finds branching points for images with black background and white lines receive a degree matrix
-@timeit
-def BreakBranches(img, params):
-
-    input                               = np.copy( img )
-    _, _, degrees                       = skeleton_to_csgraph( input )
-    intersection_matrix                 = degrees > 2                   # consider all values larger than two as intersection
-    input[intersection_matrix==True]    = 0
-    InvInput                            = invertBinaryImage( input )
-    
-    debugORSave( img , InvInput , params , 0,"5_BRANCHED SKELETON" )
-    
-    return input
-
-## Skeleton Segmentation
-@timeit
-def SkeletonSegmentation(img):
-    
-    input                       = np.copy( img )
-    input                       = input.astype( 'uint16' )
-    segmentedImg_temp           = label( input , connectivity = 2 )
-    props                       = regionprops( segmentedImg_temp )
-
-    return props
-
-## Filtering out small backbones using the pixThresh variable and breaking them into uniform size.
-@timeit
-def Filtered_Uniform_BB(img, obj_list, params):
-    
-    bb              = np.zeros( img.shape )
-    # residualFrac    = 0.3
-    # count           = 0
-    # minResidual     = int( residualFrac * params[ 'ellipse pixel size' ] )
-
-    for i in range(len(obj_list)):
-         
-        BoneLen = len(obj_list[i].coords)
-        if BoneLen > params['backbone threshold length']: #and BoneLen>minResidual:
-            # count += 1
-            for ind,value in enumerate(obj_list[i].coords):
-                
-                if (ind+1)%params['ellipse pixel size'] == 0:
-                    bb[value[0],value[1]] = 0
-#                     if (BoneLen - (ind+1)) < minResidual:
-#                         break
-                else:
-                    bb[value[0],value[1]] = 255
-        
-        BoneLen = 0
-
-    Invbb = invertBinaryImage(bb)
-    
-    debugORSave( img , Invbb , params, 0, "6_FILTERED AND UNIFORM SIZED BACKBONE" )
-    
-    return bb
-
 # ## Filtering out small backbones using the pixThresh variable and breaking them into uniform size.
 # def Remove_small_BB(img, obj_list, pixelThreshold):
 #     bb = np.zeros(img.shape)
@@ -188,81 +75,7 @@ def RemovingDim(lis):
 
 
 ################ SCIPY BASED ELLIPSE CONSTRUCTION FUNCTION ###############################
-@timeit
-def EllipseConstruction(img, params):
 
-    input                       = np.copy(img)
-    label_img                   = label(input)
-    props                       = regionprops_table(label_img, properties = ( 'centroid' , 'orientation' , 'major_axis_length' , 'minor_axis_length', 'coords' ) )
-    props                       = pd.DataFrame( props )
-    props['orientation']        = - 90 - props[ 'orientation' ] * 180/np.pi
-    props['major_axis_length']  = props[ 'major_axis_length' ] / 2
-    props['minor_axis_length']  = props[ 'minor_axis_length' ] / 2
-    bb_props                    = pd.DataFrame()
-    bb_props                    = props
-    
-    for ind in range(props.shape[0]):
-        if props[ 'minor_axis_length' ][ ind ] < 1:
-            bb_props = bb_props.drop([ind])   
-        
-        elif props[ 'major_axis_length' ][ ind ] / props[ 'minor_axis_length' ][ ind ] > params[ 'ellipse threshold aspect ratio' ]:
-            ellip_temp_img = cv2.ellipse( input , ( int( props[ 'centroid-1' ][ ind ] ) , int( props[ 'centroid-0' ][ ind ] ) ) , \
-                                         ( int( props[ 'major_axis_length' ][ ind ] ), int( props[ 'minor_axis_length' ][ ind ] ) ) , \
-                                         int( props[ 'orientation' ][ ind ] ) , 0.0 , 360.0 , ( 255 , 0 , 0 ) , 2 );
-        else: 
-            bb_props = bb_props.drop([ind])
-    
-    bb_props_np         = bb_props.to_numpy()
-    InvEllip_temp_img   = invertBinaryImage(ellip_temp_img)
-    
-    debugORSave( img , InvEllip_temp_img , params , 0, "7_ELLIPSE INSCRIBED" )
-    
-    return ellip_temp_img, bb_props_np
-
-## Creating Adjacency Matrix based on distance between centroid and the orientation angle
-@timeit
-def AdjacencyMat(img, bb_props, params):# distanceThresh, thetaThresh):
-    
-    bb_props_np     = bb_props
-    centroid_coord  = bb_props_np[ : , : 2 ]
-    tree            = KDTree(centroid_coord, leaf_size=2)
-    N               = len(bb_props_np)
-    KNN_radius      = 2*params['ellipse pixel size'] + params['adjacency threshold distance']
-    A_Mat           = np.zeros((N,N))
-
-    for i in range(N):
-        ind = tree.query_radius(np.reshape(centroid_coord[i],(1,2)), r=KNN_radius)  
-        for j in ind[0]:
-            if i == j:
-                continue
-            else:
-                pts1        = majorAxisPoints( bb_props_np[ j ] )
-                pts2        = majorAxisPoints( bb_props_np[ i ] )
-                l2norm      = minDist( pts1 , pts2 )
-                angleDiff   = abs( bb_props_np[ i ][ 2 ] - bb_props_np[ j ][ 2 ] )
-                
-                if l2norm < params['adjacency threshold distance'] and angleDiff < params['adjacency threshold angle']:
-                    A_Mat[i][j] = 1
-                    A_Mat[j][i] = 1
-    
-    A_Mat = np.maximum( A_Mat , A_Mat.transpose() )
-
-    if params['debug'] == 1:
-        # Plotting the adjacent ellipse.
-        A_Mat_img   = np.copy(img)
-        for i in range(N):
-            for j in range(N):
-                if A_Mat[i][j] == 1:
-                    poly        = bb_props_np[i]
-                    A_Mat_img   = cv2.ellipse( A_Mat_img , ( int( poly[ 1 ] ) , int( poly[ 0 ] ) ) , ( int( poly[ 3 ] ) , int( poly[ 4 ] ) ) , poly[ 2 ] , 0.0 , 360.0 , ( 255 , 0 , 0 ) , 2 );
-                    break
-                    
-        InvA_Mat_img = invertBinaryImage(A_Mat_img)
-        debugORSave(img, InvA_Mat_img, params, 0, "8_ADJACENT ELLIPSES")
-                
-    return A_Mat
-
-## Returns polymer Major axis endpoint and the midpoints
 def majorAxisPoints(poly):
     
     temp            = np.zeros([3,2])
@@ -279,7 +92,6 @@ def majorAxisPoints(poly):
     
     return temp
 
-## Return minimum distance b/w two sets of points
 def minDist(pts1, pts2):
 
     minD = np.linalg.norm(pts1[0]-pts2[0]) 
@@ -290,59 +102,6 @@ def minDist(pts1, pts2):
             if temp < minD:
                 minD = temp
     return minD
-
-## Connected Components:
-@timeit
-def ConnecComp(img, A_Mat, props, params, img_path):
-
-    polyProps   = props 
-    N           = A_Mat.shape[0]
-    visited     = np.zeros(N)
-    cc          = []
-    
-    for v in range(N):
-        if visited[v] == 0:
-            temp = []
-            cc.append(DFSUtil(temp, v, visited, N, A_Mat))
-    
-    ccImg                   = np.copy(img)
-    AllClusterPointCloud    = []
-    crystalAngles           = []
-
-    """ startAngle = 0
-    endAngle = 360
-    color = (255, 0, 0)
-    thickness = 2 """
-    backboneCoords = []
-    for i in range(len(cc)):
-        if len(cc[i]) >= params['cluster threshold size']:
-            majorsAxisPointCloud    = []
-            ellipseAngels           = []
-
-            for j in cc[i]:
-                poly                        = polyProps[j]
-                ccImg                       = cv2.ellipse(ccImg, (int(poly[1]), int(poly[0])), (int(poly[3]), int(poly[4])), poly[2], 0.0, 360.0, (255, 0, 0), 2);
-                temp                        = majorAxisPoints(poly)
-                temp[temp<0]                = 0
-                temp[temp>=img.shape[0]]    = img.shape[0]-1
-                temp                        = temp.astype('int32')
-                #ccImg                      = cv2.circle(ccImg, (int(temp[0,0]),int(temp[0,1])), radius=5, color=(255, 0, 0), thickness=-1)
-                #ccImg                      = cv2.circle(ccImg, (int(temp[1,0]),int(temp[1,1])), radius=5, color=(255, 0, 0), thickness=-1)
-                # print(polyProps[j][5].shape)
-                backboneCoords.append(polyProps[j][5])
-                majorsAxisPointCloud.append(temp[0,:])
-                majorsAxisPointCloud.append(temp[2,:])
-                ellipseAngels.append(poly[2])
-            AllClusterPointCloud.append(majorsAxisPointCloud)
-            crystalAngles.append(mean(ellipseAngels))
-    
-    if params['save backbone coords'] == 1:
-        filehandler = open(join(params['result backbone coords'], img_path.stem+'.pickle'),"wb")
-        pickle.dump(backboneCoords, filehandler)
-    InvCcImg        = invertBinaryImage(ccImg)
-    debugORSave(img, InvCcImg, params, 0, "9_CLUSTERS")
-    
-    return ccImg, AllClusterPointCloud, crystalAngles
 
 ## Connected Components: 
 def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
@@ -355,10 +114,8 @@ def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
         if adjacencyMat[v][i] == 1:
             if visited[i] == 0:           
                 temp = DFSUtil(temp, i, visited, N, adjacencyMat)   # Update the list
-    #print(temp)
     return temp
 
-# Additional modularized functions
 def create_rgb_image(img):
     return cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB)
 
@@ -378,7 +135,7 @@ def process_cluster(OrigImg, cluster, crystal_ang, params, color):
     x_min_max, y_min_max = getBoundingBox(hull)
     d_space = evaluateDspacing(OrigImg, params, x_min_max, y_min_max)
     
-    alpha_shape = getAlphsShape(point_cloud)
+    alpha_shape = getAlphaShape(point_cloud)
 
     if d_space == 0 or isAreaSmall(alpha_shape.area, params):
         return None
@@ -460,30 +217,6 @@ def extract_results(processed_clusters):
             crystal_major_axis_length, crystal_minor_axis_length,
             crystal_major_axis_angle, angle_difference)
 
-@timeit
-def PlottingAndSaving(origImg, ClusterPointCloud, img_path, crystalAng, params):
-    # RGBImg = create_rgb_image(origImg)
-    RGBImg = load_img_result_dir(img_path, params)
-    
-    figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot()
-    
-    color_options = ['b', 'g', 'r', 'c', 'm','y','w']
-    
-    processed_clusters = [process_cluster(origImg, cluster, crystalAng[ind], params, random.choice(color_options)) 
-                          for ind, cluster in enumerate(ClusterPointCloud)]
-    
-    plot_results(axes, processed_clusters, origImg, RGBImg, orig_img_plt_idx, result_img_plt_idx)
-    
-    figure.tight_layout()
-    figure.savefig( join(params['result image directory'], img_path.stem +'.png') )
-
-    if params['show final image'] == 1:
-        plt.show()
-    plt.close(figure)
-    gc.collect()
-    
-    return extract_results(processed_clusters)
-
 def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
     
     img = Entire_img[int( y_minMax[0] ) : int( y_minMax[1] ), int( x_minMax[0] ) : int( x_minMax[1] )]
@@ -496,52 +229,21 @@ def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
     col_high        = int( ( img.shape[1] + smallerDim ) / 2 )
 
     square_region   = img[ row_low : row_high, col_low : col_high ]
-
-    # debugORSave( img, square_region, params, 0, "DS_1_squareRegion")
-    
     f               = np.fft.fft2( square_region )
-    fshift          = np.fft.fftshift( f )
-
-    # debugORSave( img, fshift, params, 0, "DS_2_shiftedFFT")
-    
+    fshift          = np.fft.fftshift( f )    
     power_spectrum  = 1 * np.log( np.abs( fshift ) + 1 )
-
-    #
-    # siz = 40
-    # debugORSave( img, power_spectrum, params, 0, "DS_3_power_spectrum")
-    # debugORSave( img, power_spectrum[986-siz:986+siz, 986-siz:986+siz], params, 0, "DS_6_power_spectrum_crop")
     
     # plot3d(power_spectrum)
 
     arrSiz          = np.asarray( power_spectrum.shape )
     qIn, qOut       = ringSize( arrSiz , params )
     TFring, nonZero = draw_ring( shape = power_spectrum.shape , rIn = qIn , rOut = qOut )
-    
-    # debugORSave( img, TFring[986-siz:986+siz, 986-siz:986+siz], params, 0, "DS_4_TFring")
-    
     power_spectrum  = filter_ring( TFring , power_spectrum )
-
-    # debugORSave( img, power_spectrum[986-siz:986+siz, 986-siz:986+siz], params, 0, "DS_5_BSfiltered")
-
-    ps_maxMag = np.max(power_spectrum)
-    
+    ps_maxMag       = np.max(power_spectrum)
     bandpass_pow_spec_mean      = np.sum( power_spectrum ) / nonZero
-    # print( "bandpass_pow_spec_mean: ", bandpass_pow_spec_mean )
-    # print("peak*bandpass_pow_spec_mean: ", peak_cutoff_factor * bandpass_pow_spec_mean )
-
     if ps_maxMag >= peak_cutoff_factor * bandpass_pow_spec_mean:
         
-        # plt.subplots(nrows=1, ncols=1, figsize = (50,50))
-        # plt.imshow(power_spectrum, cmap = cm.coolwarm)
-        # plt.show()
-        # plt.close()
-
         ind             = np.unravel_index( np.argmax( power_spectrum , axis = None ) , power_spectrum.shape )
-        # ps2             = power_spectrum
-        # ps2[ind]        = 0
-        # ind2            = np.unravel_index( np.argmax( ps2 , axis = None ) , ps2.shape )
-
-        # freq_coord      = (np.asarray(ind) - np.asarray(ind2))
         freq_coord      = (np.asarray(ind) - arrSiz/2)
         freq_coord      = freq_coord.astype( np.int32 )
     
@@ -553,23 +255,9 @@ def evaluateDspacing(Entire_img, params, x_minMax, y_minMax):
         tp              = 1 / freq
         d_space         = tp * arrSiz[0]
         d_space         = d_space / params[ 'pix to nm' ]
-
-        """ print("\n")
-        print("size of Arr      :", arrSiz)
-        print("Max Magnitude PS :", ps_maxMag)
-        # print("Band Pass Mean   :", bandpass_pow_spec_mean)
-        print("1st Freq Index   :", ind)
-        # print("2nd Freq Index   :", ind2)
-        print("freq vector      :", freq_coord)
-        print("freq             :", freq)
-        print("Time Period      :", tp)
-        print("D space in px    :", d_space * params[ 'pix to nm' ])
-        print("D space in nm    :", d_space) """
     
     else:
-        d_space = 0
-
-    
+        d_space = 0    
 
     """ plt.subplot(121)
     plt.imshow(img_cropped, cmap = 'gray')
@@ -589,8 +277,8 @@ def draw_ring(shape,rIn, rOut):
     rows, cols = shape[0], shape[1]
     crow, ccol = (shape[0]) / 2, (shape[1]) / 2
 
-    f_low_pixels    = rIn  #get_q_pixels(q_low, M, dx)
-    f_high_pixels   = rOut #get_q_pixels(q_high, M, dx)
+    f_low_pixels    = rIn
+    f_high_pixels   = rOut
 
     mask            = np.zeros((rows, cols), dtype=np.bool)
     center          = [crow, ccol]

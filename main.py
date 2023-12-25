@@ -6,7 +6,7 @@ import libconf
 from shutil import copy2
 from pathlib import Path
 from utils import createVersionDirectory, CreateDirectories
-from grate import GRATE
+from grate import ImageProcessor
 
 '''
 Command Line Arguments:
@@ -112,9 +112,8 @@ def process_image(file_path, parameters):
     
     print("Img Name: ", file_path.name, "\n")
     
-    parameters['img path'] = file_path
-    
-    df_crystal_props = GRATE(file_path, parameters)
+    processor = ImageProcessor(file_path, parameters)
+    df_crystal_props = processor.GRATE()
     
     return df_crystal_props
 
