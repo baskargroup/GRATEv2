@@ -2,6 +2,8 @@ from utils import *
 from ops import *
 import time
 from skimage import io
+import scipy.sparse as sp
+from scipy.sparse.csgraph import connected_components
 
 class ImageProcessor:
     def __init__(self, img_path, parameters):
@@ -175,17 +177,15 @@ class ImageProcessor:
         for i in range(N):
             ind = tree.query_radius(np.reshape(centroid_coord[i],(1,2)), r=KNN_radius)  
             for j in ind[0]:
-                if i == j:
+                if i >= j: # To avoid double counting
                     continue
-                else:
-                    pts1        = majorAxisPoints( bb_props_np[ j ] )
-                    pts2        = majorAxisPoints( bb_props_np[ i ] )
-                    l2norm      = minDist( pts1 , pts2 )
-                    angleDiff   = abs( bb_props_np[ i ][ 2 ] - bb_props_np[ j ][ 2 ] )
-                    
-                    if l2norm < self.parameters['adjacency threshold distance'] and angleDiff < self.parameters['adjacency threshold angle']:
-                        A_Mat[i][j] = 1
-                        A_Mat[j][i] = 1
+                pts1        = majorAxisPoints( bb_props_np[ j ] )
+                pts2        = majorAxisPoints( bb_props_np[ i ] )
+                l2norm      = minDist( pts1 , pts2 )
+                angleDiff   = abs( bb_props_np[ i ][ 2 ] - bb_props_np[ j ][ 2 ] )
+                
+                if l2norm < self.parameters['adjacency threshold distance'] and angleDiff < self.parameters['adjacency threshold angle']:
+                    A_Mat[i][j] = A_Mat[j][i] = 1
         
         A_Mat = np.maximum( A_Mat , A_Mat.transpose() )
 
@@ -203,20 +203,19 @@ class ImageProcessor:
             self.debugORSave(img, InvA_Mat_img, 0, "8_ADJACENT ELLIPSES")        
         return A_Mat
     
+    def group_nodes_by_component_efficient(self, labels):
+        """Group nodes by component using numpy."""
+        unique_components = np.unique(labels)
+        return [np.where(labels == component)[0] for component in unique_components]
+    
     @timeit
-    def ConnecComp(self, img, A_Mat, props):
+    def ConnecComp(self, img, A_Mat, polyProps):
         '''
         Connected Components
         '''
-        polyProps   = props 
-        N           = A_Mat.shape[0]
-        visited     = np.zeros(N)
-        cc          = []
-        
-        for v in range(N):
-            if visited[v] == 0:
-                temp = []
-                cc.append(DFSUtil(temp, v, visited, N, A_Mat))
+        sparseA_Mat = sp.csr_matrix(A_Mat)
+        n_cc, labels  = connected_components(sparseA_Mat)
+        cc = self.group_nodes_by_component_efficient(labels)
         
         ccImg                   = np.copy(img)
         AllClusterPointCloud    = []

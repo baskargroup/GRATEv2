@@ -80,28 +80,31 @@ def majorAxisPoints(poly):
     
     temp            = np.zeros([3,2])
     ang             = poly[2]*np.pi/180
+    cos_ang, sin_ang = np.cos(ang), np.sin(ang)
+    delta_x = poly[3] * cos_ang
+    delta_y = poly[3] * sin_ang
     
-    temp[ 0 , 0 ]   = int( poly[1] - poly[3] * np.cos( ang ) )  ## Major axis end point 1
-    temp[ 0 , 1 ]   = int( poly[0] - poly[3] * np.sin( ang ) )
+    temp[ 0 , 0 ]   = int( poly[1] - delta_x )  ## Major axis end point 1
+    temp[ 0 , 1 ]   = int( poly[0] - delta_y )
     
     temp[ 1 , 0 ]   = poly[1]                                   ## centroid
     temp[ 1 , 1 ]   = poly[0]
     
-    temp[ 2 , 0 ]   = int(poly[1] + poly[3]*np.cos(ang))        ## Major axis end point 2
-    temp[ 2 , 1 ]   = int(poly[0] + poly[3]*np.sin(ang))
+    temp[ 2 , 0 ]   = int(poly[1] + delta_x)        ## Major axis end point 2
+    temp[ 2 , 1 ]   = int(poly[0] + delta_y)
     
     return temp
 
 def minDist(pts1, pts2):
+    # Convert to numpy arrays for efficient computation
+    pts1 = np.array(pts1)
+    pts2 = np.array(pts2)
 
-    minD = np.linalg.norm(pts1[0]-pts2[0]) 
-    
-    for i in range(len(pts1)):
-        for j in range(len(pts2)):
-            temp = np.linalg.norm(pts1[i]-pts2[j])
-            if temp < minD:
-                minD = temp
-    return minD
+    # Compute all pairwise distances
+    dists = np.linalg.norm(pts1[:, np.newaxis, :] - pts2[np.newaxis, :, :], axis=2)
+
+    # Return the minimum distance
+    return np.min(dists)
 
 ## Connected Components: 
 def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
