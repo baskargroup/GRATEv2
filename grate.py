@@ -1,9 +1,27 @@
-from utils import *
-from ops import *
+from utils import invertBinaryImage
+from pathlib import Path
+from ops import timeit, histEq, majorAxisPoints, minDist, process_cluster, load_img_result_dir, initialize_plot, plot_results, extract_results
+import cv2
 import time
+from matplotlib import pyplot as plt
+from os.path import join
 from skimage import io
 import scipy.sparse as sp
 from scipy.sparse.csgraph import connected_components
+
+from sklearn.neighbors import KDTree
+from skan import skeleton_to_csgraph
+from skimage.morphology import skeletonize
+from skimage.util import invert
+from skimage.measure import label, regionprops, regionprops_table
+import pandas as pd 
+
+import random
+import gc
+
+import pickle
+from skimage.filters import threshold_otsu
+import numpy as np
 
 class ImageProcessor:
     def __init__(self, img_path, parameters):
@@ -26,11 +44,11 @@ class ImageProcessor:
         
         Broken_backbone_img = self.Filtered_Uniform_BB( temp)
         
-        bb_ellipse1, bb_ellipse_props = self.EllipseConstruction(Broken_backbone_img)
+        bb_ellipse_props = self.EllipseConstruction(Broken_backbone_img)
         
         adjacencyMat = self.AdjacencyMat(Broken_backbone_img, bb_ellipse_props)
         
-        ellipseCluster, AllClusterPointCloud, crystalAngles = self.ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props)
+        AllClusterPointCloud, crystalAngles = self.ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props)
         
         crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = self.PlottingAndSaving( AllClusterPointCloud, crystalAngles)
         
@@ -43,11 +61,12 @@ class ImageProcessor:
     def save_image_to_result_dir(self):
         """Save image to result directory."""
         
-        if (self.parameters['result image directory'] / (self.img_path.stem+'.png')).is_file():
+        if (self.parameters['result image directory'] / (self.img_path.stem + self.parameters['save image format'])).is_file():
             print("Image already present in the result image directory")
         else:
-            print("Saving image as png to the result image directory")
-            cv2.imwrite(str(self.parameters['result image directory'] / (self.img_path.stem+'.png')), cv2.cvtColor(self.img.astype('uint8'), cv2.COLOR_GRAY2RGB))
+            print("Saving image to result image directory")
+            cv2.imwrite(str(self.parameters['result image directory'] / (self.img_path.stem + self.parameters['save image format'])), \
+                cv2.cvtColor(self.img.astype('uint8'), cv2.COLOR_GRAY2RGB))
         
     @timeit
     def BlurThresh(self):
@@ -133,55 +152,59 @@ class ImageProcessor:
         return bb
     
     @timeit
-    def EllipseConstruction(self, img):
+    def EllipseConstruction(self, input_img):
 
-        input                       = np.copy(img)
-        label_img                   = label(input)
-        props                       = regionprops_table(label_img, properties = ( 'centroid' , 'orientation' , 'major_axis_length' , 'minor_axis_length', 'coords' ) )
-        props                       = pd.DataFrame( props )
+        label_img   = label(input_img)  
+        props       = regionprops_table(label_img, properties = ( 'centroid' , \
+            'orientation' , 'major_axis_length' , 'minor_axis_length', 'coords' ) )
+        props       = pd.DataFrame( props )
+        
         props['orientation']        = - 90 - props[ 'orientation' ] * 180/np.pi
-        props['major_axis_length']  = props[ 'major_axis_length' ] / 2
-        props['minor_axis_length']  = props[ 'minor_axis_length' ] / 2
-        bb_props                    = pd.DataFrame()
-        bb_props                    = props
+        props['major_axis_length'] /= 2
+        props['minor_axis_length'] /= 2
         
-        for ind in range(props.shape[0]):
-            if props[ 'minor_axis_length' ][ ind ] < 1:
-                bb_props = bb_props.drop([ind])   
+        # Filter ellipses based on aspect ratio
+        aspect_ratio_threshold = self.parameters['ellipse threshold aspect ratio']
+        filtered_props = props[(props['minor_axis_length'] >= 1) & 
+                               ((props['major_axis_length'] / props['minor_axis_length']) >= aspect_ratio_threshold)]
+        
+        
+        
+        if self.parameters['debug'] == 1:
+            # Draw ellipses on the image
+            ellip_temp_img = np.copy(input_img)
+            for _, row in filtered_props.iterrows():
+                ellip_temp_img = cv2.ellipse(
+                    ellip_temp_img, 
+                    (int(row['centroid-1']), int(row['centroid-0'])),
+                    (int(row['major_axis_length']), int(row['minor_axis_length'])),
+                    int(row['orientation']), 0.0, 360.0, (255, 0, 0), 2
+                )
+            InvEllip_temp_img   = invertBinaryImage(ellip_temp_img)
             
-            elif props[ 'major_axis_length' ][ ind ] / props[ 'minor_axis_length' ][ ind ] > self.parameters[ 'ellipse threshold aspect ratio' ]:
-                ellip_temp_img = cv2.ellipse( input , ( int( props[ 'centroid-1' ][ ind ] ) , int( props[ 'centroid-0' ][ ind ] ) ) , \
-                                            ( int( props[ 'major_axis_length' ][ ind ] ), int( props[ 'minor_axis_length' ][ ind ] ) ) , \
-                                            int( props[ 'orientation' ][ ind ] ) , 0.0 , 360.0 , ( 255 , 0 , 0 ) , 2 );
-            else: 
-                bb_props = bb_props.drop([ind])
-        
-        bb_props_np         = bb_props.to_numpy()
-        InvEllip_temp_img   = invertBinaryImage(ellip_temp_img)
-        
-        self.debugORSave( img , InvEllip_temp_img , 0, "7_ELLIPSE INSCRIBED" )
-        return ellip_temp_img, bb_props_np
+            self.debugORSave( input_img , InvEllip_temp_img , 0, "7_ELLIPSE INSCRIBED" )
+        return filtered_props.to_numpy()
     
     @timeit
-    def AdjacencyMat(self, img, bb_props):
+    def AdjacencyMat(self, img, bb_props_np):
         '''
         Creating Adjacency Matrix based on distance between centroid and the orientation angle
         '''
-        bb_props_np     = bb_props
         centroid_coord  = bb_props_np[ : , : 2 ]
         tree            = KDTree(centroid_coord, leaf_size=2)
         N               = len(bb_props_np)
         KNN_radius      = 2*self.parameters['ellipse pixel size'] + self.parameters['adjacency threshold distance']
         A_Mat           = np.zeros((N,N))
+        
+        # Pre-calculate major axis points for all props
+        all_major_axis_points = np.array([np.array(majorAxisPoints(prop[:4])).astype('float32') for prop in bb_props_np])
 
         for i in range(N):
             ind = tree.query_radius(np.reshape(centroid_coord[i],(1,2)), r=KNN_radius)  
             for j in ind[0]:
                 if i >= j: # To avoid double counting
                     continue
-                pts1        = majorAxisPoints( bb_props_np[ j ] )
-                pts2        = majorAxisPoints( bb_props_np[ i ] )
-                l2norm      = minDist( pts1 , pts2 )
+                l2norm      = minDist( all_major_axis_points[j] , all_major_axis_points[i] )
                 angleDiff   = abs( bb_props_np[ i ][ 2 ] - bb_props_np[ j ][ 2 ] )
                 
                 if l2norm < self.parameters['adjacency threshold distance'] and angleDiff < self.parameters['adjacency threshold angle']:
@@ -208,53 +231,70 @@ class ImageProcessor:
         unique_components = np.unique(labels)
         return [np.where(labels == component)[0] for component in unique_components]
     
+    def process_component(self, component, polyProps, ccImg):
+        '''
+        Process individual connected components.
+        '''
+        majorsAxisPointCloud = []
+        ellipseAngles = []
+
+        for index in component:
+            poly = polyProps[index]
+            temp = majorAxisPoints(poly)
+            temp = np.clip(temp, 0, ccImg.shape[0] - 1).astype('int32')
+            majorsAxisPointCloud.extend([temp[0, :], temp[2, :]])
+            ellipseAngles.append(poly[2])
+        
+        for index in component:
+            poly = polyProps[index]
+            ccImg = cv2.ellipse(ccImg, (int(poly[1]), int(poly[0])), (int(poly[3]), int(poly[4])), poly[2], 0.0, 360.0, (255, 0, 0), 2);
+
+        return majorsAxisPointCloud, ellipseAngles
+
+    def save_backbone_coords(self, backboneCoords):
+        '''
+        Save backbone coordinates if the parameter is set.
+        '''
+        if self.parameters['save backbone coords'] == 1:
+            filepath = join(self.parameters['result backbone coords'], self.img_path.stem + '.pickle')
+            with open(filepath, "wb") as filehandler:
+                pickle.dump(backboneCoords, filehandler)
+    
     @timeit
     def ConnecComp(self, img, A_Mat, polyProps):
         '''
-        Connected Components
+        Analyze connected components based on adjacency matrix and properties of ellipses.
         '''
         sparseA_Mat = sp.csr_matrix(A_Mat)
         n_cc, labels  = connected_components(sparseA_Mat)
         cc = self.group_nodes_by_component_efficient(labels)
         
-        ccImg                   = np.copy(img)
-        AllClusterPointCloud    = []
-        crystalAngles           = []
-
-        """ startAngle = 0
-        endAngle = 360
-        color = (255, 0, 0)
-        thickness = 2 """
-        backboneCoords = []
-        for i in range(len(cc)):
-            if len(cc[i]) >= self.parameters['cluster threshold size']:
-                majorsAxisPointCloud    = []
-                ellipseAngels           = []
-
-                for j in cc[i]:
-                    poly                        = polyProps[j]
-                    ccImg                       = cv2.ellipse(ccImg, (int(poly[1]), int(poly[0])), (int(poly[3]), int(poly[4])), poly[2], 0.0, 360.0, (255, 0, 0), 2);
-                    temp                        = majorAxisPoints(poly)
-                    temp[temp<0]                = 0
-                    temp[temp>=img.shape[0]]    = img.shape[0]-1
-                    temp                        = temp.astype('int32')
-                    #ccImg                      = cv2.circle(ccImg, (int(temp[0,0]),int(temp[0,1])), radius=5, color=(255, 0, 0), thickness=-1)
-                    #ccImg                      = cv2.circle(ccImg, (int(temp[1,0]),int(temp[1,1])), radius=5, color=(255, 0, 0), thickness=-1)
-                    # print(polyProps[j][5].shape)
-                    backboneCoords.append(polyProps[j][5])
-                    majorsAxisPointCloud.append(temp[0,:])
-                    majorsAxisPointCloud.append(temp[2,:])
-                    ellipseAngels.append(poly[2])
-                AllClusterPointCloud.append(majorsAxisPointCloud)
-                crystalAngles.append(mean(ellipseAngels))
+        ccImg               = np.copy(img)
+        AllClusterPointCloud= []
+        crystalAngles       = []
+        backboneCoords      = []
         
-        if self.parameters['save backbone coords'] == 1:
-            filehandler = open(join(self.parameters['result backbone coords'], self.img_path.stem+'.pickle'),"wb")
-            pickle.dump(backboneCoords, filehandler)
+        # Process each connected component
+        for component in cc:
+            if len(component) >= self.parameters['cluster threshold size']:
+                majorsAxisPointCloud, ellipseAngles = self.process_component(component, polyProps, ccImg)
+                AllClusterPointCloud.append(majorsAxisPointCloud)
+                crystalAngles.append(np.mean(ellipseAngles))
+
+        # Optionally save backbone coordinates
+        self.save_backbone_coords(backboneCoords)
+        
         InvCcImg        = invertBinaryImage(ccImg)
         self.debugORSave(img, InvCcImg, 0, "9_CLUSTERS")
         
-        return ccImg, AllClusterPointCloud, crystalAngles
+        return AllClusterPointCloud, crystalAngles
+    
+    @timeit
+    def func_process_cluster(self, ClusterPointCloud, crystalAng, color_options):
+        processed_clusters = [process_cluster(self.img, cluster, crystalAng[ind], self.parameters, random.choice(color_options)) 
+                            for ind, cluster in enumerate(ClusterPointCloud)]
+        return processed_clusters
+
     
     @timeit
     def PlottingAndSaving(self, ClusterPointCloud, crystalAng):
@@ -265,13 +305,12 @@ class ImageProcessor:
         
         color_options = ['b', 'g', 'r', 'c', 'm','y','w']
         
-        processed_clusters = [process_cluster(self.img, cluster, crystalAng[ind], self.parameters, random.choice(color_options)) 
-                            for ind, cluster in enumerate(ClusterPointCloud)]
+        processed_clusters = self.func_process_cluster(ClusterPointCloud, crystalAng, color_options)
         
         plot_results(axes, processed_clusters, self.img, RGBImg, orig_img_plt_idx, result_img_plt_idx)
         
         figure.tight_layout()
-        figure.savefig( join(self.parameters['result image directory'], self.img_path.stem +'.png') )
+        figure.savefig( join(self.parameters['result image directory'], self.img_path.stem + self.parameters['save image format']))
 
         if self.parameters['show final image'] == 1:
             plt.show()

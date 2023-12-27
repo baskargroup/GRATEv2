@@ -1,34 +1,14 @@
+
+import matplotlib.pyplot as plt
 import numpy as np
 import cv2
-import matplotlib.pyplot as plt
-from numpy.core.fromnumeric import shape
-from numpy.lib.ufunclike import _fix_out_named_y
-# from scipy.spatial.kdtree import KDTree
-from sklearn.neighbors import KDTree
-from skan import skeleton_to_csgraph
-from plantcv import plantcv as pcv
-import math
-from skimage.morphology import skeletonize
-from skimage.util import invert
-from skimage.measure import label, regionprops, regionprops_table
-from scipy.signal.signaltools import wiener
-import pandas as pd 
 from scipy.spatial import ConvexHull
-import random
-from statistics import mean 
-import gc
-# from sklearn.decomposition import PCA
-from os.path import join
-from scipy.ndimage import gaussian_filter
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-import time
-from utils import *
-import pickle
-from skimage.filters import threshold_otsu
-from skimage import exposure
-
+from utils import getCentroid, getBoundingBox, getAlphaShape, getCrystalSizeAndOrientation, getAngleDifference, pltAlphaShape, pltOrientationLine, pltConvexHull, isAreaSmall
 import functools
+import time
+from os.path import join
+from matplotlib import cm
+from skimage import exposure
 
 def timeit(func):
     @functools.wraps(func)
@@ -51,31 +31,8 @@ def histEq(img):
     img = (img_eq + 1) / 2
     return img
 
-# ## Filtering out small backbones using the pixThresh variable and breaking them into uniform size.
-# def Remove_small_BB(img, obj_list, pixelThreshold):
-#     bb = np.zeros(img.shape)
-#     for i in range(len(obj_list)):
-#         if len(obj_list[i]) > pixelThreshold:
-#             for ind in obj_list[i]:
-#                 bb[ind[0][1],ind[0][0]] = 255
-#     return bb
-
-## Removing unnecessary dimension from the filteredPoly and storing it in restructuredFP
-def RemovingDim(lis):
-    
-    temp = []
-    
-    for i in range(len(lis)):
-        tp = np.zeros((len(lis[i]), 2))
-        for j,val in enumerate(lis[i]):
-            tp[j][0] = val[0][0]
-            tp[j][1] = val[0][1]
-        temp.append(tp)
-    return temp
-
-
 ################ SCIPY BASED ELLIPSE CONSTRUCTION FUNCTION ###############################
-
+# @njit
 def majorAxisPoints(poly):
     
     temp            = np.zeros([3,2])
@@ -96,34 +53,16 @@ def majorAxisPoints(poly):
     return temp
 
 def minDist(pts1, pts2):
-    # Convert to numpy arrays for efficient computation
-    pts1 = np.array(pts1)
-    pts2 = np.array(pts2)
-
     # Compute all pairwise distances
     dists = np.linalg.norm(pts1[:, np.newaxis, :] - pts2[np.newaxis, :, :], axis=2)
 
     # Return the minimum distance
     return np.min(dists)
-
-## Connected Components: 
-def DFSUtil(temp, v, visited, numEllipse, adjacencyMat):
-    N           = numEllipse
-    visited[v]  = 1             # Mark the current vertex as visited
-    temp.append(v)              # Store the vertex to list 
-    
-    # Repeat for all vertices adjacent
-    for i in range(N):
-        if adjacencyMat[v][i] == 1:
-            if visited[i] == 0:           
-                temp = DFSUtil(temp, i, visited, N, adjacencyMat)   # Update the list
-    return temp
-
 def create_rgb_image(img):
     return cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB)
 
 def load_img_result_dir(img_path, params):
-    return cv2.imread(join(params['result image directory'], img_path.stem+'.png'))
+    return cv2.imread(join(params['result image directory'], img_path.stem + params['save image format']))
 
 def initialize_plot():
     orig_img_plt_idx = 0

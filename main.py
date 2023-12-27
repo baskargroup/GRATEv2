@@ -80,6 +80,7 @@ def prepare_parameters(config, project_path, base_result_dir):
         'result backbone coords': result_dir / "BackboneCoord",
         'Data directory'        : data_dir,
         'Base result directory' : base_result_dir,
+        'save image format'     : '.png'
     }
 
     miscellaneous_params = {
