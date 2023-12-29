@@ -7,6 +7,7 @@ from shutil import copy2
 from pathlib import Path
 from utils import createVersionDirectory, CreateDirectories
 from grate import ImageProcessor
+from concurrent.futures import ProcessPoolExecutor
 
 '''
 Command Line Arguments:
@@ -109,14 +110,14 @@ def setup_directories_and_parameters(project_path, config):
     return parameters, result_dir, data_dir
 
 def process_image(file_path, parameters):
-    """Process a single image."""
-    
-    print("Img Name: ", file_path.name, "\n")
-    
-    processor = ImageProcessor(file_path, parameters)
-    df_crystal_props = processor.GRATE()
-    
-    return df_crystal_props
+    try:
+        print("Processing image:", file_path.name)
+        processor = ImageProcessor(file_path, parameters)
+        df_crystal_props = processor.GRATE()
+        return df_crystal_props
+    except Exception as e:
+        print(f"Error processing {file_path.name}: {e}")
+        return pd.DataFrame()  # Return an empty DataFrame or appropriate error indicator
 
 def process_images(data_dir, parameters):
     """Process each image in the specified directory."""
@@ -124,10 +125,14 @@ def process_images(data_dir, parameters):
     df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
                                        'Crystal Angle (zero at X-axis and clockwise positive)', 
                                        'D-Spacing(FFT, nm)'])
-    for file_path in data_dir.iterdir():
-        if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS:
-            df_crystal_props = process_image(file_path, parameters)
-            df_overall = df_overall.append(df_crystal_props, ignore_index=True)
+    image_files = [file_path for file_path in data_dir.iterdir() 
+                   if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
+
+    with ProcessPoolExecutor() as executor:
+        results = list(executor.map(process_image, image_files, [parameters] * len(image_files)))
+
+    for result in results:
+        df_overall = df_overall.append(result, ignore_index=True)
     
     return df_overall
 
