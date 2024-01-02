@@ -136,6 +136,19 @@ def process_images(data_dir, parameters):
     
     return df_overall
 
+def process_images_serial(data_dir, parameters):
+    """Process each image in the specified directory."""
+    
+    df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
+                                       'Crystal Angle (zero at X-axis and clockwise positive)', 
+                                       'D-Spacing(FFT, nm)'])
+    for file_path in data_dir.iterdir():
+        if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS:
+            df_crystal_props = process_image(file_path, parameters)
+            df_overall = df_overall.append(df_crystal_props, ignore_index=True)
+    
+    return df_overall
+
 def main():
     
     config, project_path = load_config()
