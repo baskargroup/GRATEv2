@@ -23,6 +23,8 @@ import pickle
 from skimage.filters import threshold_otsu
 import numpy as np
 
+plt.ioff()
+
 class ImageProcessor:
     def __init__(self, img_path, parameters):
         self.parameters = parameters
@@ -316,6 +318,7 @@ class ImageProcessor:
             plt.show()
         plt.close(figure)
         gc.collect()
+        figure.clf()
         return extract_results(processed_clusters)
     
     def process_and_save_dataframe(self, centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference):

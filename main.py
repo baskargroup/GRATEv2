@@ -95,7 +95,7 @@ def prepare_parameters(config, project_path, base_result_dir):
 
     all_params = {**resolution_params, **image_processing_params, **filesystem_params, **miscellaneous_params}
     
-    return all_params, result_dir, data_dir
+    return all_params, data_dir
     
 def setup_directories_and_parameters(project_path, config):
     """Setup directories and prepare parameters."""
@@ -105,10 +105,10 @@ def setup_directories_and_parameters(project_path, config):
     with open(base_result_dir / 'config.cfg', 'w') as config_file:
         libconf.dump(config, config_file)
     
-    parameters, result_dir, data_dir = prepare_parameters(config, project_path, base_result_dir)
+    parameters, data_dir = prepare_parameters(config, project_path, base_result_dir)
     CreateDirectories(parameters)
     
-    return parameters, result_dir, data_dir
+    return parameters, data_dir
 
 def process_image(file_path, parameters):
     try:
@@ -156,10 +156,10 @@ def main():
     
     print("\nd space:", config['dspace_nm'])
 
-    parameters, result_dir, data_dir = setup_directories_and_parameters(project_path, config)
+    parameters, data_dir = setup_directories_and_parameters(project_path, config)
     
     df_overall = process_images(data_dir, parameters)
-    df_overall.to_csv(result_dir / 'overall.csv')
+    df_overall.to_csv(parameters['result directory'] / 'overall.csv')
     
 if __name__ == "__main__":
     main()

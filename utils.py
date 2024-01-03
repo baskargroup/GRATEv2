@@ -18,6 +18,8 @@ import alphashape
 import warnings
 from shapely.errors import ShapelyDeprecationWarning
 
+plt.ioff()
+
 ##################### Utils ##################################
 
 def invertBinaryImage(im):

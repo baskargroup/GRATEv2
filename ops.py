@@ -10,6 +10,8 @@ from os.path import join
 from matplotlib import cm
 from skimage import exposure
 
+plt.ioff()
+
 def timeit(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
