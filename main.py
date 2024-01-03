@@ -43,12 +43,12 @@ def load_config():
 def calculate_pixel_size(value, factor):
     return int(value * factor)
     
-def prepare_parameters(config, project_path, base_result_dir):
+def prepare_parameters(config, project_path, version_result_dir):
     """Prepare parameters for processing."""
     
     dspace_pix = calculate_pixel_size(config['dspace_nm'], config['pix_2_nm'])
     
-    result_dir  = base_result_dir / str(config['dspace_nm'])
+    # result_dir  = version_result_dir
     data_dir    = project_path / str(config['data_dir'])
     
     resolution_params = {
@@ -75,13 +75,13 @@ def prepare_parameters(config, project_path, base_result_dir):
 
     filesystem_params = {
         'Project path'          : project_path,
-        'result directory'      : result_dir,
-        'result image directory': result_dir / "Images",
-        'result CSV directory'  : result_dir / "CSV",
-        'result annotation directory': result_dir / "Annotations",
-        'result backbone coords': result_dir / "BackboneCoord",
+        'result directory'      : version_result_dir,
+        'result image directory': version_result_dir / "Images",
+        'result CSV directory'  : version_result_dir / "CSV",
+        'result annotation directory': version_result_dir / "Annotations",
+        'result backbone coords': version_result_dir / "BackboneCoord",
         'Data directory'        : data_dir,
-        'Base result directory' : base_result_dir,
+        # 'Base result directory' : version_result_dir,
         'save image format'     : '.png'
     }
 
@@ -100,12 +100,12 @@ def prepare_parameters(config, project_path, base_result_dir):
 def setup_directories_and_parameters(project_path, config):
     """Setup directories and prepare parameters."""
     
-    base_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 'version')
+    version_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 'version')
 
-    with open(base_result_dir / 'config.cfg', 'w') as config_file:
+    with open(version_result_dir / 'config.cfg', 'w') as config_file:
         libconf.dump(config, config_file)
     
-    parameters, data_dir = prepare_parameters(config, project_path, base_result_dir)
+    parameters, data_dir = prepare_parameters(config, project_path, version_result_dir)
     CreateDirectories(parameters)
     
     return parameters, data_dir
