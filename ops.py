@@ -242,17 +242,14 @@ def ringSize(arrSiz, params):
     f_in_nm, f_out_nm = 0, 0
     f_in_px, f_out_px = 0, 0 
     
-    if 1.8 <= params[ 'd space nm' ] <= 2.2 :
-        lowDS       = 1.52       ## nm 
-        higherDS    = 2.28       ## nm
+    # Check if params['d space band'] exists in params
+    if 'd space bandpass' in params:
+        lowDS       = (1 - params['d space bandpass']) * params['d space nm']       ## nm
+        higherDS    = (1 + params['d space bandpass']) * params['d space nm']       ## nm
     
-    elif 0.6 <= params[ 'd space nm' ] <= 0.8 :
-        lowDS       = 0.56       ## nm 
-        higherDS    = 0.84       ## nm
-    
-    elif 0.35 <= params[ 'd space nm' ] <= 0.45 : 
-        lowDS       = 0.32       ## nm 
-        higherDS    = 0.48       ## nm
+    else: # Default case 20% range
+        lowDS       = 0.8 * params[ 'd space nm' ]       ## nm 
+        higherDS    = 1.2 * params[ 'd space nm' ]       ## nm
 
     f_in_nm     = 1 / higherDS
     f_out_nm    = 1 / lowDS

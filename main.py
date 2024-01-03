@@ -68,6 +68,7 @@ def prepare_parameters(config, project_path, base_result_dir):
         'adjacency threshold distance'  : calculate_pixel_size(config['thresh_dist_propCons'], dspace_pix),
         'adjacency threshold angle'     : config['thresh_theta'],
         'cluster threshold size'        : config['cluster_size'],
+        'd space bandpass'              : config['dspace_bandpass'],
         'pow spec peak vs mean factor'  : config['powSpec_peak_thresh'],
         'Threshold area factor'         : config['Thresh_area_factor'],
     }
