@@ -1,6 +1,6 @@
-from utils import invertBinaryImage
+from utils import invertBinaryImage, timeit, minDist, load_img_result_dir, create_rgb_image
 from pathlib import Path
-from ops import timeit, histEq, majorAxisPoints, minDist, process_cluster, load_img_result_dir, initialize_plot, plot_results, extract_results
+from ops import histEq, majorAxisPoints, process_cluster, initialize_plot, plot_results, extract_results
 import cv2
 import time
 from matplotlib import pyplot as plt
@@ -26,10 +26,11 @@ import numpy as np
 plt.ioff()
 
 class ImageProcessor:
-    def __init__(self, img_path, parameters):
+    def __init__(self, img_path, parameters, last_run):
         self.parameters = parameters
         self.img_path = img_path
         self.img = io.imread(img_path).astype('float64')
+        self.last_run = last_run
         
     @timeit
     def GRATE(self):
@@ -52,7 +53,7 @@ class ImageProcessor:
         
         AllClusterPointCloud, crystalAngles = self.ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props)
         
-        crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = self.PlottingAndSaving( AllClusterPointCloud, crystalAngles)
+        crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = self.PlottingAndSaving( AllClusterPointCloud, crystalAngles, self.last_run)
         
         df = self.process_and_save_dataframe(centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference)
         
@@ -292,26 +293,29 @@ class ImageProcessor:
         return AllClusterPointCloud, crystalAngles
     
     @timeit
-    def func_process_cluster(self, ClusterPointCloud, crystalAng, color_options):
-        processed_clusters = [process_cluster(self.img, cluster, crystalAng[ind], self.parameters, random.choice(color_options)) 
+    def func_process_cluster(self, ClusterPointCloud, crystalAng, crystal_color):
+        processed_clusters = [process_cluster(self.img, cluster, crystalAng[ind], self.parameters, crystal_color) 
                             for ind, cluster in enumerate(ClusterPointCloud)]
         return processed_clusters
 
     
     @timeit
-    def PlottingAndSaving(self, ClusterPointCloud, crystalAng):
+    def PlottingAndSaving(self, ClusterPointCloud, crystalAng, last_dspace_run = False):
         # RGBImg = create_rgb_image(origImg)
         RGBImg = load_img_result_dir(self.img_path, self.parameters)
         
-        figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot()
+        crystal_color = self.parameters['crystal color']
+            
+        processed_clusters = self.func_process_cluster(ClusterPointCloud, crystalAng, crystal_color)
         
-        color_options = ['b', 'g', 'r', 'c', 'm','y','w']
+        if not last_dspace_run:
+            figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot(last_dspace_run, RGBImg.shape)
+            plot_results(last_dspace_run, axes, processed_clusters, self.img, RGBImg, orig_img_plt_idx, result_img_plt_idx)
         
-        processed_clusters = self.func_process_cluster(ClusterPointCloud, crystalAng, color_options)
+        else:
+            figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot(last_dspace_run, RGBImg.shape)
+            plot_results(last_dspace_run, axes, processed_clusters, self.img, RGBImg, orig_img_plt_idx, result_img_plt_idx)
         
-        plot_results(axes, processed_clusters, self.img, RGBImg, orig_img_plt_idx, result_img_plt_idx)
-        
-        figure.tight_layout()
         figure.savefig( join(self.parameters['result image directory'], self.img_path.stem + self.parameters['save image format']))
 
         if self.parameters['show final image'] == 1:
@@ -333,14 +337,25 @@ class ImageProcessor:
         df.round(2)
         
         csv_file_path = Path(self.parameters['result CSV directory']) / f"{self.img_path.stem}.csv"
-        df.to_csv(csv_file_path)
+        # df.to_csv(csv_file_path)
+        if csv_file_path.exists():
+            print("Appending to existing CSV file")
+            df.to_csv(csv_file_path, mode='a', header=False, index=False)
+        else:
+            print("Creating new CSV file")
+            df.to_csv(csv_file_path, mode='w', index=False)
         return df
     
     def process_save_backbone_coords(self, df_boundBox):
     
         if self.parameters['save bounding box'] == 1:
             df_BB = pd.DataFrame( list( zip( df_boundBox ) ) , columns = [ "Top Left(x_y) Bottom Right(x_y)" ] )
-            df_BB.to_csv(join(self.parameters['result annotation directory'], self.img_path.stem+'.csv'))
+            # df_BB.to_csv(join(self.parameters['result annotation directory'], self.img_path.stem+'.csv'))
+            csv_file_path = Path(self.parameters['result annotation directory']) / f"{self.img_path.stem}.csv"
+            if csv_file_path.exists():
+                df_BB.to_csv(csv_file_path, mode='a', header=False, index=False)
+            else:
+                df_BB.to_csv(csv_file_path, mode='w', index=False)
 
     @timeit
     def Closing(self, img):

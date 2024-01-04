@@ -4,23 +4,11 @@ import numpy as np
 import cv2
 from scipy.spatial import ConvexHull
 from utils import getCentroid, getBoundingBox, getAlphaShape, getCrystalSizeAndOrientation, getAngleDifference, pltAlphaShape, pltOrientationLine, pltConvexHull, isAreaSmall
-import functools
-import time
 from os.path import join
 from matplotlib import cm
 from skimage import exposure
 
 plt.ioff()
-
-def timeit(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        print(f"{func.__name__} executed in {end_time - start_time:.4f} seconds")
-        return result
-    return wrapper
 
 ############### Operations ############################3
 
@@ -54,23 +42,31 @@ def majorAxisPoints(poly):
     
     return temp
 
-def minDist(pts1, pts2):
-    # Compute all pairwise distances
-    dists = np.linalg.norm(pts1[:, np.newaxis, :] - pts2[np.newaxis, :, :], axis=2)
-
-    # Return the minimum distance
-    return np.min(dists)
-def create_rgb_image(img):
-    return cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB)
-
-def load_img_result_dir(img_path, params):
-    return cv2.imread(join(params['result image directory'], img_path.stem + params['save image format']))
-
-def initialize_plot():
-    orig_img_plt_idx = 0
-    result_img_plt_idx = 1
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(50, 25))
-    return fig, axes, orig_img_plt_idx, result_img_plt_idx
+def initialize_plot(last_dspace_run, RGBImg_shape = None):
+    
+    if last_dspace_run:
+        numSubplots = 2
+    else:
+        numSubplots = 1
+    
+    if numSubplots == 1:
+        assert RGBImg_shape is not None, "RGBImg_shape must be provided for single subplot"
+        orig_img_plt_idx = 0
+        result_img_plt_idx = 0
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(RGBImg_shape[1] / 100, RGBImg_shape[0] / 100))
+        axes.axis('off')
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        fig.tight_layout(pad=0)
+        return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
+    
+    elif numSubplots == 2:
+        orig_img_plt_idx = 0
+        result_img_plt_idx = 1
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(50, 25))
+        # axes.axis('off')
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        fig.tight_layout(pad=0)
+        return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
 
 def process_cluster(OrigImg, cluster, crystal_ang, params, color):
     point_cloud = np.array(cluster)
@@ -109,19 +105,29 @@ def process_cluster(OrigImg, cluster, crystal_ang, params, color):
     
     return crystal_properties
     
-def plot_results(axes, results, orig_img, RGB_img, orig_img_plt_idx, result_img_plt_idx):
+def plot_results(last_dspace_run, axes, results, orig_img, RGB_img, orig_img_plt_idx, result_img_plt_idx):
     
-    axes[result_img_plt_idx].imshow(RGB_img, vmin=0, vmax=255)
+    if not last_dspace_run:
     
-    for result in results:
-        if result:
-            pltAlphaShape(axes[result_img_plt_idx], result['alpha_shape'])
-            pltOrientationLine(axes[result_img_plt_idx], result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
-            pltConvexHull(axes[result_img_plt_idx], result['hull'], result['point_cloud'], result['color'])
-            # Other plotting based on 'result'
+        axes.imshow(RGB_img, vmin=0, vmax=255)
+        
+        for result in results:
+            if result:
+                pltAlphaShape(axes, result['alpha_shape'])
+                pltOrientationLine(axes, result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
+                pltConvexHull(axes, result['hull'], result['point_cloud'], result['color'])
+    
+    else:
+        axes[result_img_plt_idx].imshow(RGB_img, vmin=0, vmax=255)
+        
+        for result in results:
+            if result:
+                pltAlphaShape(axes[result_img_plt_idx], result['alpha_shape'])
+                pltOrientationLine(axes[result_img_plt_idx], result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
+                pltConvexHull(axes[result_img_plt_idx], result['hull'], result['point_cloud'], result['color'])
+                # Other plotting based on 'result'
 
-    axes[orig_img_plt_idx].imshow(orig_img, cmap='gray')
-    
+        axes[orig_img_plt_idx].imshow(orig_img, cmap='gray')
 
 def extract_results(processed_clusters):
     """

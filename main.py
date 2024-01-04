@@ -1,13 +1,11 @@
 import sys
-import time
 import pandas as pd
-import io
 import libconf
-from shutil import copy2
 from pathlib import Path
-from utils import createVersionDirectory, CreateDirectories
+from utils import createVersionDirectory, CreateDirectories, calculate_pixel_size, timeit, update_crystal_color
 from grate import ImageProcessor
 from concurrent.futures import ProcessPoolExecutor
+import random
 
 '''
 Command Line Arguments:
@@ -40,9 +38,6 @@ def load_config():
         
     return config, project_path
     
-def calculate_pixel_size(value, factor):
-    return int(value * factor)
-    
 def prepare_parameters(config, project_path, version_result_dir):
     """Prepare parameters for processing."""
     
@@ -56,6 +51,10 @@ def prepare_parameters(config, project_path, version_result_dir):
         'd space pix'       : dspace_pix,
         'pix to nm'         : config['pix_2_nm'],
     }
+    
+    color_options = ['b', 'r', 'c', 'm','y','w']
+    # color_options = ['b', 'g', 'r', 'c', 'm','y','w']
+    crystal_color = random.choice(color_options)
     
     image_processing_params = {
         'blur iterations'   : config['blur_iteration'],
@@ -71,6 +70,7 @@ def prepare_parameters(config, project_path, version_result_dir):
         'd space bandpass'              : config['dspace_bandpass'],
         'pow spec peak vs mean factor'  : config['powSpec_peak_thresh'],
         'Threshold area factor'         : config['Thresh_area_factor'],
+        'crystal color'                 : crystal_color,
     }
 
     filesystem_params = {
@@ -101,26 +101,27 @@ def setup_directories_and_parameters(project_path, config):
     """Setup directories and prepare parameters."""
     
     version_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 'version')
-
-    with open(version_result_dir / 'config.cfg', 'w') as config_file:
-        libconf.dump(config, config_file)
     
     parameters, data_dir = prepare_parameters(config, project_path, version_result_dir)
-    CreateDirectories(parameters)
     
+    CreateDirectories(parameters)
+    with open(version_result_dir / 'config.cfg', 'w') as config_file:
+        libconf.dump(config, config_file)
+        
     return parameters, data_dir
 
-def process_image(file_path, parameters):
+def run_image_processor(file_path, parameters, last_run):
     try:
         print("Processing image:", file_path.name)
-        processor = ImageProcessor(file_path, parameters)
+        processor = ImageProcessor(file_path, parameters, last_run)
         df_crystal_props = processor.GRATE()
         return df_crystal_props
     except Exception as e:
         print(f"Error processing {file_path.name}: {e}")
         return pd.DataFrame()  # Return an empty DataFrame or appropriate error indicator
 
-def process_images(data_dir, parameters):
+@timeit
+def process_images_parallel(data_dir, parameters, last_run):
     """Process each image in the specified directory."""
     
     df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
@@ -130,14 +131,14 @@ def process_images(data_dir, parameters):
                    if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
 
     with ProcessPoolExecutor() as executor:
-        results = list(executor.map(process_image, image_files, [parameters] * len(image_files)))
+        results = list(executor.map(run_image_processor, image_files, [parameters] * len(image_files), [last_run] * len(image_files)))
 
     for result in results:
         df_overall = df_overall.append(result, ignore_index=True)
     
     return df_overall
 
-def process_images_serial(data_dir, parameters):
+def process_images_loop(data_dir, parameters):
     """Process each image in the specified directory."""
     
     df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
@@ -145,21 +146,62 @@ def process_images_serial(data_dir, parameters):
                                        'D-Spacing(FFT, nm)'])
     for file_path in data_dir.iterdir():
         if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS:
-            df_crystal_props = process_image(file_path, parameters)
+            df_crystal_props = run_image_processor(file_path, parameters)
             df_overall = df_overall.append(df_crystal_props, ignore_index=True)
     
     return df_overall
-
+            
+def write_to_overallCSV(result_dir, df_overall):
+    
+    overall_csv_path = result_dir / 'overall.csv'
+    if overall_csv_path.exists():
+        print("Appending to overall.csv")
+        df_overall.to_csv(overall_csv_path, mode='a', header=False, index=False)
+    else:
+        print("Creating overall.csv")
+        df_overall.to_csv(overall_csv_path, mode='w', index=False)
+        
+def write_to_readme(result_dir, dspace_nm, crystal_color):
+    
+    readme_path = result_dir / 'readme.txt'
+    if readme_path.exists():
+        print("Appending to readme.txt")
+        with open(readme_path, 'a') as readme_file:
+            readme_file.write(f"\n\nD-Space: {dspace_nm}\nCrystal Color: {crystal_color}")
+    else:
+        print("Creating readme.txt")
+        with open(readme_path, 'w') as readme_file:
+            readme_file.write(f"D-Space: {dspace_nm}\nCrystal Color: {crystal_color}")
+            
+@timeit
 def main():
     
     config, project_path = load_config()
     
-    print("\nd space:", config['dspace_nm'])
-
-    parameters, data_dir = setup_directories_and_parameters(project_path, config)
+    first_run = True
+    last_run = False
+    parameters = {}
+    dspace_nm_list = [2.1, 0.72]
+    print("d space list:", dspace_nm_list)
     
-    df_overall = process_images(data_dir, parameters)
-    df_overall.to_csv(parameters['result directory'] / 'overall.csv')
+    for dspace_nm in dspace_nm_list:
+        config['dspace_nm'] = dspace_nm
+        print("\nd space:", config['dspace_nm'])
+        
+        if first_run:
+            parameters, data_dir = setup_directories_and_parameters(project_path, config)
+            first_run = False
+        else:
+            parameters, data_dir = prepare_parameters(config, project_path, parameters['result directory'])
+            
+        if dspace_nm == dspace_nm_list[-1]:
+            last_run = True
+            
+        parameters['crystal color'] = update_crystal_color()    
+        df_overall = process_images_parallel(data_dir, parameters, last_run)
+        
+        write_to_overallCSV(parameters['result directory'], df_overall)
+        write_to_readme(parameters['result directory'], config['dspace_nm'], parameters['crystal color'])
     
 if __name__ == "__main__":
     main()

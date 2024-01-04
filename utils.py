@@ -18,6 +18,10 @@ import alphashape
 import warnings
 from shapely.errors import ShapelyDeprecationWarning
 
+import functools
+import time
+import random
+
 plt.ioff()
 
 ##################### Utils ##################################
@@ -383,3 +387,43 @@ def CreateDirectories(parameters):
     for directory in directories:
         if directory is not None:
             directory.mkdir(parents=True, exist_ok=True)
+            
+            
+def calculate_pixel_size(value, factor):
+    return int(value * factor)
+
+
+def timeit(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        if func.__name__ == 'process_images' or func.__name__ == 'process_images_serial' or func.__name__ == 'main':
+            print(f"{func.__name__} executed in {end_time - start_time:.4f} seconds")
+        return result
+    return wrapper
+
+
+def minDist(pts1, pts2):
+    # Compute all pairwise distances
+    dists = np.linalg.norm(pts1[:, np.newaxis, :] - pts2[np.newaxis, :, :], axis=2)
+
+    # Return the minimum distance
+    return np.min(dists)
+
+def create_rgb_image(img):
+    return cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB)
+
+def load_img_result_dir(img_path, params):
+    return cv2.imread(join(params['result image directory'], img_path.stem + params['save image format']))
+
+def update_crystal_color():
+    '''update the color of the crystal parameter dictionary'''
+    
+    color_options = ['b', 'r', 'c', 'm','y','w']
+    # color_options = ['b', 'g', 'r', 'c', 'm','y','w']
+    crystal_color = random.choice(color_options)
+    # print("Crystal color:", crystal_color)
+    
+    return crystal_color
