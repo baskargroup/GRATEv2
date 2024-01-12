@@ -114,37 +114,6 @@ def run_image_processor(file_path, parameters, last_run):
     except Exception as e:
         print(f"Error processing {file_path.name}: {e}")
         return pd.DataFrame()  # Return an empty DataFrame or appropriate error indicator
-
-@timeit
-def process_images_parallel(data_dir, parameters, last_run):
-    """Process each image in the specified directory."""
-    
-    df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
-                                       'Crystal Angle (zero at X-axis and clockwise positive)', 
-                                       'D-Spacing(FFT, nm)'])
-    image_files = [file_path for file_path in data_dir.iterdir() 
-                   if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
-
-    with ProcessPoolExecutor() as executor:
-        results = list(executor.map(run_image_processor, image_files, [parameters] * len(image_files), [last_run] * len(image_files)))
-
-    for result in results:
-        df_overall = df_overall.append(result, ignore_index=True)
-    
-    return df_overall
-
-def process_images_loop(data_dir, parameters, last_run):
-    """Process each image in the specified directory."""
-    
-    df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
-                                       'Crystal Angle (zero at X-axis and clockwise positive)', 
-                                       'D-Spacing(FFT, nm)'])
-    for file_path in data_dir.iterdir():
-        if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS:
-            df_crystal_props = run_image_processor(file_path, parameters, last_run)
-            df_overall = df_overall.append(df_crystal_props, ignore_index=True)
-    
-    return df_overall
             
 def write_to_overallCSV(result_dir, dspace_nm, df_overall):
     
@@ -170,6 +139,28 @@ def write_to_readme(result_dir, dspace_nm, crystal_color):
         with open(readme_path, 'w') as readme_file:
             readme_file.write(f"D-Space: {dspace_nm}\nCrystal Color: {crystal_color}")
             
+def process_image(data_dir, parameters, last_run, run_parallel=True):
+    
+    df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
+                                       'Crystal Angle (zero at X-axis and clockwise positive)', 
+                                       'D-Spacing(FFT, nm)'])
+    
+    image_files = [file_path for file_path in data_dir.iterdir() 
+                   if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
+    
+    if run_parallel:
+        with ProcessPoolExecutor() as executor:
+            results = list(executor.map(run_image_processor, image_files, [parameters] * len(image_files), [last_run] * len(image_files)))
+
+        for result in results:
+            df_overall = df_overall.append(result, ignore_index=True)
+    else:
+        for file_path in image_files:
+            df_crystal_props = run_image_processor(file_path, parameters, last_run)
+            df_overall = df_overall.append(df_crystal_props, ignore_index=True)
+        
+    return df_overall
+            
 @timeit
 def main():
     
@@ -193,8 +184,8 @@ def main():
             
         if dspace_nm == dspace_nm_list[-1]:
             last_run = True
-           
-        df_overall = process_images_parallel(data_dir, parameters, last_run)
+            
+        df_overall = process_image(data_dir, parameters, last_run, run_parallel=True)
         
         write_to_overallCSV(parameters['result directory'], parameters['d space nm'], df_overall)
         write_to_readme(parameters['result directory'], parameters['d space nm'], parameters['crystal color'])
