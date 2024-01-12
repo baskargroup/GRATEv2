@@ -38,23 +38,18 @@ def load_config():
         
     return config, project_path
     
-def prepare_parameters(config, project_path, version_result_dir):
+def prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys_color):
     """Prepare parameters for processing."""
     
-    dspace_pix = calculate_pixel_size(config['dspace_nm'], config['pix_2_nm'])
+    dspace_pix = calculate_pixel_size(dspace_nm, config['pix_2_nm'])
     
-    # result_dir  = version_result_dir
     data_dir    = project_path / str(config['data_dir'])
     
     resolution_params = {
-        'd space nm'        : config['dspace_nm'],
+        'd space nm'        : dspace_nm,
         'd space pix'       : dspace_pix,
         'pix to nm'         : config['pix_2_nm'],
     }
-    
-    color_options = ['b', 'r', 'c', 'm','y','w']
-    # color_options = ['b', 'g', 'r', 'c', 'm','y','w']
-    crystal_color = random.choice(color_options)
     
     image_processing_params = {
         'blur iterations'   : config['blur_iteration'],
@@ -70,7 +65,7 @@ def prepare_parameters(config, project_path, version_result_dir):
         'd space bandpass'              : config['dspace_bandpass'],
         'pow spec peak vs mean factor'  : config['powSpec_peak_thresh'],
         'Threshold area factor'         : config['Thresh_area_factor'],
-        'crystal color'                 : crystal_color,
+        'crystal color'                 : crys_color,
     }
 
     filesystem_params = {
@@ -97,12 +92,12 @@ def prepare_parameters(config, project_path, version_result_dir):
     
     return all_params, data_dir
     
-def setup_directories_and_parameters(project_path, config):
+def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color):
     """Setup directories and prepare parameters."""
     
     version_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 'version')
     
-    parameters, data_dir = prepare_parameters(config, project_path, version_result_dir)
+    parameters, data_dir = prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys_color)
     
     CreateDirectories(parameters)
     with open(version_result_dir / 'config.cfg', 'w') as config_file:
@@ -182,26 +177,23 @@ def main():
     
     first_run = True
     last_run = False
-    parameters = {}
-    dspace_nm_list = [2.1, 0.72]
+    dspace_nm_list = config['dspace_nm']
     print("d space list:", dspace_nm_list)
     
-    cryst_colors = pick_unique_colors(len(dspace_nm_list))
+    crys_colors = pick_unique_colors(len(dspace_nm_list))
     
     for i, dspace_nm in enumerate(dspace_nm_list):
-        config['dspace_nm'] = dspace_nm
-        print("\nd space:", config['dspace_nm'])
+        print("\nd space:", dspace_nm)
         
         if first_run:
-            parameters, data_dir = setup_directories_and_parameters(project_path, config)
+            parameters, data_dir = setup_directories_and_parameters(project_path, config, dspace_nm, crys_colors[i])
             first_run = False
         else:
-            parameters, data_dir = prepare_parameters(config, project_path, parameters['result directory'])
+            parameters, data_dir = prepare_parameters(config, project_path, parameters['result directory'], dspace_nm, crys_colors[i])
             
         if dspace_nm == dspace_nm_list[-1]:
             last_run = True
-            
-        parameters['crystal color'] = cryst_colors[i]    
+           
         df_overall = process_images_parallel(data_dir, parameters, last_run)
         
         write_to_overallCSV(parameters['result directory'], parameters['d space nm'], df_overall)
