@@ -127,16 +127,16 @@ def write_to_overallCSV(result_dir, dspace_nm, df_overall):
         print("Creating overall.csv")
         df_overall.to_csv(overall_csv_path, mode='w', index=False)
         
-def write_to_readme(result_dir, dspace_nm, crystal_color):
+def write_to_color(result_dir, dspace_nm, crystal_color):
     
-    readme_path = result_dir / 'readme.txt'
-    if readme_path.exists():
+    color_path = result_dir / 'color.txt'
+    if color_path.exists():
         print("Appending to readme.txt")
-        with open(readme_path, 'a') as readme_file:
+        with open(color_path, 'a') as readme_file:
             readme_file.write(f"\n\nD-Space: {dspace_nm}\nCrystal Color: {crystal_color}")
     else:
         print("Creating readme.txt")
-        with open(readme_path, 'w') as readme_file:
+        with open(color_path, 'w') as readme_file:
             readme_file.write(f"D-Space: {dspace_nm}\nCrystal Color: {crystal_color}")
             
 def process_image(data_dir, parameters, last_run, run_parallel=True):
@@ -185,10 +185,10 @@ def main():
         if dspace_nm == dspace_nm_list[-1]:
             last_run = True
             
-        df_overall = process_image(data_dir, parameters, last_run, run_parallel=True)
+        df_overall = process_image(data_dir, parameters, last_run, run_parallel=False)
         
         write_to_overallCSV(parameters['result directory'], parameters['d space nm'], df_overall)
-        write_to_readme(parameters['result directory'], parameters['d space nm'], parameters['crystal color'])
+        write_to_color(parameters['result directory'], parameters['d space nm'], parameters['crystal color'])
     
 if __name__ == "__main__":
     main()
