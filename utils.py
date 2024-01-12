@@ -416,14 +416,17 @@ def create_rgb_image(img):
     return cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB)
 
 def load_img_result_dir(img_path, params):
-    return cv2.imread(join(params['result image directory'], img_path.stem + params['save image format']))
+    BGRImg = cv2.imread(join(params['result image directory'], img_path.stem + params['save image format']))
+    RGBImg = cv2.cvtColor(BGRImg, cv2.COLOR_BGR2RGB)
+    return RGBImg
 
-def update_crystal_color():
-    '''update the color of the crystal parameter dictionary'''
+def pick_unique_colors(count):
     
     color_options = ['b', 'r', 'c', 'm','y','w']
     # color_options = ['b', 'g', 'r', 'c', 'm','y','w']
-    crystal_color = random.choice(color_options)
+    
+    assert count <= len(color_options), "Count should be less than or equal to the number of colors available"
+    crystal_color = random.sample(color_options, count)
     # print("Crystal color:", crystal_color)
     
     return crystal_color

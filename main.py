@@ -2,7 +2,7 @@ import sys
 import pandas as pd
 import libconf
 from pathlib import Path
-from utils import createVersionDirectory, CreateDirectories, calculate_pixel_size, timeit, update_crystal_color
+from utils import createVersionDirectory, CreateDirectories, calculate_pixel_size, timeit, pick_unique_colors
 from grate import ImageProcessor
 from concurrent.futures import ProcessPoolExecutor
 import random
@@ -138,7 +138,7 @@ def process_images_parallel(data_dir, parameters, last_run):
     
     return df_overall
 
-def process_images_loop(data_dir, parameters):
+def process_images_loop(data_dir, parameters, last_run):
     """Process each image in the specified directory."""
     
     df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
@@ -146,14 +146,16 @@ def process_images_loop(data_dir, parameters):
                                        'D-Spacing(FFT, nm)'])
     for file_path in data_dir.iterdir():
         if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS:
-            df_crystal_props = run_image_processor(file_path, parameters)
+            df_crystal_props = run_image_processor(file_path, parameters, last_run)
             df_overall = df_overall.append(df_crystal_props, ignore_index=True)
     
     return df_overall
             
-def write_to_overallCSV(result_dir, df_overall):
+def write_to_overallCSV(result_dir, dspace_nm, df_overall):
     
-    overall_csv_path = result_dir / 'overall.csv'
+    csvFileName = f"overall_dspace_{dspace_nm}.csv"
+    
+    overall_csv_path = result_dir / csvFileName
     if overall_csv_path.exists():
         print("Appending to overall.csv")
         df_overall.to_csv(overall_csv_path, mode='a', header=False, index=False)
@@ -184,7 +186,9 @@ def main():
     dspace_nm_list = [2.1, 0.72]
     print("d space list:", dspace_nm_list)
     
-    for dspace_nm in dspace_nm_list:
+    cryst_colors = pick_unique_colors(len(dspace_nm_list))
+    
+    for i, dspace_nm in enumerate(dspace_nm_list):
         config['dspace_nm'] = dspace_nm
         print("\nd space:", config['dspace_nm'])
         
@@ -197,11 +201,11 @@ def main():
         if dspace_nm == dspace_nm_list[-1]:
             last_run = True
             
-        parameters['crystal color'] = update_crystal_color()    
+        parameters['crystal color'] = cryst_colors[i]    
         df_overall = process_images_parallel(data_dir, parameters, last_run)
         
-        write_to_overallCSV(parameters['result directory'], df_overall)
-        write_to_readme(parameters['result directory'], config['dspace_nm'], parameters['crystal color'])
+        write_to_overallCSV(parameters['result directory'], parameters['d space nm'], df_overall)
+        write_to_readme(parameters['result directory'], parameters['d space nm'], parameters['crystal color'])
     
 if __name__ == "__main__":
     main()
