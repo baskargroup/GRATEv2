@@ -6,6 +6,7 @@ from sklearn.model_selection import GridSearchCV, LeaveOneOut, KFold
 import scipy.stats as st
 from sklearn.decomposition import PCA
 import math
+from pathlib import Path
 
 import os
 import re
@@ -13,6 +14,15 @@ from os.path import join
 
 from descartes import PolygonPatch
 import alphashape
+
+import warnings
+from shapely.errors import ShapelyDeprecationWarning
+
+import functools
+import time
+import random
+
+plt.ioff()
 
 ##################### Utils ##################################
 
@@ -42,12 +52,6 @@ def show_scalled_img(img_arr, scalePercent=100):
     fig = plt.figure(figsize = (50,50))
     plt.imshow(output, cmap='gray', vmin=0, vmax=255)
     plt.show() 
-
-def debugORSave(initial, final, params, concat, text):
-    if params['debug'] == 1:
-        final = final.astype( 'uint8' )
-        final = cv2.equalizeHist( final )
-        cv2.imwrite(params['result directory'] + "/"+ text + "_" + params['img name']+ ".png", final)
 
 def imgLength(freqCoord, imgSize):
     freqCoord = freqCoord.astype(np.int32)
@@ -329,40 +333,37 @@ def getBoundingBox(convHull):
     y_minMax    = [np.amin(convHull.points[convHull.vertices,1]), np.amax(convHull.points[convHull.vertices,1])]
     return x_minMax, y_minMax
 
-def pltOrientationLine(axes, crystalIndex, crystalAngle, color, bb_x_minMax, bb_y_minMax, x_centroid, y_centroid):
+def pltOrientationLine(subplot, crystalAngle, color, bb_x_minMax, bb_y_minMax, x_centroid, y_centroid):
     arrLen  = min( int( bb_x_minMax[1] - bb_x_minMax[0] ) , int( bb_y_minMax[1] - bb_y_minMax[0] ) ) / 6
-    axes[1].arrow( x_centroid, y_centroid , arrLen * np.cos( crystalAngle[ crystalIndex ] * np.pi/180 ) , arrLen * np.sin( crystalAngle[crystalIndex] * np.pi/180 ) , linewidth = 7.0 , color = color )
+    subplot.arrow( x_centroid, y_centroid , arrLen * np.cos( crystalAngle * np.pi/180 ) , arrLen * np.sin( crystalAngle * np.pi/180 ) , linewidth = 7.0 , color = color )
 
-def pltConvexHull(axes, convHull, pntCloud, color):
+def pltConvexHull(subplot, convHull, pntCloud, color):
     for simplex in convHull.simplices:
-            axes[1].plot( pntCloud[ simplex , 0 ] , pntCloud[ simplex , 1 ] , linewidth = 7.0 , color = color )
+            subplot.plot( pntCloud[ simplex , 0 ] , pntCloud[ simplex , 1 ] , linewidth = 7.0 , color = color )
 
-def pltAlphaShape(axes, pntCloud, params):
+def getAlphaShape(pntCloud):
     alpha_shape     = alphashape.alphashape( pntCloud , alpha = 0.005 )
+    return alpha_shape
 
-    ## Filtering out detections with very small area, Threshold area = factor*(d_space**2).
-    TorF = isAreaSmall(alpha_shape.area, params)
-    
-    if TorF == False:
-        axes[1].add_patch( PolygonPatch( alpha_shape , alpha = 0.2 ) )
-        
-    return alpha_shape, TorF
 
-def createVersionDirectory(projectPath, BaseResultDir, name):
-    folderDir       = join(projectPath, BaseResultDir)
-    ResFolderName   = name + '_' #'version_'
-    lenFolderName   = len(ResFolderName)
-    dirlist         = [int(item[lenFolderName:]) for item in os.listdir(folderDir) if os.path.isdir(os.path.join(folderDir,item)) and re.search(ResFolderName, item) != None and len(item)> lenFolderName] 
-    
-    if len(dirlist) != 0:
-        latestVersion = max(dirlist)
-    else:
-        latestVersion = 0
+def pltAlphaShape(subplot, alpha_shape):
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
+        subplot.add_patch( PolygonPatch(alpha_shape, alpha = 0.2) )
 
-    os.mkdir(join(folderDir, ResFolderName + str(latestVersion + 1)))
-    print(ResFolderName + str(latestVersion + 1) + '\n')
-    resultDir = join(BaseResultDir,ResFolderName + str(latestVersion + 1))
-    return resultDir
+def createVersionDirectory(folderDir, name):
+    # folderDir = Path(projectPath) / BaseResultDir
+    ResFolderName = name + '_'  # 'version_'
+    lenFolderName = len(ResFolderName)
+
+    dirlist = [int(item.name[lenFolderName:]) for item in folderDir.iterdir() if item.is_dir() and re.search(ResFolderName, item.name) and len(item.name) > lenFolderName]
+
+    latestVersion = max(dirlist, default=0)
+    new_version_dir = folderDir / f"{ResFolderName}{latestVersion + 1}"
+    new_version_dir.mkdir()
+
+    print(f"{ResFolderName}{latestVersion + 1}\n")
+    return new_version_dir
     
 def filterThreshArea(df, params):
     for ind, row in df.iterrows():
@@ -370,23 +371,62 @@ def filterThreshArea(df, params):
         if TorF_area == True:# or row['D-Spacing(FFT, nm)']<1.5:
             df.drop(ind, inplace = True)
     
-    return df
+    return df        
 
 def CreateDirectories(parameters):
-    projectPath             = parameters['Project path']
-    resultDir               = parameters['result directory']
-    ResultCSVDir            = parameters['result CSV directory']
-    ResultImageDir          = parameters['result image directory']
-    ResultBackboneCoordDir  = parameters['result backbone coords']
-    ResultAnnotationDir     = parameters['result annotation directory']
+    result_dir = Path(parameters['result directory'])
 
-    if os.path.isdir(join(projectPath, resultDir)) == False: os.mkdir(join(projectPath, resultDir))
-    if os.path.isdir(join(projectPath, resultDir, ResultCSVDir)) == False: os.mkdir(join(projectPath, resultDir, ResultCSVDir))
-    if os.path.isdir(join(projectPath, resultDir, ResultImageDir)) == False: os.mkdir(join(projectPath, resultDir, ResultImageDir))
+    directories = [
+        result_dir,
+        parameters['result CSV directory'],
+        parameters['result image directory'],
+        parameters['result backbone coords'] if parameters['save backbone coords'] == 1 else None,
+        parameters['result annotation directory'] if parameters['save bounding box'] == 1 else None
+    ]
 
-    ## Saving the coordinates. 
-    if parameters['save backbone coords'] == 1:
-        if os.path.isdir(join(projectPath, resultDir, ResultBackboneCoordDir)) == False: os.mkdir(join(projectPath, resultDir, ResultBackboneCoordDir))
+    for directory in directories:
+        if directory is not None:
+            directory.mkdir(parents=True, exist_ok=True)
+            
+            
+def calculate_pixel_size(value, factor):
+    return int(value * factor)
 
-    if parameters['save bounding box'] == 1: 
-        if os.path.isdir(join(projectPath, resultDir, ResultAnnotationDir)) == False: os.mkdir(join(projectPath, resultDir, ResultAnnotationDir))
+
+def timeit(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        if func.__name__ == 'process_images' or func.__name__ == 'process_images_serial' or func.__name__ == 'main':
+            print(f"{func.__name__} executed in {end_time - start_time:.4f} seconds")
+        return result
+    return wrapper
+
+
+def minDist(pts1, pts2):
+    # Compute all pairwise distances
+    dists = np.linalg.norm(pts1[:, np.newaxis, :] - pts2[np.newaxis, :, :], axis=2)
+
+    # Return the minimum distance
+    return np.min(dists)
+
+def create_rgb_image(img):
+    return cv2.cvtColor(img.astype('uint8'), cv2.COLOR_GRAY2RGB)
+
+def load_img_result_dir(img_path, params):
+    BGRImg = cv2.imread(join(params['result image directory'], img_path.stem + params['save image format']))
+    RGBImg = cv2.cvtColor(BGRImg, cv2.COLOR_BGR2RGB)
+    return RGBImg
+
+def pick_unique_colors(count):
+    
+    color_options = ['b', 'r', 'c', 'm','y','w']
+    # color_options = ['b', 'g', 'r', 'c', 'm','y','w']
+    
+    assert count <= len(color_options), "Count should be less than or equal to the number of colors available"
+    crystal_color = random.sample(color_options, count)
+    # print("Crystal color:", crystal_color)
+    
+    return crystal_color
