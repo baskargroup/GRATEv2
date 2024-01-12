@@ -194,8 +194,13 @@ class ImageProcessor:
         Creating Adjacency Matrix based on distance between centroid and the orientation angle
         '''
         centroid_coord  = bb_props_np[ : , : 2 ]
-        tree            = KDTree(centroid_coord, leaf_size=2)
         N               = len(bb_props_np)
+        
+        if N == 0:
+            print("No ellipses found")
+            return np.zeros((N,N))
+        
+        tree            = KDTree(centroid_coord, leaf_size=2)
         KNN_radius      = 2*self.parameters['ellipse pixel size'] + self.parameters['adjacency threshold distance']
         A_Mat           = np.zeros((N,N))
         

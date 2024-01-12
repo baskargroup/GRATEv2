@@ -185,7 +185,7 @@ def main():
         if dspace_nm == dspace_nm_list[-1]:
             last_run = True
             
-        df_overall = process_image(data_dir, parameters, last_run, run_parallel=False)
+        df_overall = process_image(data_dir, parameters, last_run, run_parallel=True)
         
         write_to_overallCSV(parameters['result directory'], parameters['d space nm'], df_overall)
         write_to_color(parameters['result directory'], parameters['d space nm'], parameters['crystal color'])
