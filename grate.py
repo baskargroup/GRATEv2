@@ -306,20 +306,14 @@ class ImageProcessor:
     
     @timeit
     def PlottingAndSaving(self, ClusterPointCloud, crystalAng, last_dspace_run = False):
+        crystal_color = self.parameters['crystal color']
+        processed_clusters = self.func_process_cluster(ClusterPointCloud, crystalAng, crystal_color)
+        
         # RGBImg = create_rgb_image(origImg)
         RGBImg = load_img_result_dir(self.img_path, self.parameters)
         
-        crystal_color = self.parameters['crystal color']
-            
-        processed_clusters = self.func_process_cluster(ClusterPointCloud, crystalAng, crystal_color)
-        
-        if not last_dspace_run:
-            figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot(last_dspace_run, RGBImg.shape)
-            plot_results(last_dspace_run, axes, processed_clusters, self.img, RGBImg, orig_img_plt_idx, result_img_plt_idx)
-        
-        else:
-            figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot(last_dspace_run, RGBImg.shape)
-            plot_results(last_dspace_run, axes, processed_clusters, self.img, RGBImg, orig_img_plt_idx, result_img_plt_idx)
+        figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot(last_dspace_run, RGBImg.shape)
+        plot_results(last_dspace_run, axes, processed_clusters, self.img, RGBImg, orig_img_plt_idx, result_img_plt_idx)
         
         figure.savefig( join(self.parameters['result image directory'], self.img_path.stem + self.parameters['save image format']))
 
