@@ -99,7 +99,16 @@ def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color
     
     parameters, data_dir = prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys_color)
     
-    CreateDirectories(parameters)
+    directories = [
+        parameters['result directory'],
+        parameters['result CSV directory'],
+        parameters['result image directory'],
+        parameters['result backbone coords'] if parameters['save backbone coords'] == 1 else None,
+        parameters['result annotation directory'] if parameters['save bounding box'] == 1 else None
+    ]
+    
+    CreateDirectories(directories)
+    
     with open(version_result_dir / 'config.cfg', 'w') as config_file:
         libconf.dump(config, config_file)
         

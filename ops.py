@@ -42,24 +42,10 @@ def majorAxisPoints(poly):
     
     return temp
 
-def initialize_plot(last_dspace_run, RGBImg_shape = None):
+def initialize_plot(last_dspace_run, RGBImg_shape = None, downsample_factor = 1):
     
     if last_dspace_run:
         numSubplots = 2
-    else:
-        numSubplots = 1
-    
-    if numSubplots == 1:
-        assert RGBImg_shape is not None, "RGBImg_shape must be provided for single subplot"
-        orig_img_plt_idx = 0
-        result_img_plt_idx = 0
-        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(RGBImg_shape[1] / 100, RGBImg_shape[0] / 100))
-        axes.axis('off')
-        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-        fig.tight_layout(pad=0)
-        return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
-    
-    elif numSubplots == 2:
         orig_img_plt_idx = 0
         result_img_plt_idx = 1
         fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(50, 25))
@@ -67,6 +53,17 @@ def initialize_plot(last_dspace_run, RGBImg_shape = None):
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
         fig.tight_layout(pad=0)
         return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
+    else:
+        numSubplots = 1
+        assert RGBImg_shape is not None, "RGBImg_shape must be provided for single subplot"
+        orig_img_plt_idx = 0
+        result_img_plt_idx = 0
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(RGBImg_shape[1] / (100 * downsample_factor), RGBImg_shape[0] / (100 * downsample_factor)))
+        axes.axis('off')
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        fig.tight_layout(pad=0)
+        return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
+        
 
 def process_cluster(OrigImg, cluster, crystal_ang, params, color):
     point_cloud = np.array(cluster)

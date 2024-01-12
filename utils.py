@@ -352,6 +352,11 @@ def pltAlphaShape(subplot, alpha_shape):
         subplot.add_patch( PolygonPatch(alpha_shape, alpha = 0.2) )
 
 def createVersionDirectory(folderDir, name):
+    
+    # Check folderDir exists else create it
+    if not folderDir.exists():
+        folderDir.mkdir(parents=True, exist_ok=True)
+    
     # folderDir = Path(projectPath) / BaseResultDir
     ResFolderName = name + '_'  # 'version_'
     lenFolderName = len(ResFolderName)
@@ -373,17 +378,7 @@ def filterThreshArea(df, params):
     
     return df        
 
-def CreateDirectories(parameters):
-    result_dir = Path(parameters['result directory'])
-
-    directories = [
-        result_dir,
-        parameters['result CSV directory'],
-        parameters['result image directory'],
-        parameters['result backbone coords'] if parameters['save backbone coords'] == 1 else None,
-        parameters['result annotation directory'] if parameters['save bounding box'] == 1 else None
-    ]
-
+def CreateDirectories(directories):
     for directory in directories:
         if directory is not None:
             directory.mkdir(parents=True, exist_ok=True)
