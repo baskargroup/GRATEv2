@@ -29,11 +29,63 @@ param_space = [
     Integer(1, 100, name='param15')
 ]
 
-# Load your annotated data
-# Replace with the actual code to load your images and annotations
-# For example:
-# images = load_images('path/to/images')
-# annotations = load_annotations('path/to/annotations')
+def extract_and_fill_annotations(image_path, output_path='binary_annotations_filled.png', threshold_value=10):
+    """
+    Extracts colored annotations (crystal outlines) from an RGB TEM image with a grayscale background,
+    fills the inside of the annotations, and outputs a binary image where the annotations are black (filled)
+    and the background is white.
+
+    Parameters:
+    - image_path (str): Path to the input annotated TEM image.
+    - output_path (str): Path to save the output binary image.
+    - threshold_value (int): Threshold value for detecting non-grayscale pixels.
+
+    Returns:
+    - binary_filled (numpy.ndarray): The binary image array with filled annotations as black and background as white.
+    """
+    # Load the RGB image
+    image = cv2.imread(image_path)
+
+    # Check if image was loaded successfully
+    if image is None:
+        raise ValueError(f"Error: Could not read the image from {image_path}.")
+
+    # Convert image to float32 for precision in calculations
+    image_float = image.astype(np.float32)
+
+    # Split the image into B, G, R channels
+    B, G, R = cv2.split(image_float)
+
+    # Calculate the absolute differences between the channels
+    diff_RG = cv2.absdiff(R, G)
+    diff_RB = cv2.absdiff(R, B)
+    diff_GB = cv2.absdiff(G, B)
+
+    # Combine the differences to get the maximum difference per pixel
+    max_diff = cv2.max(diff_RG, cv2.max(diff_RB, diff_GB))
+
+    # Apply threshold to detect non-grayscale pixels (annotations)
+    _, binary_image = cv2.threshold(max_diff, threshold_value, 255, cv2.THRESH_BINARY)
+
+    # Convert binary_image to uint8 type
+    binary_image = binary_image.astype(np.uint8)
+
+    # Invert the binary image so that annotations are white (255) and background is black (0)
+    binary_inverted = cv2.bitwise_not(binary_image)
+
+    # Find contours in the binary image
+    contours, hierarchy = cv2.findContours(binary_inverted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Create a mask of the same size as the image, initialized to white (255)
+    mask = np.ones_like(binary_image) * 255  # White background
+
+    # Fill the contours on the mask
+    cv2.drawContours(mask, contours, -1, color=0, thickness=cv2.FILLED)
+
+    # Save the filled binary image
+    cv2.imwrite(output_path, mask)
+
+    return mask
 
 # Placeholder functions for loading data
 def load_images(image_folder):
@@ -45,9 +97,6 @@ def load_annotations(annotation_folder):
     annotation_files = glob.glob(f"{annotation_folder}/*.png")
     annotations = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in annotation_files]
     return annotations
-
-images = load_images()
-annotations = load_annotations()
 
 # Define the objective function to minimize (negative performance metric)
 @use_named_args(param_space)
@@ -103,23 +152,29 @@ def objective(**params):
     # Since gp_minimize minimizes the objective, return the negative score
     return -score
 
-# Run Bayesian Optimization
-res = gp_minimize(
-    func=objective,
-    dimensions=param_space,
-    acq_func='EI',      # Expected Improvement
-    n_calls=50,         # Number of evaluations of the objective function
-    n_initial_points=10,  # Number of initial random evaluations
-    random_state=42     # For reproducibility
-)
 
-# Print the best found parameters and the corresponding score
-print("Best parameters found:")
-for name, value in zip([dim.name for dim in param_space], res.x):
-    print(f"{name}: {value}")
+if __name__ == "__main__":
+    
+    images = load_images()
+    annotations = load_annotations()
+    
+    # Run Bayesian Optimization
+    res = gp_minimize(
+        func=objective,
+        dimensions=param_space,
+        acq_func='EI',      # Expected Improvement
+        n_calls=50,         # Number of evaluations of the objective function
+        n_initial_points=10,  # Number of initial random evaluations
+        random_state=42     # For reproducibility
+    )
 
-print(f"Best objective value: {-res.fun}")
+    # Print the best found parameters and the corresponding score
+    print("Best parameters found:")
+    for name, value in zip([dim.name for dim in param_space], res.x):
+        print(f"{name}: {value}")
 
-# Plot convergence
-plot_convergence(res)
-plt.show()
+    print(f"Best objective value: {-res.fun}")
+
+    # Plot convergence
+    plot_convergence(res)
+    plt.show()
