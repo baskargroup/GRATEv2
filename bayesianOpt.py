@@ -11,6 +11,41 @@ import matplotlib.pyplot as plt
 # Replace 'param1', 'param2', ..., 'param15' with actual parameter names
 # Define their types (Real, Integer) and bounds accordingly
 
+
+'''
+Config file example:
+
+## Directory paths
+data_dir         = "DATA/sampleData/";     # Data directory wrt project path 
+base_result_dir  = "Results/temp/";        # Base result directory wrt project path
+
+## Parameters
+dspace_nm   = [1.9];                # The D-Spacing value (eg. 1.9, 0.7) at which the algorithm will run.
+pix_2_nm    = 78.5;                 # Image resolution, number of pixels per nanometer
+
+blur_iteration          = 15;       # Number of Blur Iteration
+Blur_kernel_propCons    = 0.15;     # Proportionality constant of d-spacing (in pixel) for the blur kernel size
+closing_k_size          = 15;       # Closing Kernel Size
+opening_k_size          = 17;       # Opening Kernel Size
+pixThresh_propCons      = 0.625;    # Proportionality constant of d-spacing (in pixel) for the threshold number of pixels consituting Backbone
+ellipse_len_propCons    = 1.5;      # Proportionality constant of d-spacing (in pixel) for the breaking Backbone into uniform size before constructing ellipse
+ellipse_aspect_ratio    = 5;        # Threshold ellipse aspect Ratio 
+thresh_dist_propCons    = 2;        # Proportionality constant of d-spacing (in pixel) for the distance threshold for adjacency matrix
+thresh_theta            = 10;       # delta Theta threshold for adjacency matrix
+cluster_size            = 7;        # Threshold ellipse in Crystal cluster
+dspace_bandpass         = 0.2;      # Bandpass filter range across d-spacing
+powSpec_peak_thresh     = 1.15;     # 1.20 works for all
+Thresh_area_factor      = 4;        # Cut off area factor of d-spacing^2
+
+## Modes
+debug               = 1;            # To run on single image and save intermediate steps
+save_BB             = 1;            # To save Bounding box coordinates: 1, Not to: 0
+save_backbone_coords= 1;            # To save backbone coordinates: 1, Not to: 0
+result_display      = 0;            # To display final result in notebook: 1, Not to: 0
+image_scale_percent = 50;           # Scaling the image before display
+
+'''
+
 param_space = [
     Real(0.0, 1.0, name='param1'),      # Example: A real-valued parameter between 0 and 1
     Integer(1, 10, name='param2'),      # Example: An integer parameter between 1 and 10
@@ -109,9 +144,6 @@ def objective(**params):
     # For example: param1 = params['param1'], param2 = params['param2'], etc.
     # Use these parameters in your algorithm
 
-    # Run your image processing algorithm with the given parameters
-    # For example: results = run_algorithm(images, params)
-
     # Placeholder for algorithm execution
     # Replace this with actual code to run your algorithm
     def run_algorithm(images, params):
@@ -126,8 +158,6 @@ def objective(**params):
 
     results = run_algorithm(images, params)
 
-    # Evaluate the algorithm's performance against the annotations
-    # For example: score = evaluate_performance(results, annotations)
     def compute_iou(detected, ground_truth):
         # Ensure binary images
         detected_binary = (detected > 0).astype(np.uint8)
@@ -137,8 +167,7 @@ def objective(**params):
         iou = np.sum(intersection) / np.sum(union)
         return iou
     
-    # Placeholder for performance evaluation
-    # Replace this with actual code to compute the performance metric
+    
     def evaluate_performance(results, annotations):
         scores = []
         for detected, ground_truth in zip(results, annotations):
@@ -154,9 +183,10 @@ def objective(**params):
 
 
 if __name__ == "__main__":
+# def bayesianOpt(image_folder, annotation_folder):
     
-    images = load_images()
-    annotations = load_annotations()
+    images = load_images('Data/BO/original')
+    annotations = load_annotations('Data/BO/annotations')
     
     # Run Bayesian Optimization
     res = gp_minimize(
