@@ -64,7 +64,7 @@ param_space = [
     Integer(1, 100, name='param15')
 ]
 
-def extract_and_fill_annotations(image_path, output_path='binary_annotations_filled.png', threshold_value=10):
+def extract_and_fill_annotations(image, output_path='binary_annotations_filled.png', threshold_value=10):
     """
     Extracts colored annotations (crystal outlines) from an RGB TEM image with a grayscale background,
     fills the inside of the annotations, and outputs a binary image where the annotations are black (filled)
@@ -79,7 +79,7 @@ def extract_and_fill_annotations(image_path, output_path='binary_annotations_fil
     - binary_filled (numpy.ndarray): The binary image array with filled annotations as black and background as white.
     """
     # Load the RGB image
-    image = cv2.imread(image_path)
+    # image = cv2.imread(image_path)
 
     # Check if image was loaded successfully
     if image is None:
@@ -106,16 +106,18 @@ def extract_and_fill_annotations(image_path, output_path='binary_annotations_fil
     binary_image = binary_image.astype(np.uint8)
 
     # Invert the binary image so that annotations are white (255) and background is black (0)
-    binary_inverted = cv2.bitwise_not(binary_image)
+    # binary_inverted = cv2.bitwise_not(binary_image)
 
     # Find contours in the binary image
-    contours, hierarchy = cv2.findContours(binary_inverted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, hierarchy = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Create a mask of the same size as the image, initialized to white (255)
     mask = np.ones_like(binary_image) * 255  # White background
 
     # Fill the contours on the mask
     cv2.drawContours(mask, contours, -1, color=0, thickness=cv2.FILLED)
+    
+    # mask = cv2.bitwise_not(mask)
 
     # Save the filled binary image
     cv2.imwrite(output_path, mask)
@@ -185,26 +187,33 @@ def objective(**params):
 if __name__ == "__main__":
 # def bayesianOpt(image_folder, annotation_folder):
     
-    images = load_images('Data/BO/original')
+    images = load_images('/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_3/Images/')
     annotations = load_annotations('Data/BO/annotations')
     
-    # Run Bayesian Optimization
-    res = gp_minimize(
-        func=objective,
-        dimensions=param_space,
-        acq_func='EI',      # Expected Improvement
-        n_calls=50,         # Number of evaluations of the objective function
-        n_initial_points=10,  # Number of initial random evaluations
-        random_state=42     # For reproducibility
-    )
+    image_path = '/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_3/Images/FoilHole_21830223_Data_21829764_21829765_20200122_1019.png'
+    
+    for i, image in enumerate(images):
+        # cv2.imwrite(f"Data/BO/annotations/annotation_{i}.png", image)
+        output_path = f"/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/temp/binary_annotations_filled_{i}.png" 
+        extract_and_fill_annotations(images[i], output_path, threshold_value=10)
+    
+    # # Run Bayesian Optimization
+    # res = gp_minimize(
+    #     func=objective,
+    #     dimensions=param_space,
+    #     acq_func='EI',      # Expected Improvement
+    #     n_calls=50,         # Number of evaluations of the objective function
+    #     n_initial_points=10,  # Number of initial random evaluations
+    #     random_state=42     # For reproducibility
+    # )
 
-    # Print the best found parameters and the corresponding score
-    print("Best parameters found:")
-    for name, value in zip([dim.name for dim in param_space], res.x):
-        print(f"{name}: {value}")
+    # # Print the best found parameters and the corresponding score
+    # print("Best parameters found:")
+    # for name, value in zip([dim.name for dim in param_space], res.x):
+    #     print(f"{name}: {value}")
 
-    print(f"Best objective value: {-res.fun}")
+    # print(f"Best objective value: {-res.fun}")
 
-    # Plot convergence
-    plot_convergence(res)
-    plt.show()
+    # # Plot convergence
+    # plot_convergence(res)
+    # plt.show()

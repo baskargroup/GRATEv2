@@ -84,7 +84,7 @@ class ImageProcessor:
 
         blur_img = histEq(blur_img)
         thresh = threshold_otsu(blur_img)
-        binary = blur_img > thresh
+        binary = cv2.threshold(blur_img, thresh, 255, cv2.THRESH_BINARY)[1]
         
         self.debugORSave(self.img, binary, 1, "1_BLURRING AND THRESHOLDING")
         return binary

@@ -12,13 +12,20 @@ plt.ioff()
 
 ############### Operations ############################3
 
-def histEq(img):
-    # img = img.astype('uint8')
-    # img = cv2.equalizeHist(img)
+def histEq(img, type = 1):
+    # Hist Eq Type 1 
+    if type == 1:
+        img = img.astype('uint8')
+        img = cv2.equalizeHist(img)
     
-    img_normalized = (img - np.min(img)) / (np.max(img) - np.min(img)) * 2 - 1
-    img_eq = exposure.equalize_adapthist(img_normalized, clip_limit=0.03)
-    img = (img_eq + 1) / 2
+    # Hist Eq Type 2
+    elif type == 2:
+        img_normalized = (img - np.min(img)) / (np.max(img) - np.min(img)) * 2 - 1
+        img_eq = exposure.equalize_adapthist(img_normalized, clip_limit=0.03)
+        img = (img_eq + 1) / 2
+        
+    else:
+        print('Invalid Hist Eq Type')
     return img
 
 ################ SCIPY BASED ELLIPSE CONSTRUCTION FUNCTION ###############################
@@ -42,18 +49,9 @@ def majorAxisPoints(poly):
     
     return temp
 
-def initialize_plot(last_dspace_run, RGBImg_shape = None, downsample_factor = 1):
+def initialize_plot(last_dspace_run, RGBImg_shape = None, downsample_factor = 1, WIPChange = 1):
     
-    if last_dspace_run:
-        numSubplots = 2
-        orig_img_plt_idx = 0
-        result_img_plt_idx = 1
-        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(50, 25))
-        # axes.axis('off')
-        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-        fig.tight_layout(pad=0)
-        return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
-    else:
+    if WIPChange == 1:
         numSubplots = 1
         assert RGBImg_shape is not None, "RGBImg_shape must be provided for single subplot"
         orig_img_plt_idx = 0
@@ -63,6 +61,27 @@ def initialize_plot(last_dspace_run, RGBImg_shape = None, downsample_factor = 1)
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
         fig.tight_layout(pad=0)
         return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
+    
+    else:
+        if last_dspace_run:
+            numSubplots = 2
+            orig_img_plt_idx = 0
+            result_img_plt_idx = 1
+            fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(50, 25))
+            # axes.axis('off')
+            fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+            fig.tight_layout(pad=0)
+            return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
+        else:
+            numSubplots = 1
+            assert RGBImg_shape is not None, "RGBImg_shape must be provided for single subplot"
+            orig_img_plt_idx = 0
+            result_img_plt_idx = 0
+            fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(RGBImg_shape[1] / (100 * downsample_factor), RGBImg_shape[0] / (100 * downsample_factor)))
+            axes.axis('off')
+            fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+            fig.tight_layout(pad=0)
+            return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
         
 
 def process_cluster(OrigImg, cluster, crystal_ang, params, color):
@@ -102,29 +121,38 @@ def process_cluster(OrigImg, cluster, crystal_ang, params, color):
     
     return crystal_properties
     
-def plot_results(last_dspace_run, axes, results, orig_img, RGB_img, orig_img_plt_idx, result_img_plt_idx):
-    
-    if not last_dspace_run:
-    
+def plot_results(last_dspace_run, axes, results, orig_img, RGB_img, orig_img_plt_idx, result_img_plt_idx, WIPChange = 1):
+    if WIPChange == 1:
         axes.imshow(RGB_img, vmin=0, vmax=255)
-        
+            
         for result in results:
             if result:
-                pltAlphaShape(axes, result['alpha_shape'])
-                pltOrientationLine(axes, result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
+                # pltAlphaShape(axes, result['alpha_shape'])
+                # pltOrientationLine(axes, result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
                 pltConvexHull(axes, result['hull'], result['point_cloud'], result['color'])
     
     else:
-        axes[result_img_plt_idx].imshow(RGB_img, vmin=0, vmax=255)
+        if not last_dspace_run:
         
-        for result in results:
-            if result:
-                pltAlphaShape(axes[result_img_plt_idx], result['alpha_shape'])
-                pltOrientationLine(axes[result_img_plt_idx], result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
-                pltConvexHull(axes[result_img_plt_idx], result['hull'], result['point_cloud'], result['color'])
-                # Other plotting based on 'result'
+            axes.imshow(RGB_img, vmin=0, vmax=255)
+            
+            for result in results:
+                if result:
+                    pltAlphaShape(axes, result['alpha_shape'])
+                    pltOrientationLine(axes, result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
+                    pltConvexHull(axes, result['hull'], result['point_cloud'], result['color'])
+        
+        else:
+            axes[result_img_plt_idx].imshow(RGB_img, vmin=0, vmax=255)
+            
+            for result in results:
+                if result:
+                    pltAlphaShape(axes[result_img_plt_idx], result['alpha_shape'])
+                    pltOrientationLine(axes[result_img_plt_idx], result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
+                    pltConvexHull(axes[result_img_plt_idx], result['hull'], result['point_cloud'], result['color'])
+                    # Other plotting based on 'result'
 
-        axes[orig_img_plt_idx].imshow(orig_img, cmap='gray')
+            axes[orig_img_plt_idx].imshow(orig_img, cmap='gray')
 
 def extract_results(processed_clusters):
     """
