@@ -162,11 +162,11 @@ def process_image(data_dir, parameters, last_run, run_parallel=True):
             results = list(executor.map(run_image_processor, image_files, [parameters] * len(image_files), [last_run] * len(image_files)))
 
         for result in results:
-            df_overall = df_overall.append(result, ignore_index=True)
+            df_overall = pd.concat([df_overall, result], ignore_index=True)
     else:
         for file_path in image_files:
             df_crystal_props = run_image_processor(file_path, parameters, last_run)
-            df_overall = df_overall.append(df_crystal_props, ignore_index=True)
+            df_overall = pd.concat([df_overall, df_crystal_props], ignore_index=True)
         
     return df_overall
             

@@ -29,7 +29,8 @@ class ImageProcessor:
     def __init__(self, img_path, parameters, last_run):
         self.parameters = parameters
         self.img_path = img_path
-        self.img = io.imread(img_path).astype('float64')
+        self.img = cv2.imread(str(img_path),0)
+        # self.img = io.imread(img_path).astype('float64')
         self.last_run = last_run
         
     @timeit
@@ -72,7 +73,7 @@ class ImageProcessor:
                 cv2.cvtColor(self.img.astype('uint8'), cv2.COLOR_GRAY2RGB))
         
     @timeit
-    def BlurThresh(self):
+    def BlurThresh(self, runtype = 1):
         blur_img    = self.img
         k_size      = self.parameters['blur k size']
         
@@ -83,8 +84,11 @@ class ImageProcessor:
             blur_img = cv2.blur( blur_img , ( k_size , k_size ) )
 
         blur_img = histEq(blur_img)
-        thresh = threshold_otsu(blur_img)
-        binary = cv2.threshold(blur_img, thresh, 255, cv2.THRESH_BINARY)[1]
+        if runtype == 1:
+            _,binary = cv2.threshold( blur_img , 0 , 255 , cv2.THRESH_BINARY + cv2.THRESH_OTSU )
+        else:
+            thresh = threshold_otsu(blur_img)
+            binary = cv2.threshold(blur_img, thresh, 255, cv2.THRESH_BINARY)[1]
         
         self.debugORSave(self.img, binary, 1, "1_BLURRING AND THRESHOLDING")
         return binary

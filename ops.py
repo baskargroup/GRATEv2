@@ -12,14 +12,14 @@ plt.ioff()
 
 ############### Operations ############################3
 
-def histEq(img, type = 1):
+def histEq(img, runtype = 1):
     # Hist Eq Type 1 
-    if type == 1:
+    if runtype == 1:
         img = img.astype('uint8')
         img = cv2.equalizeHist(img)
     
     # Hist Eq Type 2
-    elif type == 2:
+    elif runtype == 2:
         img_normalized = (img - np.min(img)) / (np.max(img) - np.min(img)) * 2 - 1
         img_eq = exposure.equalize_adapthist(img_normalized, clip_limit=0.03)
         img = (img_eq + 1) / 2
