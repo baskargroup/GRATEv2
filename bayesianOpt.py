@@ -6,6 +6,7 @@ from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
 from skopt.plots import plot_convergence
 import matplotlib.pyplot as plt
+import pathlib as pl
 
 # Define the parameter space
 # Replace 'param1', 'param2', ..., 'param15' with actual parameter names
@@ -45,6 +46,8 @@ result_display      = 0;            # To display final result in notebook: 1, No
 image_scale_percent = 50;           # Scaling the image before display
 
 '''
+# Constants
+ACCEPTED_FORMATS = ['.tif', '.tiff', '.png']
 
 param_space = [
     Real(0.0, 1.0, name='param1'),      # Example: A real-valued parameter between 0 and 1
@@ -64,7 +67,7 @@ param_space = [
     Integer(1, 100, name='param15')
 ]
 
-def extract_and_fill_annotations(image, output_path='binary_annotations_filled.png', threshold_value=10):
+def extract_and_fill_annotations(image, output_path, threshold_value=10):
     """
     Extracts colored annotations (crystal outlines) from an RGB TEM image with a grayscale background,
     fills the inside of the annotations, and outputs a binary image where the annotations are black (filled)
@@ -83,7 +86,7 @@ def extract_and_fill_annotations(image, output_path='binary_annotations_filled.p
 
     # Check if image was loaded successfully
     if image is None:
-        raise ValueError(f"Error: Could not read the image from {image_path}.")
+        raise ValueError(f"Error: Could not read the image.")
 
     # Convert image to float32 for precision in calculations
     image_float = image.astype(np.float32)
@@ -117,10 +120,10 @@ def extract_and_fill_annotations(image, output_path='binary_annotations_filled.p
     # Fill the contours on the mask
     cv2.drawContours(mask, contours, -1, color=0, thickness=cv2.FILLED)
     
-    # mask = cv2.bitwise_not(mask)
+    mask = cv2.bitwise_not(mask)
 
     # Save the filled binary image
-    cv2.imwrite(output_path, mask)
+    cv2.imwrite(str(output_path), mask)
 
     return mask
 
@@ -183,19 +186,33 @@ def objective(**params):
     # Since gp_minimize minimizes the objective, return the negative score
     return -score
 
+def CreateMaskFromAnnotatedImagesInsideDir(inputDirPath, outputDirPath, threshold_value=10):
+    annotatedImagesPath = [file_path for file_path in inputDirPath.iterdir() 
+                   if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
+    
+    for i, annotatedImagePath in enumerate(annotatedImagesPath):
+        annotatedImg = cv2.imread(str(annotatedImagePath))
+        maskImagePath = outputDirPath / annotatedImagePath.name
+        extract_and_fill_annotations(annotatedImg, maskImagePath, threshold_value)
 
 if __name__ == "__main__":
 # def bayesianOpt(image_folder, annotation_folder):
+    projectDirPath      = pl.Path(__file__).parent.resolve()
+    inputDirPath        = projectDirPath / 'DATA/BO/input/'
+    groundTruthDirPath  = projectDirPath /  'DATA/BO/groundTruth/'
     
-    images = load_images('/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_3/Images/')
-    annotations = load_annotations('Data/BO/annotations')
+    # createAnnotations('Data/BO/ground_truth_images', 'Data/BO/annotations', threshold_value=10)
+    CreateMaskFromAnnotatedImagesInsideDir(groundTruthDirPath/'images', groundTruthDirPath/'mask', threshold_value=10)
     
-    image_path = '/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_3/Images/FoilHole_21830223_Data_21829764_21829765_20200122_1019.png'
+    # images = load_images('/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_1/Images/')
+    # annotations = load_annotations('Data/BO/annotations')
     
-    for i, image in enumerate(images):
-        # cv2.imwrite(f"Data/BO/annotations/annotation_{i}.png", image)
-        output_path = f"/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/temp/binary_annotations_filled_{i}.png" 
-        extract_and_fill_annotations(images[i], output_path, threshold_value=10)
+    # # image_path = '/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_3/Images/FoilHole_21830223_Data_21829764_21829765_20200122_1019.png'
+    
+    # for i, image in enumerate(images):
+    #     # cv2.imwrite(f"Data/BO/annotations/annotation_{i}.png", image)
+    #     output_path = f"/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/temp/binary_annotations_filled_{i}.png" 
+    #     extract_and_fill_annotations(images[i], output_path, threshold_value=10)
     
     # # Run Bayesian Optimization
     # res = gp_minimize(
