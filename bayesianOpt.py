@@ -7,6 +7,8 @@ from skopt.utils import use_named_args
 from skopt.plots import plot_convergence
 import matplotlib.pyplot as plt
 import pathlib as pl
+import libconf
+import subprocess
 
 # Define the parameter space
 # Replace 'param1', 'param2', ..., 'param15' with actual parameter names
@@ -39,9 +41,9 @@ powSpec_peak_thresh     = 1.15;     # 1.20 works for all
 Thresh_area_factor      = 4;        # Cut off area factor of d-spacing^2
 
 ## Modes
-debug               = 1;            # To run on single image and save intermediate steps
-save_BB             = 1;            # To save Bounding box coordinates: 1, Not to: 0
-save_backbone_coords= 1;            # To save backbone coordinates: 1, Not to: 0
+debug               = 0;            # To run on single image and save intermediate steps
+save_BB             = 0;            # To save Bounding box coordinates: 1, Not to: 0
+save_backbone_coords= 0;            # To save backbone coordinates: 1, Not to: 0
 result_display      = 0;            # To display final result in notebook: 1, Not to: 0
 image_scale_percent = 50;           # Scaling the image before display
 
@@ -50,22 +52,38 @@ image_scale_percent = 50;           # Scaling the image before display
 ACCEPTED_FORMATS = ['.tif', '.tiff', '.png']
 
 param_space = [
-    Real(0.0, 1.0, name='param1'),      # Example: A real-valued parameter between 0 and 1
-    Integer(1, 10, name='param2'),      # Example: An integer parameter between 1 and 10
-    Real(0.1, 5.0, name='param3'),
-    Integer(0, 100, name='param4'),
-    Real(0.0, 1.0, name='param5'),
-    Real(0.0, 10.0, name='param6'),
-    Integer(1, 20, name='param7'),
-    Real(0.0, 100.0, name='param8'),
-    Real(0.0, 1.0, name='param9'),
-    Integer(0, 50, name='param10'),
-    Real(0.0, 5.0, name='param11'),
-    Integer(1, 15, name='param12'),
-    Real(0.0, 1.0, name='param13'),
-    Real(0.0, 10.0, name='param14'),
-    Integer(1, 100, name='param15')
-]
+    Integer(5, 20, name='blur_iteration'),      # Example: A real-valued parameter between 0 and 1
+    Real(0.1, 0.5, name='Blur_kernel_propCons'),      # Example: An integer parameter between 1 and 10
+    Integer(1, 20, name='closing_k_size'),
+    Integer(1, 20, name='opening_k_size'),
+    Real(0.0, 1.0, name='pixThresh_propCons'),
+    Real(0.5, 5.0, name='ellipse_len_propCons'),
+    Real(2.0, 7.0, name='ellipse_aspect_ratio'),
+    Real(1.0, 5.0, name='thresh_dist_propCons'),
+    Real(5.0, 15.0, name='thresh_theta'),
+    Integer(1, 10, name='cluster_size'),
+    Real(0.1, 0.5, name='dspace_bandpass'),
+    Real(1.0, 1.5, name='powSpec_peak_thresh'),
+    Real(1.0, 5.0, name='Thresh_area_factor')
+    ]
+
+def createConfigFile(configFilePath, data_dir, base_result_dir, configDict):
+    # Add other fixed parameters to the configDict
+    configDict['data_dir']          = data_dir
+    configDict['base_result_dir']   = base_result_dir
+    
+    configDict['dspace_nm'] = [1.9]
+    configDict['pix_2_nm']  = 78.5
+    
+    configDict['debug']                 = 0
+    configDict['save_BB']               = 0
+    configDict['save_backbone_coords']  = 0
+    configDict['result_display']        = 0
+    configDict['image_scale_percent']   = 50
+    
+    with open(configFilePath, 'w') as configFile:
+        libconf.dump(configDict, configFile)
+        configFile.close()
 
 def extract_and_fill_annotations(image, output_path, threshold_value=10):
     """
@@ -127,6 +145,15 @@ def extract_and_fill_annotations(image, output_path, threshold_value=10):
 
     return mask
 
+def CreateMaskFromAnnotatedImagesInsideDir(inputDirPath, outputDirPath, threshold_value=10):
+    annotatedImagesPath = [file_path for file_path in inputDirPath.iterdir() 
+                   if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
+    
+    for i, annotatedImagePath in enumerate(annotatedImagesPath):
+        annotatedImg = cv2.imread(str(annotatedImagePath))
+        maskImagePath = outputDirPath / annotatedImagePath.name
+        extract_and_fill_annotations(annotatedImg, maskImagePath, threshold_value)
+
 # Placeholder functions for loading data
 def load_images(image_folder):
     image_files = glob.glob(f"{image_folder}/*.png")  # Adjust extension if needed
@@ -138,6 +165,15 @@ def load_annotations(annotation_folder):
     annotations = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in annotation_files]
     return annotations
 
+def updateTemplateIndex(baseDirPathObj, versionDirTemplate, versionIndex):
+    if versionIndex <= 0:
+        versionIndex = 0
+        while True:
+            versionIndex += 1
+            if not (baseDirPathObj / versionDirTemplate.format(versionIndex)).exists():
+                break
+    return versionIndex
+
 # Define the objective function to minimize (negative performance metric)
 @use_named_args(param_space)
 def objective(**params):
@@ -148,52 +184,58 @@ def objective(**params):
     # Extract parameter values
     # For example: param1 = params['param1'], param2 = params['param2'], etc.
     # Use these parameters in your algorithm
-
+    
     # Placeholder for algorithm execution
     # Replace this with actual code to run your algorithm
-    def run_algorithm(images, params):
-        results = []
-        # for image in images:
-            # Apply preprocessing if needed
-            # processed_image = preprocess_image(image, params)
-            # Detect crystals
-            # detected_crystals = detect_crystals(processed_image, params)
-            # results.append(detected_crystals)
-        return results
+    def run_algorithm():
+        command = ['python', 'main.py', 'BO.cfg']
+        subprocess.run(command)
 
-    results = run_algorithm(images, params)
-
-    def compute_iou(detected, ground_truth):
-        # Ensure binary images
-        detected_binary = (detected > 0).astype(np.uint8)
-        ground_truth_binary = (ground_truth > 0).astype(np.uint8)
-        intersection = np.logical_and(detected_binary, ground_truth_binary)
-        union = np.logical_or(detected_binary, ground_truth_binary)
-        iou = np.sum(intersection) / np.sum(union)
-        return iou
+    def compute_iou(detectedDirPath, groundTruthDirPath):
+        
+        imagesNames = [file_path.name for file_path in detectedDirPath.iterdir() 
+                        if file_path.is_file() and file_path.suffix in '.png']
+        
+        IoU = []
+        for imageName in imagesNames:
+            detected = cv2.imread(str(detectedDirPath / imageName), cv2.IMREAD_GRAYSCALE)
+            ground_truth = cv2.imread(str(groundTruthDirPath / imageName), cv2.IMREAD_GRAYSCALE)
+            intersection = np.logical_and(detected, ground_truth)
+            union = np.logical_or(detected, ground_truth)
+            iou = np.sum(intersection) / np.sum(union)
+            IoU.append(iou)
+        
+        return np.mean(IoU)
     
+    # def evaluate_performance(results, annotations):
+    #     scores = []
+    #     for detected, ground_truth in zip(results, annotations):
+    #         # Compute IoU or another metric
+    #         iou_score = compute_iou(detected, ground_truth)
+    #         scores.append(iou_score)
+    #     return np.mean(scores)
+
+    # Create a config file with the parameters
+    projectDirPath = pl.Path(__file__).parent.resolve()
+    configFilePath = projectDirPath / 'configFiles/BO.cfg'
     
-    def evaluate_performance(results, annotations):
-        scores = []
-        for detected, ground_truth in zip(results, annotations):
-            # Compute IoU or another metric
-            iou_score = compute_iou(detected, ground_truth)
-            scores.append(iou_score)
-        return np.mean(scores)
-
-    score = evaluate_performance(results, annotations)
-
+    data_dir          = "DATA/BO/input/"
+    base_result_dir   = "DATA/BO/grateV2/"
+    
+    createConfigFile(configFilePath, data_dir, base_result_dir, params)
+    run_algorithm()
+    
+    # Create Masks from the algorithm's output
+    latestRunDirIndex = updateTemplateIndex(projectDirPath / base_result_dir, 'version_{}/', 0)
+    CreateMaskFromAnnotatedImagesInsideDir(projectDirPath / base_result_dir / 'version_{}/Images/'.format(latestRunDirIndex), 
+                                           projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex), threshold_value=10)
+    
+    # Compute the performance metric
+    score = compute_iou(projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex), 
+                      projectDirPath / 'DATA/BO/groundTruth/Masks/')
+    
     # Since gp_minimize minimizes the objective, return the negative score
     return -score
-
-def CreateMaskFromAnnotatedImagesInsideDir(inputDirPath, outputDirPath, threshold_value=10):
-    annotatedImagesPath = [file_path for file_path in inputDirPath.iterdir() 
-                   if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
-    
-    for i, annotatedImagePath in enumerate(annotatedImagesPath):
-        annotatedImg = cv2.imread(str(annotatedImagePath))
-        maskImagePath = outputDirPath / annotatedImagePath.name
-        extract_and_fill_annotations(annotatedImg, maskImagePath, threshold_value)
 
 if __name__ == "__main__":
 # def bayesianOpt(image_folder, annotation_folder):
@@ -202,7 +244,7 @@ if __name__ == "__main__":
     groundTruthDirPath  = projectDirPath /  'DATA/BO/groundTruth/'
     
     # createAnnotations('Data/BO/ground_truth_images', 'Data/BO/annotations', threshold_value=10)
-    CreateMaskFromAnnotatedImagesInsideDir(groundTruthDirPath/'images', groundTruthDirPath/'mask', threshold_value=10)
+    CreateMaskFromAnnotatedImagesInsideDir(groundTruthDirPath/'Images', groundTruthDirPath/'Masks', threshold_value=10)
     
     # images = load_images('/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_1/Images/')
     # annotations = load_annotations('Data/BO/annotations')
