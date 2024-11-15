@@ -4,7 +4,7 @@ import cv2
 from skopt import gp_minimize
 from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
-from skopt.plots import plot_convergence
+from skopt.plots import plot_convergence, plot_gaussian_process, plot_objective
 import matplotlib.pyplot as plt
 import pathlib as pl
 import libconf
@@ -62,22 +62,11 @@ param_space = [
     Real(1.0, 5.0, name='Thresh_area_factor')
     ]
 
-# projectDirPath      = pl.Path(__file__).parent.resolve()
-# inputDirPath        = projectDirPath / 'DATA/BO/input/'
-# groundTruthDirPath  = projectDirPath /  'DATA/BO/groundTruth/'
-# configFilePath = projectDirPath / 'configFiles/BO.cfg'
-# data_dir          = "DATA/BO/input/"
-# base_result_dir   = "DATA/BO/grateV2/"
-# projectDirPath / base_result_dir / 'version_{}/Images/'.format(latestRunDirIndex)
-# projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex)
-# projectDirPath / 'DATA/BO/groundTruth/Masks/'
-
 pathsDict = {
     'projectDirFPath'   : pl.Path(__file__).parent.resolve(),
     'inputImgDirRPath'  : 'DATA/BO/input/',
     'grateOutputDirRPath': 'DATA/BO/grateV2/',
     'groundTruthDirRPath': 'DATA/BO/groundTruth/',
-    # 'versionDirRPathTemplate'       : 'DATA/BO/grateV2/version_{}/',
     'detectionDirName'  : 'Images',
     'masksDirName'      : 'Masks',
     'grateRunDirTemplate': 'version_{}',
@@ -183,16 +172,12 @@ def updateTemplateIndex(baseDirPathObj, versionDirTemplate, versionIndex):
                 break
     return versionIndex - 1
 
-# Define the objective function to minimize (negative performance metric)
 @use_named_args(param_space)
 def objective(**params):
     """
     Objective function for Bayesian Optimization.
     Evaluates the algorithm's performance on the annotated images.
     """
-    # Extract parameter values
-    # For example: param1 = params['param1'], param2 = params['param2'], etc.
-    # Use these parameters in your algorithm
     
     def run_algorithm():
         command = ['python', 'main.py', 'BO.cfg']
@@ -214,30 +199,9 @@ def objective(**params):
         
         return np.mean(IoU)
     
-    # def evaluate_performance(results, annotations):
-    #     scores = []
-    #     for detected, ground_truth in zip(results, annotations):
-    #         # Compute IoU or another metric
-    #         iou_score = compute_iou(detected, ground_truth)
-    #         scores.append(iou_score)
-    #     return np.mean(scores)
-
-    # Create a config file with the parameters
-    # projectDirPath = pl.Path(__file__).parent.resolve()
-    # configFilePath = projectDirPath / 'configFiles/BO.cfg'
-    
-    # data_dir          = "DATA/BO/input/"
-    # base_result_dir   = "DATA/BO/grateV2/"
-    
-    # createConfigFile(configFilePath, data_dir, base_result_dir, params)
     createConfigFile(pathsDict['projectDirFPath'] / pathsDict['configFileRPath'], 
                      params)
     run_algorithm()
-    
-    # Create Masks from the algorithm's output
-    # latestRunDirIndex = updateTemplateIndex(projectDirPath / base_result_dir, 'version_{}/', 0)
-    # CreateMaskFromAnnotatedImagesInsideDir(projectDirPath / base_result_dir / 'version_{}/Images/'.format(latestRunDirIndex), 
-    #                                        projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex), threshold_value=10)
     
     latestRunDirIndex = updateTemplateIndex(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'], 
                                             pathsDict['grateRunDirTemplate'], 0)
@@ -247,27 +211,13 @@ def objective(**params):
                                            pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['masksDirName'], 
                                            threshold_value = 10)
     
-    # Compute the performance metric
-    # score = compute_iou(projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex), 
-    #                   projectDirPath / 'DATA/BO/groundTruth/Masks/')
     score = compute_iou(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['masksDirName'], pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'])
     
-    # Since gp_minimize minimizes the objective, return the negative score
     return -score
 
 if __name__ == "__main__":
     # # Prepare the gound truth masks
     # CreateMaskFromAnnotatedImagesInsideDir(pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['detectionDirName'], pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'], threshold_value=10)
-    
-    # images = load_images('/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_1/Images/')
-    # annotations = load_annotations('Data/BO/annotations')
-    
-    # # image_path = '/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_3/Images/FoilHole_21830223_Data_21829764_21829765_20200122_1019.png'
-    
-    # for i, image in enumerate(images):
-    #     # cv2.imwrite(f"Data/BO/annotations/annotation_{i}.png", image)
-    #     output_path = f"/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/temp/binary_annotations_filled_{i}.png" 
-    #     extract_and_fill_annotations(images[i], output_path, threshold_value=10)
     
     # Run Bayesian Optimization
     res = gp_minimize(
@@ -275,17 +225,31 @@ if __name__ == "__main__":
         dimensions=param_space,
         acq_func='EI',      # Expected Improvement
         n_calls=50,         # Number of evaluations of the objective function
-        n_initial_points=10,  # Number of initial random evaluations
+        n_initial_points=10,# Number of initial random evaluations
         random_state=42     # For reproducibility
     )
 
-    # # Print the best found parameters and the corresponding score
-    # print("Best parameters found:")
-    # for name, value in zip([dim.name for dim in param_space], res.x):
-    #     print(f"{name}: {value}")
+    # Print the best found parameters and the corresponding score
+    print("Best parameters found:")
+    for name, value in zip([dim.name for dim in param_space], res.x):
+        print(f"{name}: {value}")
 
-    # print(f"Best objective value: {-res.fun}")
-
-    # # Plot convergence
-    # plot_convergence(res)
-    # plt.show()
+    print(f"Best objective value: {-res.fun}")
+    
+    # Store the results and convergence plot
+    with open('results.txt', 'w') as f:
+        f.write(f"Best parameters found:\n")
+        for name, value in zip([dim.name for dim in param_space], res.x):
+            f.write(f"{name}: {value}\n")
+        f.write(f"Best objective value: {-res.fun}\n")
+        f.write(f"Convergence plot saved as 'convergence_plot.png'\n")
+        
+    plot_convergence(res)
+    plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'convergence_plot.png')
+    
+    plot_gaussian_process(res)
+    plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'gaussian_process_plot.png')
+    
+    # Save the best parameters to a config file
+    best_params = dict(zip([dim.name for dim in param_space], res.x))
+    createConfigFile(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'best_params.cfg', best_params)
