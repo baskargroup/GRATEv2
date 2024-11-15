@@ -76,6 +76,7 @@ def prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys
         'result annotation directory': version_result_dir / "Annotations",
         'result backbone coords': version_result_dir / "BackboneCoord",
         'Data directory'        : data_dir,
+        'Mask directory'        : version_result_dir / 'Masks',
         # 'Base result directory' : version_result_dir,
         'save image format'     : '.png'
     }
@@ -104,7 +105,8 @@ def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color
         parameters['result CSV directory'],
         parameters['result image directory'],
         parameters['result backbone coords'] if parameters['save backbone coords'] == 1 else None,
-        parameters['result annotation directory'] if parameters['save bounding box'] == 1 else None
+        parameters['result annotation directory'] if parameters['save bounding box'] == 1 else None,
+        parameters['Mask directory']
     ]
     
     CreateDirectories(directories)

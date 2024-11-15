@@ -10,11 +10,6 @@ import pathlib as pl
 import libconf
 import subprocess
 
-# Define the parameter space
-# Replace 'param1', 'param2', ..., 'param15' with actual parameter names
-# Define their types (Real, Integer) and bounds accordingly
-
-
 '''
 Config file example:
 
@@ -52,27 +47,53 @@ image_scale_percent = 50;           # Scaling the image before display
 ACCEPTED_FORMATS = ['.tif', '.tiff', '.png']
 
 param_space = [
-    Integer(5, 20, name='blur_iteration'),      # Example: A real-valued parameter between 0 and 1
+    Integer(5, 20, name='blur_iteration', dtype= int),      # Example: A real-valued parameter between 0 and 1
     Real(0.1, 0.5, name='Blur_kernel_propCons'),      # Example: An integer parameter between 1 and 10
-    Integer(1, 20, name='closing_k_size'),
-    Integer(1, 20, name='opening_k_size'),
+    Integer(1, 20, name='closing_k_size', dtype= int),
+    Integer(1, 20, name='opening_k_size', dtype= int),
     Real(0.0, 1.0, name='pixThresh_propCons'),
     Real(0.5, 5.0, name='ellipse_len_propCons'),
     Real(2.0, 7.0, name='ellipse_aspect_ratio'),
     Real(1.0, 5.0, name='thresh_dist_propCons'),
     Real(5.0, 15.0, name='thresh_theta'),
-    Integer(1, 10, name='cluster_size'),
+    Integer(1, 10, name='cluster_size', dtype= int),
     Real(0.1, 0.5, name='dspace_bandpass'),
     Real(1.0, 1.5, name='powSpec_peak_thresh'),
     Real(1.0, 5.0, name='Thresh_area_factor')
     ]
 
-def createConfigFile(configFilePath, data_dir, base_result_dir, configDict):
+# projectDirPath      = pl.Path(__file__).parent.resolve()
+# inputDirPath        = projectDirPath / 'DATA/BO/input/'
+# groundTruthDirPath  = projectDirPath /  'DATA/BO/groundTruth/'
+# configFilePath = projectDirPath / 'configFiles/BO.cfg'
+# data_dir          = "DATA/BO/input/"
+# base_result_dir   = "DATA/BO/grateV2/"
+# projectDirPath / base_result_dir / 'version_{}/Images/'.format(latestRunDirIndex)
+# projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex)
+# projectDirPath / 'DATA/BO/groundTruth/Masks/'
+
+pathsDict = {
+    'projectDirFPath'   : pl.Path(__file__).parent.resolve(),
+    'inputImgDirRPath'  : 'DATA/BO/input/',
+    'grateOutputDirRPath': 'DATA/BO/grateV2/',
+    'groundTruthDirRPath': 'DATA/BO/groundTruth/',
+    # 'versionDirRPathTemplate'       : 'DATA/BO/grateV2/version_{}/',
+    'detectionDirName'  : 'Images',
+    'masksDirName'      : 'Masks',
+    'grateRunDirTemplate': 'version_{}',
+    "latestRunDirIndex" : 0,
+    'configFileRPath'   : 'configFiles/BO.cfg',
+    }
+
+def createConfigFile(configFilePath, configDict):
     # Add other fixed parameters to the configDict
-    configDict['data_dir']          = data_dir
-    configDict['base_result_dir']   = base_result_dir
+    # configDict['data_dir']          = data_dir
+    # configDict['base_result_dir']   = base_result_dir
+    configDict['data_dir']          = pathsDict['inputImgDirRPath']
+    configDict['base_result_dir']   = pathsDict['grateOutputDirRPath']
     
     configDict['dspace_nm'] = [1.9]
+    # configDict['dspace_nm'] = 1.9
     configDict['pix_2_nm']  = 78.5
     
     configDict['debug']                 = 0
@@ -99,37 +120,24 @@ def extract_and_fill_annotations(image, output_path, threshold_value=10):
     Returns:
     - binary_filled (numpy.ndarray): The binary image array with filled annotations as black and background as white.
     """
-    # Load the RGB image
-    # image = cv2.imread(image_path)
 
-    # Check if image was loaded successfully
     if image is None:
         raise ValueError(f"Error: Could not read the image.")
 
-    # Convert image to float32 for precision in calculations
     image_float = image.astype(np.float32)
 
-    # Split the image into B, G, R channels
     B, G, R = cv2.split(image_float)
 
-    # Calculate the absolute differences between the channels
     diff_RG = cv2.absdiff(R, G)
     diff_RB = cv2.absdiff(R, B)
     diff_GB = cv2.absdiff(G, B)
 
-    # Combine the differences to get the maximum difference per pixel
     max_diff = cv2.max(diff_RG, cv2.max(diff_RB, diff_GB))
 
-    # Apply threshold to detect non-grayscale pixels (annotations)
     _, binary_image = cv2.threshold(max_diff, threshold_value, 255, cv2.THRESH_BINARY)
 
-    # Convert binary_image to uint8 type
     binary_image = binary_image.astype(np.uint8)
 
-    # Invert the binary image so that annotations are white (255) and background is black (0)
-    # binary_inverted = cv2.bitwise_not(binary_image)
-
-    # Find contours in the binary image
     _, contours, hierarchy = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Create a mask of the same size as the image, initialized to white (255)
@@ -138,6 +146,7 @@ def extract_and_fill_annotations(image, output_path, threshold_value=10):
     # Fill the contours on the mask
     cv2.drawContours(mask, contours, -1, color=0, thickness=cv2.FILLED)
     
+    # Invert the binary image so that annotations are white (255) and background is black (0)    
     mask = cv2.bitwise_not(mask)
 
     # Save the filled binary image
@@ -172,7 +181,7 @@ def updateTemplateIndex(baseDirPathObj, versionDirTemplate, versionIndex):
             versionIndex += 1
             if not (baseDirPathObj / versionDirTemplate.format(versionIndex)).exists():
                 break
-    return versionIndex
+    return versionIndex - 1
 
 # Define the objective function to minimize (negative performance metric)
 @use_named_args(param_space)
@@ -185,8 +194,6 @@ def objective(**params):
     # For example: param1 = params['param1'], param2 = params['param2'], etc.
     # Use these parameters in your algorithm
     
-    # Placeholder for algorithm execution
-    # Replace this with actual code to run your algorithm
     def run_algorithm():
         command = ['python', 'main.py', 'BO.cfg']
         subprocess.run(command)
@@ -216,35 +223,41 @@ def objective(**params):
     #     return np.mean(scores)
 
     # Create a config file with the parameters
-    projectDirPath = pl.Path(__file__).parent.resolve()
-    configFilePath = projectDirPath / 'configFiles/BO.cfg'
+    # projectDirPath = pl.Path(__file__).parent.resolve()
+    # configFilePath = projectDirPath / 'configFiles/BO.cfg'
     
-    data_dir          = "DATA/BO/input/"
-    base_result_dir   = "DATA/BO/grateV2/"
+    # data_dir          = "DATA/BO/input/"
+    # base_result_dir   = "DATA/BO/grateV2/"
     
-    createConfigFile(configFilePath, data_dir, base_result_dir, params)
+    # createConfigFile(configFilePath, data_dir, base_result_dir, params)
+    createConfigFile(pathsDict['projectDirFPath'] / pathsDict['configFileRPath'], 
+                     params)
     run_algorithm()
     
     # Create Masks from the algorithm's output
-    latestRunDirIndex = updateTemplateIndex(projectDirPath / base_result_dir, 'version_{}/', 0)
-    CreateMaskFromAnnotatedImagesInsideDir(projectDirPath / base_result_dir / 'version_{}/Images/'.format(latestRunDirIndex), 
-                                           projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex), threshold_value=10)
+    # latestRunDirIndex = updateTemplateIndex(projectDirPath / base_result_dir, 'version_{}/', 0)
+    # CreateMaskFromAnnotatedImagesInsideDir(projectDirPath / base_result_dir / 'version_{}/Images/'.format(latestRunDirIndex), 
+    #                                        projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex), threshold_value=10)
+    
+    latestRunDirIndex = updateTemplateIndex(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'], 
+                                            pathsDict['grateRunDirTemplate'], 0)
+    
+    # Create Masks for the latest run
+    CreateMaskFromAnnotatedImagesInsideDir(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['detectionDirName'], 
+                                           pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['masksDirName'], 
+                                           threshold_value = 10)
     
     # Compute the performance metric
-    score = compute_iou(projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex), 
-                      projectDirPath / 'DATA/BO/groundTruth/Masks/')
+    # score = compute_iou(projectDirPath / base_result_dir / 'version_{}/Masks/'.format(latestRunDirIndex), 
+    #                   projectDirPath / 'DATA/BO/groundTruth/Masks/')
+    score = compute_iou(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['masksDirName'], pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'])
     
     # Since gp_minimize minimizes the objective, return the negative score
     return -score
 
 if __name__ == "__main__":
-# def bayesianOpt(image_folder, annotation_folder):
-    projectDirPath      = pl.Path(__file__).parent.resolve()
-    inputDirPath        = projectDirPath / 'DATA/BO/input/'
-    groundTruthDirPath  = projectDirPath /  'DATA/BO/groundTruth/'
-    
-    # createAnnotations('Data/BO/ground_truth_images', 'Data/BO/annotations', threshold_value=10)
-    CreateMaskFromAnnotatedImagesInsideDir(groundTruthDirPath/'Images', groundTruthDirPath/'Masks', threshold_value=10)
+    # # Prepare the gound truth masks
+    # CreateMaskFromAnnotatedImagesInsideDir(pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['detectionDirName'], pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'], threshold_value=10)
     
     # images = load_images('/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/version_1/Images/')
     # annotations = load_annotations('Data/BO/annotations')
@@ -256,15 +269,15 @@ if __name__ == "__main__":
     #     output_path = f"/media/dgamdha/data/Dhruv/ISU/PhD/Projects/GRATE/GRATE_for_PennState/DATA/BO/results/temp/binary_annotations_filled_{i}.png" 
     #     extract_and_fill_annotations(images[i], output_path, threshold_value=10)
     
-    # # Run Bayesian Optimization
-    # res = gp_minimize(
-    #     func=objective,
-    #     dimensions=param_space,
-    #     acq_func='EI',      # Expected Improvement
-    #     n_calls=50,         # Number of evaluations of the objective function
-    #     n_initial_points=10,  # Number of initial random evaluations
-    #     random_state=42     # For reproducibility
-    # )
+    # Run Bayesian Optimization
+    res = gp_minimize(
+        func=objective,
+        dimensions=param_space,
+        acq_func='EI',      # Expected Improvement
+        n_calls=50,         # Number of evaluations of the objective function
+        n_initial_points=10,  # Number of initial random evaluations
+        random_state=42     # For reproducibility
+    )
 
     # # Print the best found parameters and the corresponding score
     # print("Best parameters found:")
