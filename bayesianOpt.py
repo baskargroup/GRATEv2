@@ -4,7 +4,7 @@ import cv2
 from skopt import gp_minimize
 from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
-from skopt.plots import plot_convergence, plot_gaussian_process, plot_objective
+from skopt.plots import plot_convergence, plot_objective, plot_evaluations
 import matplotlib.pyplot as plt
 import pathlib as pl
 import libconf
@@ -233,19 +233,27 @@ if __name__ == "__main__":
     print(f"Best objective value: {-res.fun}")
     
     # Store the results and convergence plot
-    with open('results.txt', 'w') as f:
+    with open(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'results.txt', 'w') as f:
         f.write(f"Best parameters found:\n")
-        for name, value in zip([dim.name for dim in param_space], res.x):
-            f.write(f"{name}: {value}\n")
+        # for name, value in zip([dim.name for dim in param_space], res.x):
+        #     f.write(f"{name}: {value}\n")
         f.write(f"Best objective value: {-res.fun}\n")
-        f.write(f"Convergence plot saved as 'convergence_plot.png'\n")
+        
+        # Get the evaluation number of the best found result
+        best_eval = res.func_vals.argmin() + 1
+        f.write(f"Best evaluation number: {best_eval}\n")
+        
         
     plot_convergence(res)
     plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'convergence_plot.png')
     
-    plot_gaussian_process(res)
-    plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'gaussian_process_plot.png')
-    
     # Save the best parameters to a config file
     best_params = dict(zip([dim.name for dim in param_space], res.x))
     createConfigFile(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'best_params.cfg', best_params)
+    
+    plot_evaluations(res)
+    plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'evaluations_plot.png')
+    
+    plot_objective(res)
+    plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'objective_plot.png')
+    

@@ -162,6 +162,7 @@ def process_image(data_dir, parameters, last_run, run_parallel=True):
     if run_parallel:
         with ProcessPoolExecutor() as executor:
             results = list(executor.map(run_image_processor, image_files, [parameters] * len(image_files), [last_run] * len(image_files)))
+            executor.shutdown( wait=True )
 
         for result in results:
             df_overall = pd.concat([df_overall, result], ignore_index=True)
