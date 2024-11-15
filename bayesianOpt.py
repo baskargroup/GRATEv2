@@ -75,14 +75,10 @@ pathsDict = {
     }
 
 def createConfigFile(configFilePath, configDict):
-    # Add other fixed parameters to the configDict
-    # configDict['data_dir']          = data_dir
-    # configDict['base_result_dir']   = base_result_dir
     configDict['data_dir']          = pathsDict['inputImgDirRPath']
     configDict['base_result_dir']   = pathsDict['grateOutputDirRPath']
     
     configDict['dspace_nm'] = [1.9]
-    # configDict['dspace_nm'] = 1.9
     configDict['pix_2_nm']  = 78.5
     
     configDict['debug']                 = 0
