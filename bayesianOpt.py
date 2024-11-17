@@ -14,8 +14,8 @@ import subprocess
 ACCEPTED_FORMATS = ['.tif', '.tiff', '.png']
 
 param_space = [
-    Integer(5, 20, name='blur_iteration', dtype= int),      # Example: A real-valued parameter between 0 and 1
-    Real(0.1, 0.5, name='Blur_kernel_propCons'),      # Example: An integer parameter between 1 and 10
+    Integer(5, 20, name='blur_iteration', dtype= int),
+    Real(0.1, 0.5, name='Blur_kernel_propCons'),
     Integer(1, 20, name='closing_k_size', dtype= int),
     Integer(1, 20, name='opening_k_size', dtype= int),
     Real(0.0, 1.0, name='pixThresh_propCons'),
@@ -61,16 +61,16 @@ def createConfigFile(configFilePath, configDict):
 def extract_and_fill_annotations(image, output_path, threshold_value=10):
     """
     Extracts colored annotations (crystal outlines) from an RGB TEM image with a grayscale background,
-    fills the inside of the annotations, and outputs a binary image where the annotations are black (filled)
-    and the background is white.
+    fills the inside of the annotations, and outputs a binary image where the annotations are white (filled)
+    and the background is black.
 
     Parameters:
-    - image_path (str): Path to the input annotated TEM image.
+    - image (numpy.ndarray): The input RGB TEM image array with crystal annotations.
     - output_path (str): Path to save the output binary image.
     - threshold_value (int): Threshold value for detecting non-grayscale pixels.
 
     Returns:
-    - binary_filled (numpy.ndarray): The binary image array with filled annotations as black and background as white.
+    - binary_filled (numpy.ndarray): The binary image array with filled annotations as white and background as black.
     """
 
     if image is None:
