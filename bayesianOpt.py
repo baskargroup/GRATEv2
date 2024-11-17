@@ -10,39 +10,6 @@ import pathlib as pl
 import libconf
 import subprocess
 
-'''
-Config file example:
-
-## Directory paths
-data_dir         = "DATA/sampleData/";     # Data directory wrt project path 
-base_result_dir  = "Results/temp/";        # Base result directory wrt project path
-
-## Parameters
-dspace_nm   = [1.9];                # The D-Spacing value (eg. 1.9, 0.7) at which the algorithm will run.
-pix_2_nm    = 78.5;                 # Image resolution, number of pixels per nanometer
-
-blur_iteration          = 15;       # Number of Blur Iteration
-Blur_kernel_propCons    = 0.15;     # Proportionality constant of d-spacing (in pixel) for the blur kernel size
-closing_k_size          = 15;       # Closing Kernel Size
-opening_k_size          = 17;       # Opening Kernel Size
-pixThresh_propCons      = 0.625;    # Proportionality constant of d-spacing (in pixel) for the threshold number of pixels consituting Backbone
-ellipse_len_propCons    = 1.5;      # Proportionality constant of d-spacing (in pixel) for the breaking Backbone into uniform size before constructing ellipse
-ellipse_aspect_ratio    = 5;        # Threshold ellipse aspect Ratio 
-thresh_dist_propCons    = 2;        # Proportionality constant of d-spacing (in pixel) for the distance threshold for adjacency matrix
-thresh_theta            = 10;       # delta Theta threshold for adjacency matrix
-cluster_size            = 7;        # Threshold ellipse in Crystal cluster
-dspace_bandpass         = 0.2;      # Bandpass filter range across d-spacing
-powSpec_peak_thresh     = 1.15;     # 1.20 works for all
-Thresh_area_factor      = 4;        # Cut off area factor of d-spacing^2
-
-## Modes
-debug               = 0;            # To run on single image and save intermediate steps
-save_BB             = 0;            # To save Bounding box coordinates: 1, Not to: 0
-save_backbone_coords= 0;            # To save backbone coordinates: 1, Not to: 0
-result_display      = 0;            # To display final result in notebook: 1, Not to: 0
-image_scale_percent = 50;           # Scaling the image before display
-
-'''
 # Constants
 ACCEPTED_FORMATS = ['.tif', '.tiff', '.png']
 
@@ -220,7 +187,7 @@ if __name__ == "__main__":
         func=objective,
         dimensions=param_space,
         acq_func='EI',      # Expected Improvement
-        n_calls=50,         # Number of evaluations of the objective function
+        n_calls=200,         # Number of evaluations of the objective function
         n_initial_points=10,# Number of initial random evaluations
         random_state=42     # For reproducibility
     )
