@@ -14,31 +14,31 @@ import subprocess
 ACCEPTED_FORMATS = ['.tif', '.tiff', '.png']
 
 param_space = [
-    Integer(5, 20, name='blur_iteration', dtype= int),
-    Real(0.1, 0.5, name='Blur_kernel_propCons'),
-    Integer(1, 20, name='closing_k_size', dtype= int),
-    Integer(1, 20, name='opening_k_size', dtype= int),
-    Real(0.0, 1.0, name='pixThresh_propCons'),
-    Real(0.5, 5.0, name='ellipse_len_propCons'),
-    Real(2.0, 7.0, name='ellipse_aspect_ratio'),
-    Real(1.0, 5.0, name='thresh_dist_propCons'),
-    Real(5.0, 15.0, name='thresh_theta'),
-    Integer(1, 10, name='cluster_size', dtype= int),
-    Real(0.1, 0.5, name='dspace_bandpass'),
-    Real(1.0, 1.5, name='powSpec_peak_thresh'),
-    Real(1.0, 5.0, name='Thresh_area_factor')
+    Integer(5   ,   20  ,   name='blur_iteration'       ,   dtype= int),
+    Real(   0.1 ,   0.5 ,   name='Blur_kernel_propCons' ,   dtype= float),
+    Integer(1   ,   20  ,   name='closing_k_size'       ,   dtype= int),
+    Integer(1   ,   20  ,   name='opening_k_size'       ,   dtype= int),
+    Real(   0.0 ,   1.0 ,   name='pixThresh_propCons'   ,   dtype= float),
+    Real(   0.5 ,   5.0 ,   name='ellipse_len_propCons' ,   dtype= float),
+    Real(   2.0 ,   7.0 ,   name='ellipse_aspect_ratio' ,   dtype= float),
+    Real(   1.0 ,   5.0 ,   name='thresh_dist_propCons' ,   dtype= float),
+    Real(   5.0 ,   15.0,   name='thresh_theta'         ,   dtype= float),
+    Integer(1   ,   10  ,   name='cluster_size'         ,   dtype= int),
+    Real(   0.1 ,   0.5 ,   name='dspace_bandpass'      ,   dtype= float),
+    Real(   1.0 ,   1.5 ,   name='powSpec_peak_thresh'  ,   dtype= float),
+    Real(   1.0 ,   5.0 ,   name='Thresh_area_factor'   ,   dtype= float),
     ]
 
 pathsDict = {
-    'projectDirFPath'   : pl.Path(__file__).parent.resolve(),
-    'inputImgDirRPath'  : 'DATA/BO/input/',
-    'grateOutputDirRPath': 'DATA/BO/grateV2/',
-    'groundTruthDirRPath': 'DATA/BO/groundTruth/',
-    'detectionDirName'  : 'Images',
-    'masksDirName'      : 'Masks',
-    'grateRunDirTemplate': 'version_{}',
-    "latestRunDirIndex" : 0,
-    'configFileRPath'   : 'configFiles/BO.cfg',
+    'projectDirFPath'       : pl.Path(__file__).parent.resolve(),
+    'inputImgDirRPath'      : 'DATA/BO/input/',
+    'grateOutputDirRPath'   : 'DATA/BO/grateV2/',
+    'groundTruthDirRPath'   : 'DATA/BO/groundTruth/',
+    'detectionDirName'      : 'Images',
+    'masksDirName'          : 'Masks',
+    'grateRunDirTemplate'   : 'version_{}',
+    "latestRunDirIndex"     : 0,
+    'configFileRPath'       : 'configFiles/BO.cfg',
     }
 
 def createConfigFile(configFilePath, configDict):
