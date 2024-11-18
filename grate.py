@@ -50,13 +50,33 @@ class ImageProcessor:
         
         bb_ellipse_props = self.EllipseConstruction(Broken_backbone_img)
         
-        adjacencyMat = self.AdjacencyMat(Broken_backbone_img, bb_ellipse_props)
+        adjacencyMat = self.AdjacencyMat(Broken_backbone_img, 
+                                         bb_ellipse_props)
         
-        AllClusterPointCloud, crystalAngles = self.ConnecComp(Broken_backbone_img, adjacencyMat, bb_ellipse_props)
+        AllClusterPointCloud, crystalAngles = self.ConnecComp(Broken_backbone_img, 
+                                                              adjacencyMat, 
+                                                              bb_ellipse_props)
         
-        crystalArea, centroid, crystalAngles_final, dspaces, df_boundBox, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference = self.PlottingAndSaving( AllClusterPointCloud, crystalAngles, self.last_run)
+        (crystalArea, 
+         centroid, 
+         crystalAngles_final, 
+         dspaces, 
+         df_boundBox, 
+         crystalMajorAxis_length, 
+         crystalMinorAxis_length, 
+         crystalMajorAxisAngle, 
+         angleDifference) = self.PlottingAndSaving( AllClusterPointCloud, 
+                                                   crystalAngles, 
+                                                   self.last_run)
         
-        df = self.process_and_save_dataframe(centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference)
+        df = self.process_and_save_dataframe(centroid, 
+                                             crystalArea, 
+                                             crystalAngles_final, 
+                                             dspaces, 
+                                             crystalMajorAxis_length, 
+                                             crystalMinorAxis_length, 
+                                             crystalMajorAxisAngle, 
+                                             angleDifference)
         
         self.process_save_backbone_coords(df_boundBox)
         return df
@@ -110,7 +130,7 @@ class ImageProcessor:
         '''
         input                               = np.copy( img )
         _, _, degrees                       = skeleton_to_csgraph( input )
-        intersection_matrix                 = degrees > 2                   # consider all values larger than two as intersection
+        intersection_matrix                 = degrees > 2 # consider all values larger than two as intersection
         input[intersection_matrix==True]    = 0
         InvInput                            = invertBinaryImage( input )
         
@@ -231,7 +251,16 @@ class ImageProcessor:
                 for j in range(N):
                     if A_Mat[i][j] == 1:
                         poly        = bb_props_np[i]
-                        A_Mat_img   = cv2.ellipse( A_Mat_img , ( int( poly[ 1 ] ) , int( poly[ 0 ] ) ) , ( int( poly[ 3 ] ) , int( poly[ 4 ] ) ) , poly[ 2 ] , 0.0 , 360.0 , ( 255 , 0 , 0 ) , 2 );
+                        cv2.ellipse(A_Mat_img,
+                                    (int(poly[1]), int(poly[0])),   # center (x, y)
+                                    (int(poly[3]), int(poly[4])),   # axes lengths (major axis, minor axis)
+                                    poly[2],                        # angle of rotation
+                                    0.0,                            # startAngle
+                                    360.0,                          # endAngle
+                                    (255, 0, 0),                    # color (B, G, R)
+                                    2                               # thickness (-1 fills the ellipse)
+                                    )
+
                         break
                         
             InvA_Mat_img = invertBinaryImage(A_Mat_img)
@@ -303,7 +332,11 @@ class ImageProcessor:
     
     @timeit
     def func_process_cluster(self, ClusterPointCloud, crystalAng, crystal_color):
-        processed_clusters = [process_cluster(self.img, cluster, crystalAng[ind], self.parameters, crystal_color) 
+        processed_clusters = [process_cluster(self.img, 
+                                              cluster, 
+                                              crystalAng[ind], 
+                                              self.parameters, 
+                                              crystal_color) 
                             for ind, cluster in enumerate(ClusterPointCloud)]
         return processed_clusters
 
@@ -316,8 +349,17 @@ class ImageProcessor:
         # RGBImg = create_rgb_image(origImg)
         RGBImg = load_img_result_dir(self.img_path, self.parameters)
         
-        figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot(last_dspace_run, RGBImg.shape)
-        plot_results(last_dspace_run, axes, processed_clusters, self.img, RGBImg, orig_img_plt_idx, result_img_plt_idx)
+        figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot(last_dspace_run, 
+                                                                             self.parameters['bayesian opt run'],
+                                                                             RGBImg.shape)
+        plot_results(last_dspace_run, 
+                     axes, 
+                     processed_clusters, 
+                     self.img, 
+                     RGBImg, 
+                     orig_img_plt_idx, 
+                     result_img_plt_idx, 
+                     self.parameters['bayesian opt run'])
         
         figure.savefig( join(self.parameters['result image directory'], self.img_path.stem + self.parameters['save image format']))
 
@@ -328,7 +370,15 @@ class ImageProcessor:
         figure.clf()
         return extract_results(processed_clusters)
     
-    def process_and_save_dataframe(self, centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference):
+    def process_and_save_dataframe(self, 
+                                   centroid, 
+                                   crystalArea, 
+                                   crystalAngles_final, 
+                                   dspaces, 
+                                   crystalMajorAxis_length, 
+                                   crystalMinorAxis_length, 
+                                   crystalMajorAxisAngle, 
+                                   angleDifference):
     
         if len(centroid) == 0:
             imgNamelist = [self.img_path.name]
@@ -336,7 +386,24 @@ class ImageProcessor:
             imgNamelist = [None] * len(centroid)
             imgNamelist[0] = self.img_path.name
 
-        df = pd.DataFrame(list(zip(imgNamelist, centroid, crystalArea, crystalAngles_final, dspaces, crystalMajorAxis_length, crystalMinorAxis_length, crystalMajorAxisAngle, angleDifference)), columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 'Crystal Angle (zero at X-axis and clockwise positive)', 'D-Spacing(FFT, nm)', 'crystalMajorAxis_length (nm)', 'crystalMinorAxis_length (nm)', 'MajorAxisAngle', 'angleDifference'])
+        df = pd.DataFrame(list(zip(imgNamelist, 
+                                   centroid, 
+                                   crystalArea, 
+                                   crystalAngles_final, 
+                                   dspaces, 
+                                   crystalMajorAxis_length, 
+                                   crystalMinorAxis_length, 
+                                   crystalMajorAxisAngle, 
+                                   angleDifference)), 
+                          columns=['Image Name', 
+                                   'Centroid', 
+                                   'Crystal Area (nm^2)', 
+                                   'Crystal Angle (zero at X-axis and clockwise positive)', 
+                                   'D-Spacing(FFT, nm)', 
+                                   'crystalMajorAxis_length (nm)', 
+                                   'crystalMinorAxis_length (nm)', 
+                                   'MajorAxisAngle', 
+                                   'angleDifference'])
         df.round(2)
         
         csv_file_path = Path(self.parameters['result CSV directory']) / f"{self.img_path.stem}.csv"
@@ -403,6 +470,10 @@ class ImageProcessor:
         if self.parameters['debug'] == 1:
             final = final.astype( 'uint8' )
             final = cv2.equalizeHist( final )
-            save_path = Path(self.parameters['result directory']) / f"{text}_{self.img_path.stem}.png"
+            save_path = Path(self.parameters['result image directory']) / self.img_path.stem / f"{text}.{self.parameters['save image format']}"
+            
+            if not save_path.parent.exists():
+                save_path.parent.mkdir(parents=True)
+            
             cv2.imwrite(str(save_path), final)
     

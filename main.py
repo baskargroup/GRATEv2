@@ -86,19 +86,11 @@ def prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys
         'save bounding box'     : config['save_BB'],
         'save backbone coords'  : config['save_backbone_coords'],
         'show final image'      : config['result_display'],
-        'display image scaling' : config['image_scale_percent']
+        'display image scaling' : config['image_scale_percent'],
+        'bayesian opt run'      : config['bayesian_opt_run'],
     }
 
-    all_params = {**resolution_params, **image_processing_params, **filesystem_params, **miscellaneous_params}
-    
-    return all_params, data_dir
-    
-def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color):
-    """Setup directories and prepare parameters."""
-    
-    version_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 'version')
-    
-    parameters, data_dir = prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys_color)
+    parameters = {**resolution_params, **image_processing_params, **filesystem_params, **miscellaneous_params}
     
     directories = [
         parameters['result directory'],
@@ -108,6 +100,15 @@ def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color
         parameters['result annotation directory'] if parameters['save bounding box'] == 1 else None,
         parameters['Mask directory']
     ]
+    
+    return parameters, data_dir, directories
+    
+def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color):
+    """Setup directories and prepare parameters."""
+    
+    version_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 'version')
+    
+    parameters, data_dir, directories = prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys_color)
     
     CreateDirectories(directories)
     
@@ -152,7 +153,9 @@ def write_to_color(result_dir, dspace_nm, crystal_color):
             
 def process_image(data_dir, parameters, last_run, run_parallel=True):
     
-    df_overall = pd.DataFrame(columns=['Image Name', 'Centroid', 'Crystal Area (nm^2)', 
+    df_overall = pd.DataFrame(columns=['Image Name', 
+                                       'Centroid', 
+                                       'Crystal Area (nm^2)', 
                                        'Crystal Angle (zero at X-axis and clockwise positive)', 
                                        'D-Spacing(FFT, nm)'])
     
@@ -161,15 +164,21 @@ def process_image(data_dir, parameters, last_run, run_parallel=True):
     
     if run_parallel:
         with ProcessPoolExecutor() as executor:
-            results = list(executor.map(run_image_processor, image_files, [parameters] * len(image_files), [last_run] * len(image_files)))
+            results = list(executor.map(run_image_processor, 
+                                        image_files, 
+                                        [parameters] * len(image_files), 
+                                        [last_run] * len(image_files)))
             executor.shutdown( wait=True )
 
         for result in results:
             df_overall = pd.concat([df_overall, result], ignore_index=True)
     else:
         for file_path in image_files:
-            df_crystal_props = run_image_processor(file_path, parameters, last_run)
-            df_overall = pd.concat([df_overall, df_crystal_props], ignore_index=True)
+            df_crystal_props = run_image_processor(file_path, 
+                                                   parameters, 
+                                                   last_run)
+            df_overall = pd.concat([df_overall, df_crystal_props], 
+                                   ignore_index=True)
         
     return df_overall
             
@@ -189,18 +198,32 @@ def main():
         print("\nd space:", dspace_nm)
         
         if first_run:
-            parameters, data_dir = setup_directories_and_parameters(project_path, config, dspace_nm, crys_colors[i])
+            parameters, data_dir = setup_directories_and_parameters(project_path, 
+                                                                    config, 
+                                                                    dspace_nm, 
+                                                                    crys_colors[i])
             first_run = False
         else:
-            parameters, data_dir = prepare_parameters(config, project_path, parameters['result directory'], dspace_nm, crys_colors[i])
+            parameters, data_dir = prepare_parameters(config, 
+                                                      project_path, 
+                                                      parameters['result directory'], 
+                                                      dspace_nm, 
+                                                      crys_colors[i])
             
         if dspace_nm == dspace_nm_list[-1]:
             last_run = True
             
-        df_overall = process_image(data_dir, parameters, last_run, run_parallel=True)
+        df_overall = process_image(data_dir, 
+                                   parameters, 
+                                   last_run, 
+                                   run_parallel=True)
         
-        write_to_overallCSV(parameters['result directory'], parameters['d space nm'], df_overall)
-        write_to_color(parameters['result directory'], parameters['d space nm'], parameters['crystal color'])
+        write_to_overallCSV(parameters['result directory'], 
+                            parameters['d space nm'], 
+                            df_overall)
+        write_to_color(parameters['result directory'], 
+                       parameters['d space nm'], 
+                       parameters['crystal color'])
     
 if __name__ == "__main__":
     main()

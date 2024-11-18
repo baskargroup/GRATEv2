@@ -53,6 +53,7 @@ def createConfigFile(configFilePath, configDict):
     configDict['save_backbone_coords']  = 0
     configDict['result_display']        = 0
     configDict['image_scale_percent']   = 50
+    configDict['bayesian_opt_run']      = True
     
     with open(configFilePath, 'w') as configFile:
         libconf.dump(configDict, configFile)

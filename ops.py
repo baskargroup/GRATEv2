@@ -3,7 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 from scipy.spatial import ConvexHull
-from utils import getCentroid, getBoundingBox, getAlphaShape, getCrystalSizeAndOrientation, getAngleDifference, pltAlphaShape, pltOrientationLine, pltConvexHull, isAreaSmall
+from utils import   getCentroid, \
+                    getBoundingBox, \
+                    getAlphaShape, \
+                    getCrystalSizeAndOrientation, \
+                    getAngleDifference, \
+                    pltAlphaShape, \
+                    pltOrientationLine, \
+                    pltConvexHull, \
+                    isAreaSmall
 from os.path import join
 from matplotlib import cm
 from skimage import exposure
@@ -49,14 +57,20 @@ def majorAxisPoints(poly):
     
     return temp
 
-def initialize_plot(last_dspace_run, RGBImg_shape = None, downsample_factor = 1, WIPChange = 1):
+def initialize_plot(last_dspace_run, 
+                    BayesianOptRun,
+                    RGBImg_shape = None,
+                    downsample_factor = 1):
     
-    if WIPChange == 1:
+    if BayesianOptRun == True:
         numSubplots = 1
         assert RGBImg_shape is not None, "RGBImg_shape must be provided for single subplot"
         orig_img_plt_idx = 0
         result_img_plt_idx = 0
-        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(RGBImg_shape[1] / (100 * downsample_factor), RGBImg_shape[0] / (100 * downsample_factor)))
+        fig, axes = plt.subplots(nrows=1, 
+                                 ncols=1, 
+                                 figsize=(RGBImg_shape[1] / (100 * downsample_factor), 
+                                          RGBImg_shape[0] / (100 * downsample_factor)))
         axes.axis('off')
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
         fig.tight_layout(pad=0)
@@ -77,19 +91,29 @@ def initialize_plot(last_dspace_run, RGBImg_shape = None, downsample_factor = 1,
             assert RGBImg_shape is not None, "RGBImg_shape must be provided for single subplot"
             orig_img_plt_idx = 0
             result_img_plt_idx = 0
-            fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(RGBImg_shape[1] / (100 * downsample_factor), RGBImg_shape[0] / (100 * downsample_factor)))
+            fig, axes = plt.subplots(nrows=1, 
+                                     ncols=1, 
+                                     figsize=(RGBImg_shape[1] / (100 * downsample_factor), 
+                                              RGBImg_shape[0] / (100 * downsample_factor)))
             axes.axis('off')
             fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
             fig.tight_layout(pad=0)
             return (fig, axes, orig_img_plt_idx, result_img_plt_idx)
         
 
-def process_cluster(OrigImg, cluster, crystal_ang, params, color):
+def process_cluster(OrigImg, 
+                    cluster, 
+                    crystal_ang, 
+                    params, 
+                    color):
     point_cloud = np.array(cluster)
     hull = ConvexHull(point_cloud)
     cx, cy = getCentroid(hull)
     x_min_max, y_min_max = getBoundingBox(hull)
-    d_space = evaluateDspacing(OrigImg, params, x_min_max, y_min_max)
+    d_space = evaluateDspacing(OrigImg, 
+                               params, 
+                               x_min_max, 
+                               y_min_max)
     
     alpha_shape = getAlphaShape(point_cloud)
 
@@ -97,7 +121,8 @@ def process_cluster(OrigImg, cluster, crystal_ang, params, color):
         return None
 
     major_len, minor_len, major_axes_angle = getCrystalSizeAndOrientation(hull)
-    angle_diff_val = getAngleDifference(major_axes_angle, crystal_ang)
+    angle_diff_val = getAngleDifference(major_axes_angle, 
+                                        crystal_ang)
 
     crystal_properties = {
         "centroid": [cx, cy],
@@ -117,39 +142,68 @@ def process_cluster(OrigImg, cluster, crystal_ang, params, color):
     }
     
     if params['save bounding box'] == 1:
-        crystal_properties['bounding_box'] = [int(x_min_max[0]), int(y_min_max[0]), int(x_min_max[1]), int(y_min_max[1])]
+        crystal_properties['bounding_box'] = [int(x_min_max[0]), 
+                                              int(y_min_max[0]), 
+                                              int(x_min_max[1]), 
+                                              int(y_min_max[1])]
     
     return crystal_properties
     
-def plot_results(last_dspace_run, axes, results, orig_img, RGB_img, orig_img_plt_idx, result_img_plt_idx, WIPChange = 1):
-    if WIPChange == 1:
+def plot_results(last_dspace_run,
+                 axes, 
+                 results, 
+                 orig_img, 
+                 RGB_img, 
+                 orig_img_plt_idx, 
+                 result_img_plt_idx, 
+                 BayesianOptRun):
+    if BayesianOptRun == True:
         axes.imshow(RGB_img, vmin=0, vmax=255)
             
         for result in results:
             if result:
-                # pltAlphaShape(axes, result['alpha_shape'])
-                # pltOrientationLine(axes, result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
-                pltConvexHull(axes, result['hull'], result['point_cloud'], result['color'])
+                pltConvexHull(axes, 
+                              result['hull'], 
+                              result['point_cloud'], 
+                              result['color'])
     
     else:
         if not last_dspace_run:
-        
             axes.imshow(RGB_img, vmin=0, vmax=255)
-            
             for result in results:
                 if result:
-                    pltAlphaShape(axes, result['alpha_shape'])
-                    pltOrientationLine(axes, result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
-                    pltConvexHull(axes, result['hull'], result['point_cloud'], result['color'])
+                    pltAlphaShape(axes, 
+                                  result['alpha_shape'])
+                    pltOrientationLine(axes, 
+                                       result['angle'], 
+                                       result['color'], 
+                                       result['x_min_max'], 
+                                       result['y_min_max'], 
+                                       result['centroid'][0], 
+                                       result['centroid'][1])
+                    pltConvexHull(axes, 
+                                  result['hull'], 
+                                  result['point_cloud'], 
+                                  result['color'])
         
         else:
             axes[result_img_plt_idx].imshow(RGB_img, vmin=0, vmax=255)
             
             for result in results:
                 if result:
-                    pltAlphaShape(axes[result_img_plt_idx], result['alpha_shape'])
-                    pltOrientationLine(axes[result_img_plt_idx], result['angle'], result['color'], result['x_min_max'], result['y_min_max'], result['centroid'][0], result['centroid'][1])
-                    pltConvexHull(axes[result_img_plt_idx], result['hull'], result['point_cloud'], result['color'])
+                    pltAlphaShape(axes[result_img_plt_idx], 
+                                  result['alpha_shape'])
+                    pltOrientationLine(axes[result_img_plt_idx], 
+                                       result['angle'], 
+                                       result['color'], 
+                                       result['x_min_max'], 
+                                       result['y_min_max'], 
+                                       result['centroid'][0], 
+                                       result['centroid'][1])
+                    pltConvexHull(axes[result_img_plt_idx], 
+                                  result['hull'], 
+                                  result['point_cloud'], 
+                                  result['color'])
                     # Other plotting based on 'result'
 
             axes[orig_img_plt_idx].imshow(orig_img, cmap='gray')
