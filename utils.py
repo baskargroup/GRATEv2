@@ -346,9 +346,8 @@ def pltConvexHull(subplot, convHull, pntCloud, color):
     for simplex in convHull.simplices:
             subplot.plot( pntCloud[ simplex , 0 ] , pntCloud[ simplex , 1 ] , linewidth = 7.0 , color = color )
 
-def getAlphaShape(pntCloud):
-    alphaShrinkFactor = 0.002 # higher the value, more the shrinkage
-    alpha_shape     = alphashape.alphashape( pntCloud , alpha = alphaShrinkFactor )
+def getAlphaShape(pntCloud, alpha_shape_factor):
+    alpha_shape     = alphashape.alphashape( pntCloud , alpha = alpha_shape_factor )
     return alpha_shape
 
 

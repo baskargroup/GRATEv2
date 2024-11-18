@@ -105,7 +105,8 @@ def process_cluster(OrigImg,
                     cluster, 
                     crystal_ang, 
                     params, 
-                    color):
+                    color, 
+                    alpha_shape_factor):
     point_cloud = np.array(cluster)
     hull = ConvexHull(point_cloud)
     
@@ -116,7 +117,8 @@ def process_cluster(OrigImg,
                                     params, 
                                     x_min_max, 
                                     y_min_max)
-    alpha_shape = getAlphaShape(point_cloud)
+    alpha_shape = getAlphaShape(point_cloud,
+                                alpha_shape_factor)
 
     if d_space == 0 or isAreaSmall(alpha_shape.area, params):
         return None

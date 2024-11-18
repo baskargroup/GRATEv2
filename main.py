@@ -66,6 +66,7 @@ def prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys
         'pow spec peak vs mean factor'  : config['powSpec_peak_thresh'],
         'Threshold area factor'         : config['Thresh_area_factor'],
         'crystal color'                 : crys_color,
+        'alpha shape factor'            : config['alpha_shape_factor'],
     }
 
     filesystem_params = {

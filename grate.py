@@ -355,7 +355,8 @@ class ImageProcessor:
                                               cluster, 
                                               crystalAng[ind], 
                                               self.parameters, 
-                                              crystal_color) 
+                                              crystal_color,
+                                              self.parameters['alpha shape factor']) 
                             for ind, cluster in enumerate(ClusterPointCloud)]
         return processed_clusters
 

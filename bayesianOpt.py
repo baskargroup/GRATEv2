@@ -54,6 +54,7 @@ def createConfigFile(configFilePath, configDict):
     configDict['result_display']        = 0
     configDict['image_scale_percent']   = 50
     configDict['bayesian_opt_run']      = True
+    configDict['alpha_shape_factor']    = 0.002
     
     with open(configFilePath, 'w') as configFile:
         libconf.dump(configDict, configFile)
