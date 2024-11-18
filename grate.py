@@ -288,7 +288,14 @@ class ImageProcessor:
         
         for index in component:
             poly = polyProps[index]
-            ccImg = cv2.ellipse(ccImg, (int(poly[1]), int(poly[0])), (int(poly[3]), int(poly[4])), poly[2], 0.0, 360.0, (255, 0, 0), 2);
+            ccImg = cv2.ellipse(ccImg, 
+                                (int(poly[1]), int(poly[0])),   # center (x, y)
+                                (int(poly[3]), int(poly[4])),   # axes lengths (major axis, minor axis)
+                                poly[2],                        # angle of rotation
+                                0.0,                            # startAngle
+                                360.0,                          # endAngle
+                                (255, 0, 0),                    # color (B, G, R)
+                                2);                             # thickness (-1 fills the ellipse)
 
         return majorsAxisPointCloud, ellipseAngles
 
@@ -318,7 +325,10 @@ class ImageProcessor:
         # Process each connected component
         for component in cc:
             if len(component) >= self.parameters['cluster threshold size']:
-                majorsAxisPointCloud, ellipseAngles = self.process_component(component, polyProps, ccImg)
+                (majorsAxisPointCloud, 
+                 ellipseAngles) = self.process_component(component, 
+                                                         polyProps, 
+                                                         ccImg)
                 AllClusterPointCloud.append(majorsAxisPointCloud)
                 crystalAngles.append(np.mean(ellipseAngles))
 
@@ -332,6 +342,15 @@ class ImageProcessor:
     
     @timeit
     def func_process_cluster(self, ClusterPointCloud, crystalAng, crystal_color):
+        # func_process_cluster funtion evaluates the following:
+        # 1. Convex hull
+        # 2. Hull centroid
+        # 3. Hull bounding box
+        # 4. D-Spacing from FFT
+        # 5. Alpha shape (requires alpha value to determine the extent of the shrinkage)
+        # 6. Alpha shape area (also filters out small areas)
+        # 7. Hull major axis, minor axis, major axis angle
+        # 8. Angle difference between lattice fringe angle and hull major axis angle
         processed_clusters = [process_cluster(self.img, 
                                               cluster, 
                                               crystalAng[ind], 
@@ -344,14 +363,27 @@ class ImageProcessor:
     @timeit
     def PlottingAndSaving(self, ClusterPointCloud, crystalAng, last_dspace_run = False):
         crystal_color = self.parameters['crystal color']
+        
+        # func_process_cluster funtion evaluates the following:
+        # 1. Convex hull
+        # 2. Hull centroid
+        # 3. Hull bounding box
+        # 4. D-Spacing from FFT
+        # 5. Alpha shape (requires alpha value to determine the extent of the shrinkage)
+        # 6. Alpha shape area (also filters out small areas)
+        # 7. Hull major axis, minor axis, major axis angle
+        # 8. Angle difference between lattice fringe angle and hull major axis angle
         processed_clusters = self.func_process_cluster(ClusterPointCloud, crystalAng, crystal_color)
         
         # RGBImg = create_rgb_image(origImg)
         RGBImg = load_img_result_dir(self.img_path, self.parameters)
         
-        figure, axes, orig_img_plt_idx, result_img_plt_idx = initialize_plot(last_dspace_run, 
-                                                                             self.parameters['bayesian opt run'],
-                                                                             RGBImg.shape)
+        (figure, 
+         axes, 
+         orig_img_plt_idx, 
+         result_img_plt_idx) = initialize_plot(last_dspace_run, 
+                                                self.parameters['bayesian opt run'],
+                                                RGBImg.shape)
         plot_results(last_dspace_run, 
                      axes, 
                      processed_clusters, 
@@ -361,7 +393,8 @@ class ImageProcessor:
                      result_img_plt_idx, 
                      self.parameters['bayesian opt run'])
         
-        figure.savefig( join(self.parameters['result image directory'], self.img_path.stem + self.parameters['save image format']))
+        figure.savefig( join(self.parameters['result image directory'], 
+                             self.img_path.stem + self.parameters['save image format']))
 
         if self.parameters['show final image'] == 1:
             plt.show()
@@ -470,7 +503,7 @@ class ImageProcessor:
         if self.parameters['debug'] == 1:
             final = final.astype( 'uint8' )
             final = cv2.equalizeHist( final )
-            save_path = Path(self.parameters['result image directory']) / self.img_path.stem / f"{text}.{self.parameters['save image format']}"
+            save_path = Path(self.parameters['result image directory']) / self.img_path.stem / f"{text}{self.parameters['save image format']}"
             
             if not save_path.parent.exists():
                 save_path.parent.mkdir(parents=True)

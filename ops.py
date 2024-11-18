@@ -108,13 +108,14 @@ def process_cluster(OrigImg,
                     color):
     point_cloud = np.array(cluster)
     hull = ConvexHull(point_cloud)
-    cx, cy = getCentroid(hull)
-    x_min_max, y_min_max = getBoundingBox(hull)
-    d_space = evaluateDspacing(OrigImg, 
-                               params, 
-                               x_min_max, 
-                               y_min_max)
     
+    cx, cy      = getCentroid(hull)
+    (x_min_max, 
+     y_min_max) = getBoundingBox(hull)
+    d_space     = evaluateDspacing( OrigImg, 
+                                    params, 
+                                    x_min_max, 
+                                    y_min_max)
     alpha_shape = getAlphaShape(point_cloud)
 
     if d_space == 0 or isAreaSmall(alpha_shape.area, params):

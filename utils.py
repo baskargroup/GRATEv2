@@ -334,15 +334,21 @@ def getBoundingBox(convHull):
     return x_minMax, y_minMax
 
 def pltOrientationLine(subplot, crystalAngle, color, bb_x_minMax, bb_y_minMax, x_centroid, y_centroid):
-    arrLen  = min( int( bb_x_minMax[1] - bb_x_minMax[0] ) , int( bb_y_minMax[1] - bb_y_minMax[0] ) ) / 6
-    subplot.arrow( x_centroid, y_centroid , arrLen * np.cos( crystalAngle * np.pi/180 ) , arrLen * np.sin( crystalAngle * np.pi/180 ) , linewidth = 7.0 , color = color )
+    arrLen  = min( int( bb_x_minMax[1] - bb_x_minMax[0] ), int( bb_y_minMax[1] - bb_y_minMax[0] ) ) / 6
+    subplot.arrow(x_centroid, 
+                  y_centroid , 
+                  arrLen * np.cos( crystalAngle * np.pi/180 ),
+                  arrLen * np.sin( crystalAngle * np.pi/180 ), 
+                  linewidth = 7.0, 
+                  color = color)
 
 def pltConvexHull(subplot, convHull, pntCloud, color):
     for simplex in convHull.simplices:
             subplot.plot( pntCloud[ simplex , 0 ] , pntCloud[ simplex , 1 ] , linewidth = 7.0 , color = color )
 
 def getAlphaShape(pntCloud):
-    alpha_shape     = alphashape.alphashape( pntCloud , alpha = 0.005 )
+    alphaShrinkFactor = 0.002 # higher the value, more the shrinkage
+    alpha_shape     = alphashape.alphashape( pntCloud , alpha = alphaShrinkFactor )
     return alpha_shape
 
 
@@ -361,7 +367,13 @@ def createVersionDirectory(folderDir, name):
     ResFolderName = name + '_'  # 'version_'
     lenFolderName = len(ResFolderName)
 
-    dirlist = [int(item.name[lenFolderName:]) for item in folderDir.iterdir() if item.is_dir() and re.search(ResFolderName, item.name) and len(item.name) > lenFolderName]
+    dirlist = [int(item.name[lenFolderName:]) 
+               for item in folderDir.iterdir() 
+               if (item.is_dir() 
+                   and re.search(ResFolderName, item.name) 
+                   and len(item.name) > lenFolderName
+                   )
+               ]
 
     latestVersion = max(dirlist, default=0)
     new_version_dir = folderDir / f"{ResFolderName}{latestVersion + 1}"
