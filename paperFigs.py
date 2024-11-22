@@ -65,8 +65,10 @@ if __name__ == "__main__":
     runDir_rPath        = 'DATA/BO/results/ryan_allCombined/version_1/'
     origCSVFile_fPath   = project_fPath / runDir_rPath / 'overall_dspace_1.9.csv'
     plotSave_fPath      = project_fPath / runDir_rPath / 'Plots'
+    ds_lowerbound       = 1.5
+    ds_upperbound       = 2.8
     
-    filteredCSVFile_fPath = project_fPath / runDir_rPath / 'overall_dspace_1.9_filtered.csv'
+    filteredCSVFile_fPath = project_fPath / runDir_rPath / 'filtered_overall_dspace_1.9.csv'
     
     # Create plotSave_fPath if it does not exist
     plotSave_fPath.mkdir(parents=True, exist_ok=True)
@@ -74,7 +76,13 @@ if __name__ == "__main__":
     # Filter out dspacing outliers if filteredCSVFile_fPath does not exist
     if not filteredCSVFile_fPath.exists():
         df = pd.read_csv(origCSVFile_fPath)
-        df = FilterOut_dspacingOutliers(df, 'D-Spacing(FFT, nm)', 1.5, 2.8, filteredCSVFile_fPath)
+        df = FilterOut_dspacingOutliers(df, 'D-Spacing(FFT, nm)', ds_lowerbound, ds_upperbound, filteredCSVFile_fPath)
+        
+        # Store dspacing bounds in a file for future reference inside the runDir
+        with open(project_fPath / runDir_rPath / 'filtered_dspacingBounds.txt', 'w') as f:
+            f.write(f"ds_lowerbound: {ds_lowerbound}\n")
+            f.write(f"ds_upperbound: {ds_upperbound}\n")
+        
     else:
         df = pd.read_csv(filteredCSVFile_fPath)
     
