@@ -53,22 +53,35 @@ def plotHistWithKde(data,
     fig.savefig(plotSave_fPath / (fileName + '.png'))
     fig.savefig(plotSave_fPath / (fileName + '.pgf'))
     fig.savefig(plotSave_fPath / (fileName + '.pdf'))
+    
+def FilterOut_dspacingOutliers(df, dspaceColName, ds_lowerbound, ds_upperbound, saveFile_fPath):
+    # Filter out dspacing outliers
+    df_filtered = df[(df[dspaceColName] >= ds_lowerbound) & (df[dspaceColName] <= ds_upperbound)]
+    df_filtered.to_csv(saveFile_fPath, index=False)
+    return df_filtered
 
 if __name__ == "__main__":
-    project_fPath = pl.Path(__file__).parent.resolve()
-    runDir_rPath = 'DATA/BO/results/ryan_allCombined/version_1/'
-    csvFile_fPath = project_fPath / runDir_rPath / 'overall_dspace_1.9.csv'
-    plotSave_fPath = project_fPath / runDir_rPath / 'Plots'
+    project_fPath       = pl.Path(__file__).parent.resolve()
+    runDir_rPath        = 'DATA/BO/results/ryan_allCombined/version_1/'
+    origCSVFile_fPath   = project_fPath / runDir_rPath / 'overall_dspace_1.9.csv'
+    plotSave_fPath      = project_fPath / runDir_rPath / 'Plots'
+    
+    filteredCSVFile_fPath = project_fPath / runDir_rPath / 'overall_dspace_1.9_filtered.csv'
     
     # Create plotSave_fPath if it does not exist
     plotSave_fPath.mkdir(parents=True, exist_ok=True)
     
-    # fileName = '1p9_inRangedspace.csv'
-    # filePath = 'forPaper/' + fileName
+    # Filter out dspacing outliers if filteredCSVFile_fPath does not exist
+    if not filteredCSVFile_fPath.exists():
+        df = pd.read_csv(origCSVFile_fPath)
+        df = FilterOut_dspacingOutliers(df, 'D-Spacing(FFT, nm)', 1.5, 2.8, filteredCSVFile_fPath)
+    else:
+        df = pd.read_csv(filteredCSVFile_fPath)
     
-    df = pd.read_csv(csvFile_fPath)
+    # Plotting
+    plotHistWithKde(df['Crystal Area (nm^2)'], 'Crystal Area (nm$^2$)', 'histogram_crystalArea', plotSave_fPath, xScale='log')
+    plotHistWithKde(df['D-Spacing(FFT, nm)'], 'd-spacing (nm)', 'histogram_dspacing', plotSave_fPath, xScale='linear')
+    plotHistWithKde(df['angleDifference'], 'Angle Difference (degrees)', 'histogram_angleDifference', plotSave_fPath, xScale='linear')
     
-    # get crystalArea column
-    # crystalArea = df['CrystalArea']
-    crystalArea = df['Crystal Area (nm^2)']
-    plotHistWithKde(crystalArea, 'Crystal Area (nm$^2$)', 'histogram_crystalArea', plotSave_fPath)
+    aspectRatio = df['crystalMajorAxis_length (nm)'] / df['crystalMinorAxis_length (nm)']
+    plotHistWithKde(aspectRatio, 'Aspect Ratio', 'histogram_aspectRatio', plotSave_fPath, xScale='linear')

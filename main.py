@@ -109,7 +109,11 @@ def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color
     
     version_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 'version')
     
-    parameters, data_dir, directories = prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys_color)
+    parameters, data_dir, directories = prepare_parameters(config, 
+                                                           project_path, 
+                                                           version_result_dir, 
+                                                           dspace_nm, 
+                                                           crys_color)
     
     CreateDirectories(directories)
     
@@ -154,11 +158,15 @@ def write_to_color(result_dir, dspace_nm, crystal_color):
             
 def process_image(data_dir, parameters, last_run, run_parallel=True):
     
-    df_overall = pd.DataFrame(columns=['Image Name', 
-                                       'Centroid', 
-                                       'Crystal Area (nm^2)', 
-                                       'Crystal Angle (zero at X-axis and clockwise positive)', 
-                                       'D-Spacing(FFT, nm)'])
+    df_overall = pd.DataFrame(columns=[ 'Image Name', 
+                                        'Centroid', 
+                                        'Crystal Area (nm^2)', 
+                                        'Crystal Angle (zero at X-axis and clockwise positive)', 
+                                        'D-Spacing(FFT, nm)' 
+                                        'crystalMajorAxis_length (nm)', 
+                                        'crystalMinorAxis_length (nm)', 
+                                        'MajorAxisAngle', 
+                                        'angleDifference'], round=2)
     
     image_files = [file_path for file_path in data_dir.iterdir() 
                    if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
