@@ -2,8 +2,16 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pathlib as pl
 
-def plotHistWithKde(data, xLabel, fileName, xScale='log', binsType='fd', yScale='linear' , yLabel='Probability Density'):
+def plotHistWithKde(data, 
+                    xLabel, 
+                    fileName, 
+                    plotSave_fPath, 
+                    xScale='log', 
+                    binsType='fd', 
+                    yScale='linear' , 
+                    yLabel='Probability Density'):
     import seaborn as sns
     # create numpy array
     np_data = np.array(data)
@@ -36,19 +44,31 @@ def plotHistWithKde(data, xLabel, fileName, xScale='log', binsType='fd', yScale=
     
     # tight layout
     plt.tight_layout()
+    
+    # Create a directory inside the plotSave_fPath under the name of the fileName
+    plotSave_fPath = plotSave_fPath / fileName
+    plotSave_fPath.mkdir(parents=True, exist_ok=True)
      
     # save as png and pgf
-    fig.savefig(fileName + '.png')
-    fig.savefig(fileName + '.pgf')
-    fig.savefig(fileName + '.pdf')
+    fig.savefig(plotSave_fPath / (fileName + '.png'))
+    fig.savefig(plotSave_fPath / (fileName + '.pgf'))
+    fig.savefig(plotSave_fPath / (fileName + '.pdf'))
 
 if __name__ == "__main__":
-    fileName = 'overall_areaFiltered.csv'
-    # fileName = '1p9_inRangedspace.csv'
-    filePath = 'forPaper/' + fileName
+    project_fPath = pl.Path(__file__).parent.resolve()
+    runDir_rPath = 'DATA/BO/results/ryan_allCombined/version_1/'
+    csvFile_fPath = project_fPath / runDir_rPath / 'overall_dspace_1.9.csv'
+    plotSave_fPath = project_fPath / runDir_rPath / 'Plots'
     
-    df = pd.read_csv(filePath)
+    # Create plotSave_fPath if it does not exist
+    plotSave_fPath.mkdir(parents=True, exist_ok=True)
+    
+    # fileName = '1p9_inRangedspace.csv'
+    # filePath = 'forPaper/' + fileName
+    
+    df = pd.read_csv(csvFile_fPath)
     
     # get crystalArea column
-    crystalArea = df['CrystalArea']
-    plotHistWithKde(crystalArea, 'Crystal Area (nm$^2$)', 'histogram_crystalArea')
+    # crystalArea = df['CrystalArea']
+    crystalArea = df['Crystal Area (nm^2)']
+    plotHistWithKde(crystalArea, 'Crystal Area (nm$^2$)', 'histogram_crystalArea', plotSave_fPath)
