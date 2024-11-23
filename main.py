@@ -107,7 +107,8 @@ def prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys
 def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color):
     """Setup directories and prepare parameters."""
     
-    version_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 'version')
+    version_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 
+                                                'version')
     
     parameters, data_dir, directories = prepare_parameters(config, 
                                                            project_path, 

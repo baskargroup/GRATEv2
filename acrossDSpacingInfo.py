@@ -50,10 +50,16 @@ for filename in commonCSV:
         continue
     # print("File name:   ", filename)
     df1 = pd.read_csv(join(d_spaceDir1, filename))
-    df1 = filterThreshArea(df1, { 'threshold area factor': 7, 'd space nm': 1.9})
+    df1 = filterThreshArea(df1, 
+                           'Crystal Area (nm^2)', 
+                           d_space = 1.9,   # same unit as area column
+                           threshold_area_factor=7)
     
     df2 = pd.read_csv(join(d_spaceDir2, filename))
-    df2 = filterThreshArea(df2, { 'threshold area factor': 10, 'd space nm': 0.7})
+    df2 = filterThreshArea(df2, 
+                           'Crystal Area (nm^2)',
+                           d_space = 0.7,   # same unit as area column
+                           threshold_area_factor=10)
 
     for ind1, row1 in df1.iterrows():
         centroid1   = numericFromString(row1['Centroid'], pix2nm) 

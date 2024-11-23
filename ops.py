@@ -119,8 +119,10 @@ def process_cluster(OrigImg,
                                     y_min_max)
     alpha_shape = getAlphaShape(point_cloud,
                                 alpha_shape_factor)
-
-    if d_space == 0 or isAreaSmall(alpha_shape.area, params):
+     
+    if d_space == 0 or isAreaSmall(alpha_shape.area, 
+                                   params['d space nm'], 
+                                   params['threshold area factor']):
         return None
 
     major_len, minor_len, major_axes_angle = getCrystalSizeAndOrientation(hull)

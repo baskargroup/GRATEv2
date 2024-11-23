@@ -247,22 +247,22 @@ def plotKDE_2D(value=None, wght=None, path=None, filename=None, kernel = 'gaussi
         plt.show()
     plt.close()
 
-def isAreaSmall(area, params, areaInPix = True):
-    factor          = params['threshold area factor']
-    
-    if areaInPix == True:
-        d_space     = params['d space pix']
-    else:
-        d_space     = params['d space nm']
+def isAreaSmall(area, d_space, factor):
+    """
+    Determines if the given area is smaller than the threshold area.
 
-    width           = factor*d_space
-    height          = d_space
-    areaThresh      = width*height
+    Parameters:
+    - area (float): The area to compare.
+    - d_space (float): The d-space value (must be in the same units as area).
+    - factor (float): The threshold area factor.
 
-    if area < areaThresh:
-        return True
-    else: 
-        return False
+    Returns:
+    - bool: True if the area is smaller than the threshold; False otherwise.
+    """
+    width = factor * d_space
+    height = d_space
+    area_thresh = width * height
+    return area < area_thresh
 
 def totalAreaInDSRange(dataframe, dsRange):
     TotDspaceArea   = 0
@@ -381,9 +381,22 @@ def createVersionDirectory(folderDir, name):
     print(f"{ResFolderName}{latestVersion + 1}\n")
     return new_version_dir
     
-def filterThreshArea(df, params):
+# def filterThreshArea(df, params):
+def filterThreshArea(df, 
+                     df_area_col_name, 
+                     d_space, 
+                     threshold_area_factor):
+    # area_col_name       = 'Crystal Area (nm^2)'
+    # threshold_area_factor = params['threshold area factor']
+    
+    # Check if column names are present in the dataframe
+    if df_area_col_name not in df.columns:
+        raise ValueError(f"Column '{df_area_col_name}' not found in dataframe")
+    
     for ind, row in df.iterrows():
-        TorF_area = isAreaSmall(row['Crystal Area (nm^2)'], params, areaInPix=False)
+        # area and d_space both in same units (either nm or pix)
+        area = row[df_area_col_name]
+        TorF_area = isAreaSmall(area, d_space, threshold_area_factor)
         if TorF_area == True:# or row['D-Spacing(FFT, nm)']<1.5:
             df.drop(ind, inplace = True)
     
