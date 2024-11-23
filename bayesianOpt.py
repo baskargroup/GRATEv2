@@ -26,7 +26,7 @@ param_space = [
     Integer(1   ,   10  ,   name='cluster_size'         ,   dtype= int),
     Real(   0.1 ,   0.5 ,   name='dspace_bandpass'      ,   dtype= float),
     Real(   1.0 ,   1.5 ,   name='powSpec_peak_thresh'  ,   dtype= float),
-    Real(   1.0 ,   5.0 ,   name='Thresh_area_factor'   ,   dtype= float),
+    Real(   1.0 ,   5.0 ,   name='thresh_area_factor'   ,   dtype= float),
     ]
 
 pathsDict = {

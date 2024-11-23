@@ -248,7 +248,7 @@ def plotKDE_2D(value=None, wght=None, path=None, filename=None, kernel = 'gaussi
     plt.close()
 
 def isAreaSmall(area, params, areaInPix = True):
-    factor          = params['Threshold area factor']
+    factor          = params['threshold area factor']
     
     if areaInPix == True:
         d_space     = params['d space pix']

@@ -20,7 +20,7 @@ thresh_theta            = 10;       # delta Theta threshold for adjacency matrix
 cluster_size            = 7;        # Threshold ellipse in Crystal cluster
 dspace_bandpass          = 0.2;     # Bandpass filter range across d-spacing
 powSpec_peak_thresh     = 1.15;     # 1.20 works for all
-Thresh_area_factor      = 4;        # Cut off area factor of d-spacing^2
+thresh_area_factor      = 4;        # Cut off area factor of d-spacing^2
 
 ## Modes
 debug               = 1;            # To run on single image and save intermediate steps
@@ -67,4 +67,4 @@ thresh_theta            = 10;       # (Real) delta Theta threshold for adjacency
 cluster_size            = 7;        # (Integer) Threshold ellipse in Crystal cluster
 dspace_bandpass         = 0.2;      # (Real) Bandpass filter range across d-spacing
 powSpec_peak_thresh     = 1.15;     # (Real) 1.20 works for all
-Thresh_area_factor      = 4;        # (Real) Cut off area factor of d-spacing^2
+thresh_area_factor      = 4;        # (Real) Cut off area factor of d-spacing^2

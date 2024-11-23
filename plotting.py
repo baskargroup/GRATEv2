@@ -70,7 +70,7 @@ if plotType == 1: df1 = pd.read_csv(os.path.join(projectPath,csvPath,filename1))
 plotSavePath    = createVersionDirectory(projectPath / csvPath, 'Plot_version')
 
 if plotType == 0:
-    df              = filterThreshArea(df, { 'Threshold area factor': ThresholdFactorArea, 'd space nm': d_space,})
+    df              = filterThreshArea(df, { 'threshold area factor': ThresholdFactorArea, 'd space nm': d_space,})
     
     # Save updated dataframe
     df.to_csv(os.path.join(plotSavePath,filename[:-4]+"_areaFiltered.csv"), index=False)
@@ -291,7 +291,7 @@ elif plotType == 3:
                 show        = showFig)
     
 elif plotType == -1:
-    df              = filterThreshArea(df, { 'Threshold area factor': 10, 'd space nm': d_space,})
+    df              = filterThreshArea(df, { 'threshold area factor': 10, 'd space nm': d_space,})
     
     plotHist(   value       = df['Crystal Area (nm^2)'], 
                 wght        = None,

@@ -64,7 +64,7 @@ def prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys
         'cluster threshold size'        : config['cluster_size'],
         'd space bandpass'              : config['dspace_bandpass'],
         'pow spec peak vs mean factor'  : config['powSpec_peak_thresh'],
-        'Threshold area factor'         : config['Thresh_area_factor'],
+        'threshold area factor'         : config['thresh_area_factor'],
         'crystal color'                 : crys_color,
         'alpha shape factor'            : config['alpha_shape_factor'],
     }
