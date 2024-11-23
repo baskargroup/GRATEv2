@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pathlib as pl
+import libconf
+from utils import filterThreshArea
 
 def plotHistWithKde(data, 
                     xLabel, 
@@ -54,10 +56,9 @@ def plotHistWithKde(data,
     fig.savefig(plotSave_fPath / (fileName + '.pgf'))
     fig.savefig(plotSave_fPath / (fileName + '.pdf'))
     
-def FilterOut_dspacingOutliers(df, dspaceColName, ds_lowerbound, ds_upperbound, saveFile_fPath):
+def FilterOut_dspacingOutliers(df, dspaceColName, ds_lowerbound, ds_upperbound):
     # Filter out dspacing outliers
     df_filtered = df[(df[dspaceColName] >= ds_lowerbound) & (df[dspaceColName] <= ds_upperbound)]
-    df_filtered.to_csv(saveFile_fPath, index=False)
     return df_filtered
 
 if __name__ == "__main__":
@@ -65,10 +66,20 @@ if __name__ == "__main__":
     runDir_rPath        = 'DATA/BO/results/ryan_allCombined/version_1/'
     origCSVFile_fPath   = project_fPath / runDir_rPath / 'overall_dspace_1.9.csv'
     plotSave_fPath      = project_fPath / runDir_rPath / 'Plots'
-    ds_lowerbound       = 1.5
-    ds_upperbound       = 2.8
+    config_fPath        = project_fPath / runDir_rPath / 'config.cfg'
     
-    filteredCSVFile_fPath = project_fPath / runDir_rPath / 'filtered_overall_dspace_1.9.csv'
+    # Read config file
+    with open(config_fPath, 'r') as f:
+        config = libconf.load(f)
+        if 'post_processing' not in config:
+            raise ValueError("post_processing section not found in config file")
+    
+    ds_nm                    = config['dspace_nm'][0]
+    pp_ds_lowerbound         = config['post_processing']['ds_lower_bound']
+    pp_ds_upperbound         = config['post_processing']['ds_upper_bound']
+    pp_threshold_area_factor = config['post_processing']['threshold_area_factor']
+    
+    filteredCSVFile_fPath = project_fPath / runDir_rPath / 'ds_area_filtered_overall_dspace_{}.csv'.format(ds_nm)
     
     # Create plotSave_fPath if it does not exist
     plotSave_fPath.mkdir(parents=True, exist_ok=True)
@@ -76,20 +87,42 @@ if __name__ == "__main__":
     # Filter out dspacing outliers if filteredCSVFile_fPath does not exist
     if not filteredCSVFile_fPath.exists():
         df = pd.read_csv(origCSVFile_fPath)
-        df = FilterOut_dspacingOutliers(df, 'D-Spacing(FFT, nm)', ds_lowerbound, ds_upperbound, filteredCSVFile_fPath)
+        df = FilterOut_dspacingOutliers(df, 
+                                        'D-Spacing(FFT, nm)', 
+                                        pp_ds_lowerbound, 
+                                        pp_ds_upperbound)
         
-        # Store dspacing bounds in a file for future reference inside the runDir
-        with open(project_fPath / runDir_rPath / 'filtered_dspacingBounds.txt', 'w') as f:
-            f.write(f"ds_lowerbound: {ds_lowerbound}\n")
-            f.write(f"ds_upperbound: {ds_upperbound}\n")
+        # Filter out crystal area outliers
+        df = filterThreshArea(df, 
+                              'Crystal Area (nm^2)', 
+                              ds_nm,
+                              pp_threshold_area_factor)
+        
+        df.to_csv(filteredCSVFile_fPath, index=False)
         
     else:
         df = pd.read_csv(filteredCSVFile_fPath)
     
     # Plotting
-    plotHistWithKde(df['Crystal Area (nm^2)'], 'Crystal Area (nm$^2$)', 'histogram_crystalArea', plotSave_fPath, xScale='log')
-    plotHistWithKde(df['D-Spacing(FFT, nm)'], 'd-spacing (nm)', 'histogram_dspacing', plotSave_fPath, xScale='linear')
-    plotHistWithKde(df['angleDifference'], 'Angle Difference (degrees)', 'histogram_angleDifference', plotSave_fPath, xScale='linear')
+    plotHistWithKde(df['Crystal Area (nm^2)'], 
+                    'Crystal Area (nm$^2$)', 
+                    'histogram_crystalArea', 
+                    plotSave_fPath, 
+                    xScale='log')
+    plotHistWithKde(df['D-Spacing(FFT, nm)'], 
+                    'd-spacing (nm)', 
+                    'histogram_dspacing', 
+                    plotSave_fPath, 
+                    xScale='linear')
+    plotHistWithKde(df['angleDifference'], 
+                    'Angle Difference (degrees)', 
+                    'histogram_angleDifference', 
+                    plotSave_fPath, 
+                    xScale='linear')
     
     aspectRatio = df['crystalMajorAxis_length (nm)'] / df['crystalMinorAxis_length (nm)']
-    plotHistWithKde(aspectRatio, 'Aspect Ratio', 'histogram_aspectRatio', plotSave_fPath, xScale='linear')
+    plotHistWithKde(aspectRatio, 
+                    'Aspect Ratio', 
+                    'histogram_aspectRatio', 
+                    plotSave_fPath, 
+                    xScale='linear')
