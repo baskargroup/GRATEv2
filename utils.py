@@ -402,6 +402,11 @@ def filterThreshArea(df,
     
     return df        
 
+def FilterOut_dspacingOutliers(df, dspaceColName, ds_lowerbound, ds_upperbound):
+    # Filter out dspacing outliers
+    df_filtered = df[(df[dspaceColName] >= ds_lowerbound) & (df[dspaceColName] <= ds_upperbound)]
+    return df_filtered
+
 def CreateDirectories(directories):
     for directory in directories:
         if directory is not None:

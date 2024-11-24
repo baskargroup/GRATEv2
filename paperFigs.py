@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 import pathlib as pl
 import libconf
-from utils import filterThreshArea
+from utils import filterThreshArea, FilterOut_dspacingOutliers
+from scipy.stats import wasserstein_distance
 
 def plotHistWithKde(data, 
                     xLabel, 
@@ -13,7 +14,9 @@ def plotHistWithKde(data,
                     xScale='log', 
                     binsType='fd', 
                     yScale='linear' , 
-                    yLabel='Probability Density'):
+                    yLabel='Probability Density',
+                    x_upper_bound=None,
+                    y_upper_bound=None):
     import seaborn as sns
     # create numpy array
     np_data = np.array(data)
@@ -44,6 +47,12 @@ def plotHistWithKde(data,
     ax.set_xscale(xScale)
     ax.set_yscale(yScale)
     
+    # Set x and y axis upper bounds if provided
+    if x_upper_bound is not None:
+        ax.set_xlim(right=x_upper_bound)
+    if y_upper_bound is not None:
+        ax.set_ylim(top=y_upper_bound)
+    
     # tight layout
     plt.tight_layout()
     
@@ -56,10 +65,36 @@ def plotHistWithKde(data,
     fig.savefig(plotSave_fPath / (fileName + '.pgf'))
     fig.savefig(plotSave_fPath / (fileName + '.pdf'))
     
-def FilterOut_dspacingOutliers(df, dspaceColName, ds_lowerbound, ds_upperbound):
-    # Filter out dspacing outliers
-    df_filtered = df[(df[dspaceColName] >= ds_lowerbound) & (df[dspaceColName] <= ds_upperbound)]
-    return df_filtered
+    plt.close(fig)
+
+def createDataSufficiencyPlots(df, 
+                               col_name,
+                               numPlots, 
+                               xlabel, 
+                               fileName, 
+                               plotSave_fPath, 
+                               xScale='log',  
+                               yScale='linear', 
+                               yLabel='Probability Density',
+                               binsType='fd',):
+    
+    dataSuffDir_fPath = plotSave_fPath / 'DataSufficiency'
+    dataSuffDir_fPath.mkdir(parents=True, exist_ok=True)
+    
+    for i in range(numPlots):
+        numData = int(df.shape[0] * (i+1) / numPlots)
+        data = df[col_name].iloc[:numData]
+        plotHistWithKde(data, 
+                        xlabel, 
+                        fileName + '_{}'.format(int((i+1)*100 / numPlots)), 
+                        dataSuffDir_fPath, 
+                        xScale=xScale, 
+                        binsType=binsType, 
+                        yScale=yScale , 
+                        yLabel=yLabel, 
+                        x_upper_bound=None,
+                        y_upper_bound=0.006)
+    
 
 if __name__ == "__main__":
     project_fPath       = pl.Path(__file__).parent.resolve()
@@ -126,3 +161,11 @@ if __name__ == "__main__":
                     'histogram_aspectRatio', 
                     plotSave_fPath, 
                     xScale='linear')
+    
+    createDataSufficiencyPlots(df, 
+                               'Crystal Area (nm^2)', 
+                               10, 
+                               'Area (nm$^2$)', 
+                               'dataSuff_crysArea', 
+                               plotSave_fPath, 
+                               xScale='log')
