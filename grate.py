@@ -438,7 +438,7 @@ class ImageProcessor:
                                    'crystalMinorAxis_length (nm)', 
                                    'MajorAxisAngle', 
                                    'angleDifference'])
-        df.round(2)
+        df = df.round(2)
         
         csv_file_path = Path(self.parameters['result CSV directory']) / f"{self.img_path.stem}.csv"
         # df.to_csv(csv_file_path)

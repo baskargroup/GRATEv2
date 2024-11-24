@@ -6,7 +6,7 @@ import os
 import libconf
 from os import listdir
 from os.path import join, splitext
-from utils import plotHist, filterThreshArea, getAngleDifference, FilterOut_dspacingOutliers
+from utils import plotHist, filterThreshArea, getAngleDifference, filterOut_dspacingOutliers
 from paperFigs import plotHistWithKde
 
 def listIntersection(lst1, lst2):
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     origCSVFile_fPath   = project_fPath / runDir_rPath / 'overall_dspace_1.9.csv'
     plotSave_fPath      = project_fPath / runDir_rPath / 'Plots'
     config_fPath        = project_fPath / runDir_rPath / 'config.cfg'
-    d_spaceDir1         = project_fPath / runDir_rPath / 'CSV'
+    csvDir_fPath         = project_fPath / runDir_rPath / 'CSV'
     sameDSCSVFile_fPath = project_fPath / runDir_rPath / 'sameDSpacingInfo.csv'
 
     # Read config file
@@ -250,65 +250,11 @@ if __name__ == "__main__":
     pp_threshold_area_factor = config['post_processing']['threshold_area_factor']
 
     plotSave_fPath.mkdir(parents=True, exist_ok=True)
-
-    files1 = [f for f in listdir(d_spaceDir1) if splitext(f)[1] == ".csv"]
-
-    print("len files1:  ",len(files1))
-
-    distances = []
-
-    MetricDistances = []
-    DirectDistances = []
-    ModRelAngle     = []
-
-    for filename in files1:
-        if filename == "overall.csv":
-            continue
-        print("File name:   ", filename)
-        df1 = pd.read_csv(join(d_spaceDir1, filename))
-        df1 = FilterOut_dspacingOutliers(df1, 
-                                        'D-Spacing(FFT, nm)', 
-                                        pp_ds_lowerbound, 
-                                        pp_ds_upperbound)
-        df1 = filterThreshArea( df1, 
-                                'Crystal Area (nm^2)',
-                                ds_nm,
-                                pp_threshold_area_factor)
-
-        for ind1, row1 in df1.iterrows():
-            # print("ind1     :", ind1)
-            ang1        = float(row1['Crystal Angle (zero at X-axis and clockwise positive)'])
-            area1       = float(row1['Crystal Area (nm^2)'])
-            rad1        = radFromArea(area1)
-            centroid1   = numericFromString(row1['Centroid'], pix2nm)
-
-            for ind2, row2 in df1.iterrows():
-                # print("ind2     :", ind2)
-                if ind1 == ind2:
-                    continue
-                else:
-                    ang2        = float(row2['Crystal Angle (zero at X-axis and clockwise positive)'])
-                    area2       = float(row2['Crystal Area (nm^2)'])
-                    rad2        = radFromArea(area2)
-                    centroid2   = numericFromString(row2['Centroid'], pix2nm)
-                    
-                    CCdist      = centroidDist(centroid1, centroid2)
-                    MetricDist   = CCdist/ (rad1 + rad2)
-                    
-                    MetricDistances.append(MetricDist)
-                    DirectDistances.append(CCdist)
-                    ModRelAngle.append(getAngleDifference(ang1, ang2))
-                
-    print("length:   ", len(ModRelAngle))
-
-    df_dist = pd.DataFrame(list(zip(MetricDistances, 
-                                    DirectDistances, 
-                                    ModRelAngle)), 
-                        columns=['Metric Distances',
-                                'Direct Distances',
-                                'Relative Angle'])
-    df_dist = df_dist.round(2)
-    df_dist.to_csv(sameDSCSVFile_fPath, index=False)
+    
+    df_dist = pd.read_csv(sameDSCSVFile_fPath)
+    
+    if df_dist.shape[0] == 0:
+        raise ValueError("No data to plot")
     
     plotHistWithKde(df_dist['Relative Angle'],
                     'Angle Difference (degrees)',
@@ -316,7 +262,7 @@ if __name__ == "__main__":
                     plotSave_fPath,
                     xScale='linear')
     
-    plot2DKde(df_dist['Metric Distances'],
+    plot2DKde(  df_dist['Metric Distances'],
                 df_dist['Relative Angle'],
                 'Metric Distances',
                 'Angle Difference',

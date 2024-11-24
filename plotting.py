@@ -11,7 +11,14 @@ def Hist_outside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
         if row[ 'D-Spacing(FFT, nm)' ] < dsRange[0] or row[ 'D-Spacing(FFT, nm)' ] > dsRange[1]:
             outOfRangeDS.append(row[ 'D-Spacing(FFT, nm)' ])
     
-    plotHist(value = outOfRangeDS, path = savePath, filename = str(d_space)+"_outOfRangedspace.png", numBins=200, logscaling=None, xLabel= 'DSpacing out of range', yLabel='Frequency', show=showFig)
+    plotHist(value = outOfRangeDS, 
+             path = savePath, 
+             filename = str(d_space)+"_outOfRangedspace.png", 
+             numBins=200, 
+             logscaling=None, 
+             xLabel= 'DSpacing out of range', 
+             yLabel='Frequency', 
+             show=showFig)
     
 def Hist_inside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
     inRangeDS    = []
@@ -22,7 +29,14 @@ def Hist_inside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
     # save the list of D-Spacing values in the range
     np.savetxt(os.path.join(savePath,str(d_space)+"_inRangedspace.csv"), inRangeDS, fmt='%10.5f')
     
-    plotHist(value = inRangeDS, path = savePath, filename = str(d_space)+"_inRangedspace.png", numBins=200, logscaling=None, xLabel= 'DSpacing inside range', yLabel='Frequency', show=showFig)
+    plotHist(value = inRangeDS, 
+             path = savePath, 
+             filename = str(d_space)+"_inRangedspace.png", 
+             numBins=200, 
+             logscaling=None, 
+             xLabel= 'DSpacing inside range', 
+             yLabel='Frequency', 
+             show=showFig)
 
     plotKDE(    value       = inRangeDS, 
                 wght        = None,

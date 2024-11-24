@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pathlib as pl
 import libconf
-from utils import filterThreshArea, FilterOut_dspacingOutliers
+from utils import filterThreshArea, filterOut_dspacingOutliers
 from scipy.stats import wasserstein_distance
 
 def plotHistWithKde(data, 
@@ -159,24 +159,10 @@ if __name__ == "__main__":
     # Create plotSave_fPath if it does not exist
     plotSave_fPath.mkdir(parents=True, exist_ok=True)
     
-    # Filter out dspacing outliers if filteredCSVFile_fPath does not exist
-    if not filteredCSVFile_fPath.exists():
-        df = pd.read_csv(origCSVFile_fPath)
-        df = FilterOut_dspacingOutliers(df, 
-                                        'D-Spacing(FFT, nm)', 
-                                        pp_ds_lowerbound, 
-                                        pp_ds_upperbound)
-        
-        # Filter out crystal area outliers
-        df = filterThreshArea(df, 
-                              'Crystal Area (nm^2)', 
-                              ds_nm,
-                              pp_threshold_area_factor)
-        
-        df.to_csv(filteredCSVFile_fPath, index=False)
-        
-    else:
-        df = pd.read_csv(filteredCSVFile_fPath)
+    df = pd.read_csv(filteredCSVFile_fPath)
+    
+    if df.shape[0] == 0:
+        raise ValueError("No data to plot")
     
     # Plotting
     plotHistWithKde(df['Crystal Area (nm^2)'], 
