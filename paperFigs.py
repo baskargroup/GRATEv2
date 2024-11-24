@@ -69,10 +69,10 @@ def plotHistWithKde(data,
 
 def createDataSufficiencyPlots(df, 
                                col_name,
-                               numPlots, 
                                xlabel, 
                                fileName, 
-                               plotSave_fPath, 
+                               plotSave_fPath,
+                               numPlots, 
                                xScale='log',  
                                yScale='linear', 
                                yLabel='Probability Density',
@@ -81,10 +81,31 @@ def createDataSufficiencyPlots(df,
     dataSuffDir_fPath = plotSave_fPath / 'DataSufficiency'
     dataSuffDir_fPath.mkdir(parents=True, exist_ok=True)
     
+    uniformDist =  np.random.uniform(df[col_name].min(), df[col_name].max(), len(df[col_name]))
+    
+    # Create separate wasserstein distance files to store the wasserstein distance between 
+    # 1. the current and previous plot
+    # 2. the current and full data 
+    # 3. Uniform distribution and the current plot
+    wassDist_currPrev_fPath = dataSuffDir_fPath / 'wassDist_currPrev.txt'
+    wassDist_currFull_fPath = dataSuffDir_fPath / 'wassDist_currFull.txt'
+    wassDist_currUniform_fPath = dataSuffDir_fPath / 'wassDist_currUniform.txt'
+    
+    wassDist_currPrev_f = open(wassDist_currPrev_fPath, 'w')
+    wassDist_currFull_f = open(wassDist_currFull_fPath, 'w')
+    wassDist_currUniform_f = open(wassDist_currUniform_fPath, 'w')
+    
+    wassDist_currPrev_f.write('current data percent, WassDist\n')
+    wassDist_currFull_f.write('current data percent, WassDist\n')
+    wassDist_currUniform_f.write('current data percent, WassDist\n')
+    
+    df_current = None
+    df_previous = None
+    
     for i in range(numPlots):
         numData = int(df.shape[0] * (i+1) / numPlots)
-        data = df[col_name].iloc[:numData]
-        plotHistWithKde(data, 
+        df_current = df[col_name].iloc[:numData]
+        plotHistWithKde(df_current, 
                         xlabel, 
                         fileName + '_{}'.format(int((i+1)*100 / numPlots)), 
                         dataSuffDir_fPath, 
@@ -94,6 +115,23 @@ def createDataSufficiencyPlots(df,
                         yLabel=yLabel, 
                         x_upper_bound=None,
                         y_upper_bound=0.006)
+        
+        if df_previous is not None:
+            wass_dist = wasserstein_distance(df_previous, df_current)
+            wassDist_currPrev_f.write('{}, {}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+            # df_previous = df_current
+            
+        wass_dist = wasserstein_distance(uniformDist[:numData], df_current)
+        wassDist_currUniform_f.write('{}, {}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+        
+        wass_dist = wasserstein_distance(df[col_name], df_current)
+        wassDist_currFull_f.write('{}, {}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+        
+        df_previous = df_current
+        
+    wassDist_currPrev_f.close()
+    wassDist_currFull_f.close()
+    wassDist_currUniform_f.close()
     
 
 if __name__ == "__main__":
@@ -163,9 +201,9 @@ if __name__ == "__main__":
                     xScale='linear')
     
     createDataSufficiencyPlots(df, 
-                               'Crystal Area (nm^2)', 
-                               10, 
+                               'Crystal Area (nm^2)',  
                                'Area (nm$^2$)', 
                                'dataSuff_crysArea', 
                                plotSave_fPath, 
+                               numPlots=10,
                                xScale='log')
