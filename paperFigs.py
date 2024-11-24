@@ -16,7 +16,8 @@ def plotHistWithKde(data,
                     yScale='linear' , 
                     yLabel='Probability Density',
                     x_upper_bound=None,
-                    y_upper_bound=None):
+                    y_upper_bound=None,
+                    color='darkorange'):
     import seaborn as sns
     # create numpy array
     np_data = np.array(data)
@@ -39,7 +40,7 @@ def plotHistWithKde(data,
     
     # use seaborn to plot histogram with best fit line
     fig, ax = plt.subplots(figsize=(10, 10) )
-    sns.histplot(np_data, bins=bins, ax=ax, color='darkorange', stat='density')
+    sns.histplot(np_data, bins=bins, ax=ax, color=color, stat='density')
     sns.kdeplot(np_data, ax=ax, color='black', clip = (minVal, maxVal), linewidth=2 )
     ax.set_xlabel(xLabel)
     ax.set_ylabel(yLabel)
@@ -114,7 +115,8 @@ def createDataSufficiencyPlots(df,
                         yScale=yScale , 
                         yLabel=yLabel, 
                         x_upper_bound=None,
-                        y_upper_bound=0.006)
+                        y_upper_bound=0.006,
+                        color='red')
         
         if df_previous is not None:
             wass_dist = wasserstein_distance(df_previous, df_current)
