@@ -75,7 +75,15 @@ def imgLength(freqCoord, imgSize):
     else:
         return imgSize[0]/np.sin(theta)
 
-def plotHist(value=None, wght=None, path=None, filename=None, numBins=100, logscaling=None, xLabel = None, yLabel=None, show='no'):
+def plotHist(value=None, 
+             wght=None, 
+             path=None, 
+             filename=None, 
+             numBins=100, 
+             logscaling=None, 
+             xLabel = None, 
+             yLabel=None, 
+             show='no'):
 
     _ = plt.hist(value, weights = wght, bins = numBins)
     # plt.title(filename[:-4])
@@ -98,7 +106,14 @@ def plotHist(value=None, wght=None, path=None, filename=None, numBins=100, logsc
         plt.show()
     plt.close()
 
-def plotScatter(value=None, wght=None, path=None, filename=None, logscaling=None, xLabel = None, yLabel=None, show='no'):
+def plotScatter(value=None, 
+                wght=None, 
+                path=None, 
+                filename=None, 
+                logscaling=None, 
+                xLabel = None, 
+                yLabel=None, 
+                show='no'):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -131,7 +146,16 @@ def plotScatter(value=None, wght=None, path=None, filename=None, logscaling=None
         plt.show()
     plt.close()
 
-def plotKDE(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', bandwidth = None, logscaling=None, xLabel = None, yLabel=None, show='no'):
+def plotKDE(value=None, 
+            wght=None, 
+            path=None, 
+            filename=None, 
+            kernel = 'gaussian', 
+            bandwidth = None, 
+            logscaling=None, 
+            xLabel = None, 
+            yLabel=None, 
+            show='no'):
 
     minVal  = min(value)
     maxVal  = max(value)
@@ -186,7 +210,16 @@ def plotKDE(value=None, wght=None, path=None, filename=None, kernel = 'gaussian'
         plt.show()
     plt.close()
 
-def plotKDE_2D(value=None, wght=None, path=None, filename=None, kernel = 'gaussian', bandwidth = None, logscaling=None, xLabel = None, yLabel=None, show='no'):
+def plotKDE_2D(value=None, 
+               wght=None, 
+               path=None, 
+               filename=None, 
+               kernel = 'gaussian', 
+               bandwidth = None, 
+               logscaling=None, 
+               xLabel = None, 
+               yLabel=None, 
+               show='no'):
     
     # Extract x and y# Extract x and y
     x = np.array(value)
@@ -275,7 +308,8 @@ def totalAreaInDSRange(dataframe, dsRange):
 
 def getCentroid (convHull):
     """ 
-    Returns the detection region centroid coordinates according to the image coordinate convention {(columns, rows) with top left as origin}. 
+    Returns the detection region centroid coordinates according to the image 
+    coordinate convention {(columns, rows) with top left as origin}. 
     """
     x_centroid = np.mean(convHull.points[convHull.vertices,0], dtype= int)
     y_centroid = np.mean(convHull.points[convHull.vertices,1], dtype= int)
@@ -326,15 +360,25 @@ def getAngleDifference(ang1, ang2):
 
 def getBoundingBox(convHull):
     """
-    Returns the detection region bounding box coordinates according to the image coordinate convention {(columns, rows) with top left as origin}.  
+    Returns the detection region bounding box coordinates according to the image 
+    coordinate convention {(columns, rows) with top left as origin}.  
     x_minMax and y_minMax are list of size 2, containing the min value first and max second. 
     """
-    x_minMax    = [np.amin(convHull.points[convHull.vertices,0]), np.amax(convHull.points[convHull.vertices,0])]
-    y_minMax    = [np.amin(convHull.points[convHull.vertices,1]), np.amax(convHull.points[convHull.vertices,1])]
+    x_minMax    = [np.amin(convHull.points[convHull.vertices,0]), 
+                   np.amax(convHull.points[convHull.vertices,0])]
+    y_minMax    = [np.amin(convHull.points[convHull.vertices,1]), 
+                   np.amax(convHull.points[convHull.vertices,1])]
     return x_minMax, y_minMax
 
-def pltOrientationLine(subplot, crystalAngle, color, bb_x_minMax, bb_y_minMax, x_centroid, y_centroid):
-    arrLen  = min( int( bb_x_minMax[1] - bb_x_minMax[0] ), int( bb_y_minMax[1] - bb_y_minMax[0] ) ) / 6
+def pltOrientationLine(subplot, 
+                       crystalAngle, 
+                       color, 
+                       bb_x_minMax, 
+                       bb_y_minMax, 
+                       x_centroid, 
+                       y_centroid):
+    arrLen  = min( int( bb_x_minMax[1] - bb_x_minMax[0] ), 
+                  int( bb_y_minMax[1] - bb_y_minMax[0] ) ) / 6
     subplot.arrow(x_centroid, 
                   y_centroid , 
                   arrLen * np.cos( crystalAngle * np.pi/180 ),
@@ -344,10 +388,15 @@ def pltOrientationLine(subplot, crystalAngle, color, bb_x_minMax, bb_y_minMax, x
 
 def pltConvexHull(subplot, convHull, pntCloud, color):
     for simplex in convHull.simplices:
-            subplot.plot( pntCloud[ simplex , 0 ] , pntCloud[ simplex , 1 ] , linewidth = 7.0 , color = color )
+            subplot.plot(pntCloud[simplex, 0], 
+                         pntCloud[simplex, 1], 
+                         linewidth = 7.0, 
+                         color = color)
 
-def getAlphaShape(pntCloud, alpha_shape_factor):
-    alpha_shape     = alphashape.alphashape( pntCloud , alpha = alpha_shape_factor )
+def getAlphaShape(pntCloud, 
+                  alpha_shape_factor):
+    alpha_shape = alphashape.alphashape(pntCloud, 
+                                        alpha = alpha_shape_factor)
     return alpha_shape
 
 
