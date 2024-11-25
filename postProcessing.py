@@ -3,6 +3,7 @@ import pathlib as pl
 import libconf
 import numpy as np
 from utils import filterThreshArea, filterOut_dspacingOutliers, getAngleDifference
+from itertools import combinations
 
 def radFromArea(area):
     rad = np.sqrt(area/np.pi)
@@ -43,7 +44,6 @@ def create_ds_area_filtered_csv_file(origCSVFile_fPath,
     df = df.round(2)
     df.to_csv(filteredCSVFile_fPath, index=False)
     
-
 def create_same_ds_info_csv(csvDir_fPath, 
                             sameDSCSVFile_fPath,
                             pp_ds_lowerbound,
@@ -51,9 +51,10 @@ def create_same_ds_info_csv(csvDir_fPath,
                             ds_nm,
                             pix2nm,
                             pp_threshold_area_factor):
-    
+
+    # List all CSV files in the directory
     files1 = [f for f in csvDir_fPath.iterdir() if f.suffix == ".csv"]
-    print("len files1:  ",len(files1))
+    print("Number of files:", len(files1))
     
     MetricDistances = []
     DirectDistances = []
@@ -63,46 +64,60 @@ def create_same_ds_info_csv(csvDir_fPath,
         if filename.stem == "overall":
             continue
         
-        print("File name:   ", filename.stem)
+        print("Processing file:", filename.stem)
         df1 = pd.read_csv(filename)
-        df1 = filterOut_dspacingOutliers(df1, 
-                                        'D-Spacing(FFT, nm)', 
-                                        pp_ds_lowerbound, 
-                                        pp_ds_upperbound)
+
+        # Apply filters to the DataFrame
+        df1 = filterOut_dspacingOutliers(   df1, 
+                                            'D-Spacing(FFT, nm)', 
+                                            pp_ds_lowerbound, 
+                                            pp_ds_upperbound)
         df1 = filterThreshArea( df1, 
                                 'Crystal Area (nm^2)',
                                 ds_nm,
                                 pp_threshold_area_factor)
 
-        for ind1, row1 in df1.iterrows():
-            ang1        = float(row1['Crystal Angle (zero at X-axis and clockwise positive)'])
-            area1       = float(row1['Crystal Area (nm^2)'])
-            rad1        = radFromArea(area1)
-            centroid1   = numericFromString(row1['Centroid'], pix2nm)
+        # Reset index to ensure it starts from 0
+        df1.reset_index(drop=True, inplace=True)
 
-            for ind2, row2 in df1.iterrows():
-                if ind1 == ind2:
-                    continue
-                else:
-                    ang2        = float(row2['Crystal Angle (zero at X-axis and clockwise positive)'])
-                    area2       = float(row2['Crystal Area (nm^2)'])
-                    rad2        = radFromArea(area2)
-                    centroid2   = numericFromString(row2['Centroid'], pix2nm)
-                    CCdist      = centroidDist(centroid1, centroid2)
-                    MetricDist  = CCdist/ (rad1 + rad2)
+        # Generate all unique pairs of indices
+        index_pairs = list(combinations(df1.index, 2))
+        
+        # Process each pair
+        for ind1, ind2 in index_pairs:
+            row1 = df1.loc[ind1]
+            row2 = df1.loc[ind2]
+            
+            # Extract values from row1
+            ang1      = float(row1['Crystal Angle (zero at X-axis and clockwise positive)'])
+            area1     = float(row1['Crystal Area (nm^2)'])
+            rad1      = radFromArea(area1)
+            centroid1 = numericFromString(row1['Centroid'], pix2nm)
+            
+            # Extract values from row2
+            ang2      = float(row2['Crystal Angle (zero at X-axis and clockwise positive)'])
+            area2     = float(row2['Crystal Area (nm^2)'])
+            rad2      = radFromArea(area2)
+            centroid2 = numericFromString(row2['Centroid'], pix2nm)
+            
+            # Calculate distances and angle difference
+            CCdist     = centroidDist(centroid1, centroid2)
+            MetricDist = CCdist / (rad1 + rad2)
+            rel_angle  = getAngleDifference(ang1, ang2)
+            
+            # Append results to the lists
+            MetricDistances.append(MetricDist)
+            DirectDistances.append(CCdist)
+            ModRelAngle.append(rel_angle)
                     
-                    MetricDistances.append(MetricDist)
-                    DirectDistances.append(CCdist)
-                    ModRelAngle.append(getAngleDifference(ang1, ang2))
-                
-    print("length:   ", len(ModRelAngle))
+    print("Total pairs processed:", len(MetricDistances))
 
-    df_dist = pd.DataFrame(list(zip(MetricDistances, 
-                                    DirectDistances, 
-                                    ModRelAngle)), 
-                        columns=['Metric Distances',
-                                'Direct Distances',
-                                'Relative Angle'])
+    # Create a DataFrame from the results
+    df_dist = pd.DataFrame({
+        'Metric Distances': MetricDistances,
+        'Direct Distances': DirectDistances,
+        'Relative Angle': ModRelAngle
+    })
     df_dist = df_dist.round(2)
     df_dist.to_csv(sameDSCSVFile_fPath, index=False)
 
