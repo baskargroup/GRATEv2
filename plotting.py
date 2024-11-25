@@ -1,364 +1,419 @@
-import pandas as pd
+import seaborn as sns
 import numpy as np
+import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
-import os
-from utils import plotHist, createVersionDirectory,plotScatter, plotKDE, plotKDE_2D, filterThreshArea
-from scipy.stats import wasserstein_distance
+import matplotlib.ticker as ticker
+# from mpl_toolkits.mplot3d import Axes3D
+import pathlib as pl
+import libconf
+from scipy.stats import gaussian_kde, wasserstein_distance
 
-def Hist_outside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
-    outOfRangeDS    = []
-    for ind, row in dataframe.iterrows():
-        if row[ 'D-Spacing(FFT, nm)' ] < dsRange[0] or row[ 'D-Spacing(FFT, nm)' ] > dsRange[1]:
-            outOfRangeDS.append(row[ 'D-Spacing(FFT, nm)' ])
+def plot2DKde(data_x, data_y, 
+              xLabel, yLabel, 
+              fileName, 
+              plotSave_fPath, 
+              xScale='linear', 
+              yScale='linear',
+              cmap='viridis'):
+
+    # Ensure data is numpy arrays
+    np_data_x = np.array(data_x)
+    np_data_y = np.array(data_y)
     
-    plotHist(value = outOfRangeDS, 
-             path = savePath, 
-             filename = str(d_space)+"_outOfRangedspace.png", 
-             numBins=200, 
-             logscaling=None, 
-             xLabel= 'DSpacing out of range', 
-             yLabel='Frequency', 
-             show=showFig)
+    # Get min and max for axes limits
+    min_x, max_x = np.min(np_data_x), np.max(np_data_x)
+    min_y, max_y = np.min(np_data_y), np.max(np_data_y)
     
-def Hist_inside_DS_range(dataframe,d_space, dsRange, savePath, showFig):
-    inRangeDS    = []
-    for ind, row in dataframe.iterrows():
-        if row[ 'D-Spacing(FFT, nm)' ] > dsRange[0] and row[ 'D-Spacing(FFT, nm)' ] < dsRange[1]:
-            inRangeDS.append(row[ 'D-Spacing(FFT, nm)' ])
+    # Configure matplotlib to use 'pgf' backend for LaTeX integration
+    matplotlib.use("pgf")
+    matplotlib.rcParams.update({
+        "pgf.texsystem": "pdflatex",
+        'font.family': 'serif',
+        'font.size': 60,
+        'text.usetex': True,
+        'pgf.rcfonts': False,
+        })
     
-    # save the list of D-Spacing values in the range
-    np.savetxt(os.path.join(savePath,str(d_space)+"_inRangedspace.csv"), inRangeDS, fmt='%10.5f')
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(10, 10))
     
-    plotHist(value = inRangeDS, 
-             path = savePath, 
-             filename = str(d_space)+"_inRangedspace.png", 
-             numBins=200, 
-             logscaling=None, 
-             xLabel= 'DSpacing inside range', 
-             yLabel='Frequency', 
-             show=showFig)
-
-    plotKDE(    value       = inRangeDS, 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = d_space_string + '__inRangedspace_KDE.png', 
-                kernel      = 'gaussian',
-                bandwidth   = 0.1, 
-                logscaling  = None, 
-                xLabel      = 'D-Spacing(FFT, nm)', 
-                yLabel      = 'Normalized Density', 
-                show        = showFig)
-
-""" 
-Lookup table for "plotType": 
-0   :   Generate KDE based single D-Spacing plots, 
-    - Set <csvPath>
-    - Set <filename> # <filename> = overall.csv 
-    - Set <ShowFig>
-    - Set <d_space>
-1   :   Generate combined D-Spacing plots, 
-2   :   Generate relative Distance Plots., 
-3   :   Generate relative angle Plot,
--1  :   Generate histogram based single D-Spacing plots 
-"""
-
-plotType        = 0                                 
-csvPath         = 'Results/all/combined_v3/version_7/1.9/CSV/'           # Compulsory to fill
-filename        = 'overall.csv'                                         # Compulsory to fill
-filename1       = 'overall_0p7.csv'                                     # Fill value only if plotType == 1
-showFig         = 'no'                                                  # 'yes' or 'no'
-d_space         = 1.9
-
-if d_space == 1.9:
-    ThresholdFactorArea = 7
-elif d_space == 0.7: 
-    ThresholdFactorArea = 10
-
-# d_space_string  = filename[-7:-4]
-d_space_string  = str(d_space) 
-projectPath     = os.path.dirname(os.path.abspath(__file__))
-df              = pd.read_csv(os.path.join(projectPath,csvPath,filename))
-
-if plotType == 1: df1 = pd.read_csv(os.path.join(projectPath,csvPath,filename1))
-
-plotSavePath    = createVersionDirectory(projectPath / csvPath, 'Plot_version')
-
-if plotType == 0:
-    df  = filterThreshArea( df, 
-                            'Crystal Area (nm^2)',
-                            d_space=d_space,
-                            threshold_area_factor=ThresholdFactorArea)
+    # Plot the 2D KDE and store the returned QuadContourSet
+    kde = sns.kdeplot(
+        x=np_data_x, 
+        y=np_data_y, 
+        ax=ax, 
+        fill=True, 
+        cmap=cmap, 
+        thresh=0, 
+        levels=100,
+        cbar=False,          # Enable color bar
+        cbar_kws={'label': 'Density'}  # Label for the color bar
+        )
     
-    # Save updated dataframe
-    df.to_csv(os.path.join(plotSavePath,filename[:-4]+"_areaFiltered.csv"), index=False)
-    aspectRatio = df['crystalMajorAxis_length (nm)']/df['crystalMinorAxis_length (nm)']
+    # Set labels and scales
+    ax.set_xlabel(xLabel)
+    ax.set_ylabel(yLabel)
+    ax.set_xscale(xScale)
+    ax.set_yscale(yScale)
     
-    aspectRatio.to_csv(os.path.join(plotSavePath,filename[:-4]+"_aspectRatio.csv"), index=False)
+    # Set axis limits
+    ax.set_xlim(min_x, max_x)
+    ax.set_ylim(min_y, max_y)
     
-    df_len          = len(df['Crystal Area (nm^2)']) 
-    """ # uniformDistFactor = 1
-    # uniformDist     = np.random.uniform(df['Crystal Area (nm^2)'].min(), df['Crystal Area (nm^2)'].max(), uniformDistFactor*len(df['Crystal Area (nm^2)']))
-    ## Data Sufficiency Test
-    df_last = df['Crystal Area (nm^2)'][:int(df_len*10/100)]
-    for i in np.linspace(10,100, 10,endpoint=True):
-        df_current = df['Crystal Area (nm^2)'][:int(df_len*i/100)]
-        plotKDE(    value       = df_current,
-                    wght        = None,
-                    path        = plotSavePath,
-                    filename    = str(i) + "_" + d_space_string + "_area_logx_KDE.png",
-                    kernel      = 'gaussian',
-                    bandwidth   = 10,
-                    logscaling  = 'x',
-                    xLabel      = 'Crystal Area (nm^2)',
-                    yLabel      = 'Normalized Density',
-                    show        = showFig)
+    # Increase the number of ticks on x and y axes
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=10))
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=10))
+    
+    # Optionally rotate tick labels for better readability
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    plt.setp(ax.get_yticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    
+    # Create the color bar manually
+    # Get the mappable object (the last collection from the plot)
+    mappable = kde.collections[-1]
+    # Create the color bar
+    cbar = fig.colorbar(mappable, 
+                        ax=ax, 
+                        label='Probability Density', 
+                        orientation='horizontal', 
+                        pad=0.2, 
+                        fraction=0.05, 
+                        aspect=30)
+    # Adjust the color bar ticks to 4 decimal places
+    cbar.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.4f'))
+    
+    cbar.ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
+    
+    # Adjust layout to accommodate color bar
+    plt.subplots_adjust(bottom=0.2)
+    
+    # Tight layout
+    plt.tight_layout()
+    
+    # Create the directory to save the plot
+    plotSave_fPath = plotSave_fPath / fileName
+    plotSave_fPath.mkdir(parents=True, exist_ok=True)
+    
+    # Save the figure
+    fig.savefig(plotSave_fPath / f"{fileName}.png")
+    fig.savefig(plotSave_fPath / f"{fileName}.pgf")
+    fig.savefig(plotSave_fPath / f"{fileName}.pdf")
+    
+    # Close the figure to free memory
+    plt.close(fig)
+
+def plot3DSeabornKde(data_x, data_y,
+                     xLabel, yLabel,
+                     fileName,
+                     plotSave_fPath,
+                     xScale='linear',
+                     yScale='linear',
+                     cmap='viridis'):
+
+    zLabel = 'Probability Density'
+    # Ensure data is numpy arrays
+    np_data_x = np.array(data_x)
+    np_data_y = np.array(data_y)
+
+    # Apply Seaborn style
+    sns.set(style='whitegrid', font_scale=1.5)
+
+    # Perform a 2D KDE
+    xy = np.vstack([np_data_x, np_data_y])
+    kde = gaussian_kde(xy)
+
+    # Define grid over data range
+    x_min, x_max = np_data_x.min(), np_data_x.max()
+    y_min, y_max = np_data_y.min(), np_data_y.max()
+
+    # Create grid coordinates
+    x_grid, y_grid = np.meshgrid(
+        np.linspace(x_min, x_max, 100),
+        np.linspace(y_min, y_max, 100)
+    )
+
+    # Evaluate KDE on grid
+    grid_coords = np.vstack([x_grid.ravel(), y_grid.ravel()])
+    z = kde(grid_coords)
+    z = z.reshape(x_grid.shape)
+
+    # Configure Matplotlib to use 'pgf' backend for LaTeX integration
+    matplotlib.use("pgf")
+    matplotlib.rcParams.update({
+        "pgf.texsystem": "pdflatex",
+        'font.family': 'serif',
+        'font.size': 18,
+        'text.usetex': True,
+        'pgf.rcfonts': False,
+    })
+
+    # Create the figure and 3D axes
+    fig = plt.figure(figsize=(12, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the surface with Seaborn's colormap
+    cmap = sns.color_palette(cmap, 
+                             as_cmap=True)
+    surf = ax.plot_surface(x_grid, 
+                           y_grid, 
+                           z, 
+                           cmap=cmap, 
+                           edgecolor='none', 
+                           alpha=0.8, 
+                           antialiased=True)
+
+    # Set labels and scales
+    ax.set_xlabel(xLabel)
+    ax.set_ylabel(yLabel)
+    ax.set_zlabel(zLabel)
+    if xScale == 'log':
+        ax.set_xscale('log')
+    if yScale == 'log':
+        ax.set_yscale('log')
+
+    # Apply Seaborn's aesthetic parameters to 3D plot
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.grid(True)
+
+    # Add a color bar
+    m = plt.cm.ScalarMappable(cmap=cmap)
+    m.set_array(z)
+    fig.colorbar(m, ax=ax, shrink=0.5, aspect=10, pad=0.1)
+
+    # Adjust view angle for better visualization
+    ax.view_init(elev=30, azim=225)
+
+    # Tight layout
+    plt.tight_layout()
+
+    # Create the directory to save the plot
+    plotSave_fPath = plotSave_fPath / fileName
+    plotSave_fPath.mkdir(parents=True, exist_ok=True)
+
+    # Save the figure
+    fig.savefig(plotSave_fPath / f"{fileName}.png")
+    fig.savefig(plotSave_fPath / f"{fileName}.pgf")
+    fig.savefig(plotSave_fPath / f"{fileName}.pdf")
+
+    # Close the figure to free memory
+    plt.close(fig)
+    
+def plotHistWithKde(data, 
+                    xLabel, 
+                    fileName, 
+                    plotSave_fPath, 
+                    xScale='log', 
+                    binsType='fd', 
+                    yScale='linear' , 
+                    yLabel='Probability Density',
+                    x_upper_bound=None,
+                    y_upper_bound=None,
+                    color='darkorange'):
+    # create numpy array
+    np_data = np.array(data)
+    
+    # get bins using np.histogram_bin_edges
+    bins = np.histogram_bin_edges(np_data, bins=binsType)
+    print("bins:  ", bins)
+    
+    minVal = np.min(np_data)
+    maxVal = np.max(np_data)
+    
+    matplotlib.use("pgf")
+    matplotlib.rcParams.update({
+        "pgf.texsystem": "pdflatex",
+        'font.family': 'serif',
+        'font.size' : 60,
+        'text.usetex': True,
+        'pgf.rcfonts': False,
+    })
+    
+    # use seaborn to plot histogram with best fit line
+    fig, ax = plt.subplots(figsize=(10, 10) )
+    sns.histplot(np_data, bins=bins, ax=ax, color=color, stat='density')
+    sns.kdeplot(np_data, ax=ax, color='black', clip = (minVal, maxVal), linewidth=2 )
+    ax.set_xlabel(xLabel)
+    ax.set_ylabel(yLabel)
+    # ax.set_ylabel('Normalized Frequency')
+    ax.set_xscale(xScale)
+    ax.set_yscale(yScale)
+    
+    # Set x and y axis upper bounds if provided
+    if x_upper_bound is not None:
+        ax.set_xlim(right=x_upper_bound)
+    if y_upper_bound is not None:
+        ax.set_ylim(top=y_upper_bound)
+    
+    # tight layout
+    plt.tight_layout()
+    
+    # Create a directory inside the plotSave_fPath under the name of the fileName
+    plotSave_fPath = plotSave_fPath / fileName
+    plotSave_fPath.mkdir(parents=True, exist_ok=True)
+     
+    # save as png and pgf
+    fig.savefig(plotSave_fPath / (fileName + '.png'))
+    fig.savefig(plotSave_fPath / (fileName + '.pgf'))
+    fig.savefig(plotSave_fPath / (fileName + '.pdf'))
+    
+    plt.close(fig)
+
+def createDataSufficiencyPlots(df, 
+                               col_name,
+                               xlabel, 
+                               fileName, 
+                               plotSave_fPath,
+                               numPlots, 
+                               xScale='log',  
+                               yScale='linear', 
+                               yLabel='Probability Density',
+                               binsType='fd',):
+    
+    dataSuffDir_fPath = plotSave_fPath / 'DataSufficiency'
+    dataSuffDir_fPath.mkdir(parents=True, exist_ok=True)
+    
+    uniformDist =  np.random.uniform(df[col_name].min(), df[col_name].max(), len(df[col_name]))
+    
+    # Create separate wasserstein distance files to store the wasserstein distance between 
+    # 1. the current and previous plot
+    # 2. the current and full data 
+    # 3. Uniform distribution and the current plot
+    wassDist_currPrev_fPath = dataSuffDir_fPath / 'wassDist_currPrev.txt'
+    wassDist_currFull_fPath = dataSuffDir_fPath / 'wassDist_currFull.txt'
+    wassDist_currUniform_fPath = dataSuffDir_fPath / 'wassDist_currUniform.txt'
+    
+    wassDist_currPrev_f = open(wassDist_currPrev_fPath, 'w')
+    wassDist_currFull_f = open(wassDist_currFull_fPath, 'w')
+    wassDist_currUniform_f = open(wassDist_currUniform_fPath, 'w')
+    
+    wassDist_currPrev_f.write('current data percent, WassDist\n')
+    wassDist_currFull_f.write('current data percent, WassDist\n')
+    wassDist_currUniform_f.write('current data percent, WassDist\n')
+    
+    df_current = None
+    df_previous = None
+    
+    for i in range(numPlots):
+        numData = int(df.shape[0] * (i+1) / numPlots)
+        df_current = df[col_name].iloc[:numData]
+        plotHistWithKde(df_current, 
+                        xlabel, 
+                        fileName + '_{}'.format(int((i+1)*100 / numPlots)), 
+                        dataSuffDir_fPath, 
+                        xScale=xScale, 
+                        binsType=binsType, 
+                        yScale=yScale , 
+                        yLabel=yLabel, 
+                        x_upper_bound=None,
+                        y_upper_bound=0.006,
+                        color='red')
         
-        if i == 00: 
-            continue
-        else: 
-            # ws_dist = wasserstein_distance(df_last, df_current)
-            # ws_dist = wasserstein_distance(df['Crystal Area (nm^2)'], df_current)
-            ws_dist = wasserstein_distance(uniformDist, df_current)
-            df_last = df_current
-            print(ws_dist) """
-
-    Hist_inside_DS_range(df,d_space, [1.5, 4], plotSavePath, showFig)
+        if df_previous is not None:
+            wass_dist = wasserstein_distance(df_previous, df_current)
+            wassDist_currPrev_f.write('{}, {}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+            # df_previous = df_current
+            
+        wass_dist = wasserstein_distance(uniformDist[:numData], df_current)
+        wassDist_currUniform_f.write('{}, {}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+        
+        wass_dist = wasserstein_distance(df[col_name], df_current)
+        wassDist_currFull_f.write('{}, {}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+        
+        df_previous = df_current
+        
+    wassDist_currPrev_f.close()
+    wassDist_currFull_f.close()
+    wassDist_currUniform_f.close()
     
-    plotKDE(    value       = df['Crystal Area (nm^2)'],
-                wght        = None,
-                path        = plotSavePath,
-                filename    = d_space_string + "_area_logx_KDE.png",
-                kernel      = 'gaussian',
-                bandwidth   = None,
-                logscaling  = 'x',
-                xLabel      = 'Crystal Area (nm^2)',
-                yLabel      = 'Normalized Density',
-                show        = showFig)
-
-    plotKDE(    value       = df['D-Spacing(FFT, nm)'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = d_space_string + '_dspace_KDE.png', 
-                kernel      = 'gaussian',
-                bandwidth   = 0.1, 
-                logscaling  = None, 
-                xLabel      = 'D-Spacing(FFT, nm)', 
-                yLabel      = 'Normalized Density', 
-                show        = showFig)
-
-    plotKDE_2D( value       = df['D-Spacing(FFT, nm)'], 
-                wght        = df['Crystal Area (nm^2)'], 
-                path        = plotSavePath, 
-                filename    = d_space_string + "_dspaceVsArea_KDE.png",
-                kernel      = 'gaussian',
-                bandwidth   = None, 
-                logscaling  = None, 
-                xLabel      = 'D-Spacing(FFT, nm)', 
-                yLabel      = 'Crystal Area (nm^2)', 
-                show        = showFig)
     
-    plotScatter(value       = df['crystalMajorAxis_length (nm)'], 
-                wght        = df['crystalMinorAxis_length (nm)'], 
-                path        = plotSavePath, 
-                filename    = 'crystal_MajorVsMinor_scatter.png', 
-                logscaling  = None, 
-                xLabel      = 'crystalMajorAxis_length (nm)', 
-                yLabel      = 'crystalMinorAxis_length (nm)', 
-                show        = showFig)
-
-    plotKDE(    value       = df['crystalMajorAxis_length (nm)']/df['crystalMinorAxis_length (nm)'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = "AspectRatio_MajorbyMinor_KDE.png",
-                kernel      = 'gaussian',
-                bandwidth   = None,
-                logscaling  = None, 
-                xLabel      = 'AspectRatio_MajorbyMinor', 
-                yLabel      = 'Normalized Density', 
-                show        = showFig)
+if __name__ == "__main__":
+    project_fPath       = pl.Path(__file__).parent.resolve()
+    runDir_rPath        = 'DATA/BO/results/ryan_allCombined/version_1/'
+    origCSVFile_fPath   = project_fPath / runDir_rPath / 'overall_dspace_1.9.csv'
+    plotSave_fPath      = project_fPath / runDir_rPath / 'Plots'
+    config_fPath        = project_fPath / runDir_rPath / 'config.cfg'
+    csvDir_fPath        = project_fPath / runDir_rPath / 'CSV'
+    sameDSCSVFile_fPath = project_fPath / runDir_rPath / 'sameDSpacingInfo.csv'
+    filteredOverallCSV_fPath = project_fPath / runDir_rPath / 'ds_area_filtered_overall.csv'
     
-    plotKDE(    value       = df['angleDifference'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = "angleDifference_crystalOrientationVsMajorAxis_KDE.png",
-                kernel      = 'gaussian',
-                bandwidth   = 2,
-                logscaling  = None, 
-                xLabel      = 'Angle Difference B/W crystal Pattern vs Major Axis', 
-                yLabel      = 'Normalized Density', 
-                show        = showFig)
-
-
-elif plotType == 1:
-    frames = [df, df1]
-    resultDF = pd.concat(frames)
-
-    plotHist(   value       = resultDF['D-Spacing(FFT, nm)'], 
-                wght        = resultDF['Crystal Area (nm^2)'],
-                path        = plotSavePath, 
-                filename    = "combined_dspaceVsArea_log.png", 
-                numBins     = 20, 
-                logscaling  = 'y',
-                xLabel      = 'D-Spacing(FFT, nm)',
-                yLabel      = 'Crystal Area (nm^2)', 
-                show        = showFig)
-
-    plotHist(   value       = resultDF['D-Spacing(FFT, nm)'],
-                wght        = resultDF['Crystal Area (nm^2)'],
-                path        = plotSavePath,
-                filename    = 'combined_dspaceVsArea.png',
-                numBins     = 20,
-                logscaling  = None,
-                xLabel      = 'D-Spacing(FFT, nm)',
-                yLabel      = 'Crystal Area (nm^2)',
-                show        = showFig)
-
-elif plotType == 2:
-
-    plotKDE(    value       = df['Metric Distances'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = filename[:-4] +'_MetricDistances_logx_KDE.png', 
-                kernel      = 'gaussian',
-                bandwidth   = 0.2, 
-                logscaling  = 'x', 
-                xLabel      = 'Metric Distances (nm)', 
-                yLabel      = 'Normalized Density', 
-                show        = showFig)
-
-    plotHist(   value       = df['Metric Distances'],
-                wght        = None,
-                path        = plotSavePath,
-                filename    = filename[:-4] +'_MetricDistances_logx.png',
-                numBins     = 300,
-                logscaling  = 'x',
-                xLabel      = 'Metric Distances (nm)',
-                yLabel      = 'Frequency',
-                show        = showFig)
-
-    plotKDE(    value       = df['Direct Distances'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = filename[:-4] +'_DirectDistances_logx_KDE.png', 
-                kernel      = 'gaussian',
-                bandwidth   = 0.9, 
-                logscaling  = 'x', 
-                xLabel      = 'Direct Distances (nm)', 
-                yLabel      = 'Normalized Density', 
-                show        = showFig)
-
-    plotHist(   value       = df['Direct Distances'],
-                wght        = None,
-                path        = plotSavePath,
-                filename    = filename[:-4] +'_DirectDistances_logx.png',
-                numBins     = 300,
-                logscaling  = 'x',
-                xLabel      = 'Direct Distances (nm)',
-                yLabel      = 'Frequency',
-                show        = showFig)
+    # Read config file
+    with open(config_fPath, 'r') as f:
+        config = libconf.load(f)
+        if 'post_processing' not in config:
+            raise ValueError("post_processing section not found in config file")
     
-    plotKDE_2D( value       = df['Direct Distances'],
-                wght        = df['Relative Angle'],
-                path        = plotSavePath,
-                filename    = filename[:-4] +'_relAngleVsDirectDist.png',
-                logscaling  = None,
-                xLabel      = 'Direct Distance (nm)',
-                yLabel      = 'Relative Angle',
-                show        = showFig)
+    ds_nm                    = config['dspace_nm'][0]
+    pix2nm                   = config['pix_2_nm']
+    pp_ds_lowerbound         = config['post_processing']['ds_lower_bound']
+    pp_ds_upperbound         = config['post_processing']['ds_upper_bound']
+    pp_threshold_area_factor = config['post_processing']['threshold_area_factor']
     
-    plotKDE_2D( value       = df['Metric Distances'],
-                wght        = df['Relative Angle'],
-                path        = plotSavePath,
-                filename    = filename[:-4] +'_relAngleVsMetricDist.png',
-                logscaling  = None,
-                xLabel      = 'Metric Distance (nm)',
-                yLabel      = 'Relative Angle',
-                show        = showFig)
-
-elif plotType == 3:
-
-    plotKDE(    value       = df['Relative Angle'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = 'Relative_Angle_KDE.png', 
-                kernel      = 'gaussian',
-                bandwidth   = 2.55, 
-                logscaling  = None, 
-                xLabel      = 'Relative Angle', 
-                yLabel      = 'Normalized Density', 
-                show        = showFig)
+    # Create plotSave_fPath if it does not exist
+    plotSave_fPath.mkdir(parents=True, exist_ok=True)
     
-    plotHist(   value       = df['Relative Angle'],
-                wght        = None,
-                path        = plotSavePath,
-                filename    = 'Relative_Angle.png',
-                numBins     = 36,
-                logscaling  = None,
-                xLabel      = 'Relative Angle',
-                yLabel      = 'Frequency',
-                show        = showFig)
+    df_filteredOverall = pd.read_csv(filteredOverallCSV_fPath)
     
-    plotKDE_2D( value       = df['Relative Angle'],
-                wght        = df['Direct Distances'],
-                path        = plotSavePath,
-                filename    = 'Relative_AngleVsDirect_Distance.png',
-                logscaling  = None,
-                xLabel      = 'Relative Angle',
-                yLabel      = 'Direct Distance',
-                show        = showFig)
+    if df_filteredOverall.shape[0] == 0:
+        raise ValueError("No data to plot")
     
-elif plotType == -1:
-    df  = filterThreshArea( df, 
-                            'Crystal Area (nm^2)',
-                            d_space=d_space,
-                            threshold_area_factor=10)
+    aspectRatio = df_filteredOverall['crystalMajorAxis_length (nm)'] / df_filteredOverall['crystalMinorAxis_length (nm)']
     
-    plotHist(   value       = df['Crystal Area (nm^2)'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = d_space_string + "_area_logx.png", 
-                numBins     = 300, 
-                logscaling  = 'x', 
-                xLabel      = 'Crystal Area (nm^2)', 
-                yLabel      = 'Frequency', 
-                show        = showFig)
-
-    plotHist(   value       = df['D-Spacing(FFT, nm)'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = d_space_string + '_dspace.png', 
-                numBins     = 20, 
-                logscaling  = None, 
-                xLabel      = 'D-Spacing(FFT, nm)', 
-                yLabel      = 'Frequency', 
-                show        = showFig)
-
-    plotHist(   value       = df['D-Spacing(FFT, nm)'], 
-                wght        = df['Crystal Area (nm^2)'], 
-                path        = plotSavePath, 
-                filename    = d_space_string + "_dspaceVsArea.png",
-                numBins     = 20, 
-                logscaling  = None, 
-                xLabel      = 'D-Spacing(FFT, nm)', 
-                yLabel      = 'Crystal Area (nm^2)', 
-                show        = showFig)
-
-    plotHist(   value       = df['crystalMajorAxis_length (nm)']/df['crystalMinorAxis_length (nm)'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = "AspectRatio_MajorbyMinor_histogram.png",
-                numBins     = 50,
-                logscaling  = None, 
-                xLabel      = 'AspectRatio_MajorbyMinor', 
-                yLabel      = 'Frequency', 
-                show        = showFig)
+    # Plotting
+    plotHistWithKde(df_filteredOverall['Crystal Area (nm^2)'], 
+                    'Crystal Area (nm$^2$)', 
+                    'histogram_crystalArea', 
+                    plotSave_fPath, 
+                    xScale='log')
+    plotHistWithKde(df_filteredOverall['D-Spacing(FFT, nm)'], 
+                    'd-spacing (nm)', 
+                    'histogram_dspacing', 
+                    plotSave_fPath, 
+                    xScale='linear')
+    plotHistWithKde(df_filteredOverall['angleDifference'], 
+                    'Angle Difference (degrees)', 
+                    'histogram_angleDifference', 
+                    plotSave_fPath, 
+                    xScale='linear')
+    plotHistWithKde(aspectRatio, 
+                    'Aspect Ratio', 
+                    'histogram_aspectRatio', 
+                    plotSave_fPath, 
+                    xScale='linear')
     
-    plotHist(   value       = df['angleDifference'], 
-                wght        = None,
-                path        = plotSavePath, 
-                filename    = "angleDifference_crystalOrientationVsMajorAxis_Histogram.png",
-                numBins     = 36,
-                logscaling  = None, 
-                xLabel      = 'Angle Difference B/W crystal Pattern vs Major Axis', 
-                yLabel      = 'Normalized Density', 
-                show        = showFig)
+    createDataSufficiencyPlots(df_filteredOverall, 
+                               'Crystal Area (nm^2)',  
+                               'Area (nm$^2$)', 
+                               'dataSuff_crysArea', 
+                               plotSave_fPath, 
+                               numPlots=10,
+                               xScale='log')
+    
+    df_sameDSCorrel = pd.read_csv(sameDSCSVFile_fPath)
+    
+    if df_sameDSCorrel.shape[0] == 0:
+        raise ValueError("No data to plot")
+    
+    plotHistWithKde(df_sameDSCorrel['Relative Angle'],
+                    'Angle Difference (degrees)',
+                    'histogram_angleDifference_correlation',
+                    plotSave_fPath,
+                    xScale='linear')
+    
+    plot2DKde(  df_sameDSCorrel['Metric Distances'],
+                df_sameDSCorrel['Relative Angle'],
+                'Metric Distances',
+                'Angle Difference',
+                '2D_kde_MetricDist_AngleDiff',
+                plotSave_fPath,
+                xScale='linear',
+                yScale='linear')
+    
+    plot3DSeabornKde(df_sameDSCorrel['Metric Distances'],
+                    df_sameDSCorrel['Relative Angle'],
+                    'Metric Distances',
+                    'Angle Difference',
+                    '3D_kde_MetricDist_AngleDiff',
+                    plotSave_fPath,
+                    xScale='linear',
+                    yScale='linear')

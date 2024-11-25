@@ -112,8 +112,8 @@ if __name__ == "__main__":
     origCSVFile_fPath   = project_fPath / runDir_rPath / 'overall_dspace_1.9.csv'
     config_fPath        = project_fPath / runDir_rPath / 'config.cfg'
     csvDir_fPath        = project_fPath / runDir_rPath / 'CSV'
-    filteredCSVFile_fPath = project_fPath / runDir_rPath / 'ds_area_filtered_overall.csv'
     sameDSCSVFile_fPath = project_fPath / runDir_rPath / 'sameDSpacingInfo.csv'
+    filteredOverallCSV_fPath = project_fPath / runDir_rPath / 'ds_area_filtered_overall.csv'
     
     # Read config file
     with open(config_fPath, 'r') as f:
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     pp_threshold_area_factor = config['post_processing']['threshold_area_factor']
         
     create_ds_area_filtered_csv_file(origCSVFile_fPath,
-                                     filteredCSVFile_fPath,
+                                     filteredOverallCSV_fPath,
                                      pp_ds_lowerbound,
                                      pp_ds_upperbound,
                                      ds_nm,
