@@ -268,7 +268,7 @@ def createDataSufficiencyPlots(df,
                                xScale='log',  
                                yScale='linear', 
                                yLabel='Probability Density',
-                               binsType='fd',):
+                               binsType='fd'):
     
     dataSuffDir_fPath = plotSave_fPath / 'DataSufficiency'
     dataSuffDir_fPath.mkdir(parents=True, exist_ok=True)
