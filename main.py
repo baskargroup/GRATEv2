@@ -167,7 +167,7 @@ def process_image(data_dir, parameters, last_run, run_parallel=True):
                                         'crystalMajorAxis_length (nm)', 
                                         'crystalMinorAxis_length (nm)', 
                                         'MajorAxisAngle', 
-                                        'angleDifference'], round=2)
+                                        'angleDifference'])
     
     image_files = [file_path for file_path in data_dir.iterdir() 
                    if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
@@ -189,6 +189,8 @@ def process_image(data_dir, parameters, last_run, run_parallel=True):
                                                    last_run)
             df_overall = pd.concat([df_overall, df_crystal_props], 
                                    ignore_index=True)
+    
+    df_overall = df_overall.round(2)
         
     return df_overall
             
