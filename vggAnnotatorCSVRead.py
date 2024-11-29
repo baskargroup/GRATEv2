@@ -150,10 +150,55 @@ def compute_ioU_and_write_to_file(project_dir_fpath,
                         project_dir_fpath / manual_grateOutput_dir_rpath / 'iou_log.txt',
                         project_dir_fpath / manual_grateOutput_dir_rpath / 'Masks',
                         project_dir_fpath / groundTruth_dir_rpath / 'Masks')
+        
+def plot_VGG_annotations_on_image(project_dir_fpath, 
+                                  annotations_csv_rpath, 
+                                  input_image_dir_rpath, 
+                                  save_image_dir_rpath):
+    
+    annotations = read_via_annotations(project_dir_fpath / annotations_csv_rpath)
+    save_image_with_polygon(annotations, project_dir_fpath, input_image_dir_rpath, save_image_dir_rpath)
+
+def create_gt_BO_manual_masks(  project_dir_fpath,
+                                groundTruth_dir_rpath,
+                                BO_grateOutput_dir_rpath,
+                                manual_grateOutput_dir_rpath):
+    CreateMaskFromAnnotatedImagesInsideDir(project_dir_fpath / groundTruth_dir_rpath / 'Images', 
+                                           project_dir_fpath / groundTruth_dir_rpath / 'Masks')
+    CreateMaskFromAnnotatedImagesInsideDir(project_dir_fpath / BO_grateOutput_dir_rpath / 'Images',
+                                           project_dir_fpath / BO_grateOutput_dir_rpath / 'Masks')
+    CreateMaskFromAnnotatedImagesInsideDir(project_dir_fpath / manual_grateOutput_dir_rpath / 'Images',
+                                           project_dir_fpath / manual_grateOutput_dir_rpath / 'Masks')
+
+def compute_ioU_and_write_to_file(project_dir_fpath, 
+                                  groundTruth_dir_rpath, 
+                                  BO_grateOutput_dir_rpath, 
+                                  manual_grateOutput_dir_rpath):
+    # calculate BO and manual IOU
+    print('Calculating BO IOU...')
+    BO_iou = compute_iou(project_dir_fpath / BO_grateOutput_dir_rpath / 'Masks', 
+                         project_dir_fpath / groundTruth_dir_rpath / 'Masks')
+    
+    print('Calculating Manual IOU...')
+    manual_iou = compute_iou(project_dir_fpath / manual_grateOutput_dir_rpath / 'Masks', 
+                             project_dir_fpath / groundTruth_dir_rpath / 'Masks')
+    
+    # Write IOU to file
+    write_iou_to_file(  BO_iou, 
+                        project_dir_fpath / BO_grateOutput_dir_rpath / 'iou_log.txt', 
+                        project_dir_fpath / BO_grateOutput_dir_rpath / 'Masks',
+                        project_dir_fpath / groundTruth_dir_rpath / 'Masks')
+    write_iou_to_file(  manual_iou, 
+                        project_dir_fpath / manual_grateOutput_dir_rpath / 'iou_log.txt',
+                        project_dir_fpath / manual_grateOutput_dir_rpath / 'Masks',
+                        project_dir_fpath / groundTruth_dir_rpath / 'Masks')
 
 if __name__ == '__main__':
     
     project_dir_fpath = pl.Path(__file__).parent.resolve()
+    VGG_annotations_csv_rpath   = 'DATA/BO/validation/groundTruth/csv/via_project_28Nov2024_20h54m_csv.csv'
+    unannotated_image_dir_rpath = 'DATA/BO/validation/input/png'
+    annotated_image_dir_rpath   = 'DATA/BO/validation/groundTruth/images'
     VGG_annotations_csv_rpath   = 'DATA/BO/validation/groundTruth/csv/via_project_28Nov2024_20h54m_csv.csv'
     unannotated_image_dir_rpath = 'DATA/BO/validation/input/png'
     annotated_image_dir_rpath   = 'DATA/BO/validation/groundTruth/images'
@@ -170,7 +215,15 @@ if __name__ == '__main__':
                                 groundTruth_dir_rpath,
                                 BO_grateOutput_dir_rpath,
                                 manual_grateOutput_dir_rpath)
+    create_gt_BO_manual_masks(  project_dir_fpath,
+                                groundTruth_dir_rpath,
+                                BO_grateOutput_dir_rpath,
+                                manual_grateOutput_dir_rpath)
     
+    compute_ioU_and_write_to_file(project_dir_fpath, 
+                                  groundTruth_dir_rpath, 
+                                  BO_grateOutput_dir_rpath, 
+                                  manual_grateOutput_dir_rpath)
     compute_ioU_and_write_to_file(project_dir_fpath, 
                                   groundTruth_dir_rpath, 
                                   BO_grateOutput_dir_rpath, 
