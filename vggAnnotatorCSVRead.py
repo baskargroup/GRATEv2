@@ -64,7 +64,7 @@ def read_via_annotations(csv_file_path):
 if __name__ == '__main__':
     
     project_dir_fpath = pl.Path(__file__).parent.resolve()
-    annotations_csv_rpath = 'DATA/BO/validation/groundTruth/csv/via_project_28Nov2024_14h38m_csv.csv'
+    annotations_csv_rpath = 'DATA/BO/validation/groundTruth/csv/via_project_28Nov2024_20h54m_csv.csv'
     input_image_dir_rpath = 'DATA/BO/validation/input/png'
     save_image_dir_rpath = 'DATA/BO/validation/groundTruth/images'
 
