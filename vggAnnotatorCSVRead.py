@@ -199,9 +199,6 @@ if __name__ == '__main__':
     VGG_annotations_csv_rpath   = 'DATA/BO/validation/groundTruth/csv/via_project_28Nov2024_20h54m_csv.csv'
     unannotated_image_dir_rpath = 'DATA/BO/validation/input/png'
     annotated_image_dir_rpath   = 'DATA/BO/validation/groundTruth/images'
-    VGG_annotations_csv_rpath   = 'DATA/BO/validation/groundTruth/csv/via_project_28Nov2024_20h54m_csv.csv'
-    unannotated_image_dir_rpath = 'DATA/BO/validation/input/png'
-    annotated_image_dir_rpath   = 'DATA/BO/validation/groundTruth/images'
     
     # Below directories should containing the "Images" and "Masks" directories
     groundTruth_dir_rpath           = 'DATA/BO/validation/groundTruth'
