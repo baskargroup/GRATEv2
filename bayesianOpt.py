@@ -137,6 +137,42 @@ def updateTemplateIndex(baseDirPathObj, versionDirTemplate, versionIndex):
                 break
     return versionIndex - 1
 
+def compute_iou(detectedDir_fpath, groundTruthDir_fpath):
+    imagesNames = [file_path.name for file_path in detectedDir_fpath.iterdir() 
+                    if file_path.is_file() and file_path.suffix in '.png']
+    
+    IoU = []
+    for imageName in imagesNames:
+        detected = cv2.imread(str(detectedDir_fpath / imageName), cv2.IMREAD_GRAYSCALE)
+        ground_truth = cv2.imread(str(groundTruthDir_fpath / imageName), cv2.IMREAD_GRAYSCALE)
+        
+        # Ensure that images are read correctly
+        if detected is None or ground_truth is None:
+            print(f"Warning: Could not read images {imageName}. Skipping.")
+            continue
+        
+        # Convert images to binary (if necessary)
+        _, detected_bin = cv2.threshold(detected, 127, 1, cv2.THRESH_BINARY)
+        _, ground_truth_bin = cv2.threshold(ground_truth, 127, 1, cv2.THRESH_BINARY)
+        
+        intersection = np.logical_and(detected_bin, ground_truth_bin)
+        union = np.logical_or(detected_bin, ground_truth_bin)
+        
+        if np.sum(union) == 0:
+            print(f"Warning: Union of detected and ground truth is zero for {imageName}. Skipping.")
+            continue
+        
+        iou = np.sum(intersection) / np.sum(union)
+        
+        IoU.append(iou)
+    
+    if len(IoU) == 0:
+        print("Warning: No valid IoU values computed. Returning zero.")
+        return 0.0  # or handle this case as needed
+    
+    return np.mean(IoU)
+
+
 @use_named_args(param_space)
 def objective(**params):
     """
@@ -148,21 +184,21 @@ def objective(**params):
         command = ['python', 'main.py', 'BO.cfg']
         subprocess.run(command)
 
-    def compute_iou(detectedDirPath, groundTruthDirPath):
+    # def compute_iou(detectedDirPath, groundTruthDirPath):
         
-        imagesNames = [file_path.name for file_path in detectedDirPath.iterdir() 
-                        if file_path.is_file() and file_path.suffix in '.png']
+    #     imagesNames = [file_path.name for file_path in detectedDirPath.iterdir() 
+    #                     if file_path.is_file() and file_path.suffix in '.png']
         
-        IoU = []
-        for imageName in imagesNames:
-            detected = cv2.imread(str(detectedDirPath / imageName), cv2.IMREAD_GRAYSCALE)
-            ground_truth = cv2.imread(str(groundTruthDirPath / imageName), cv2.IMREAD_GRAYSCALE)
-            intersection = np.logical_and(detected, ground_truth)
-            union = np.logical_or(detected, ground_truth)
-            iou = np.sum(intersection) / np.sum(union)
-            IoU.append(iou)
+    #     IoU = []
+    #     for imageName in imagesNames:
+    #         detected = cv2.imread(str(detectedDirPath / imageName), cv2.IMREAD_GRAYSCALE)
+    #         ground_truth = cv2.imread(str(groundTruthDirPath / imageName), cv2.IMREAD_GRAYSCALE)
+    #         intersection = np.logical_and(detected, ground_truth)
+    #         union = np.logical_or(detected, ground_truth)
+    #         iou = np.sum(intersection) / np.sum(union)
+    #         IoU.append(iou)
         
-        return np.mean(IoU)
+    #     return np.mean(IoU)
     
     createConfigFile(pathsDict['projectDirFPath'] / pathsDict['configFileRPath'], 
                      params)
