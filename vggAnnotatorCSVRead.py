@@ -215,15 +215,7 @@ if __name__ == '__main__':
                                 groundTruth_dir_rpath,
                                 BO_grateOutput_dir_rpath,
                                 manual_grateOutput_dir_rpath)
-    create_gt_BO_manual_masks(  project_dir_fpath,
-                                groundTruth_dir_rpath,
-                                BO_grateOutput_dir_rpath,
-                                manual_grateOutput_dir_rpath)
     
-    compute_ioU_and_write_to_file(project_dir_fpath, 
-                                  groundTruth_dir_rpath, 
-                                  BO_grateOutput_dir_rpath, 
-                                  manual_grateOutput_dir_rpath)
     compute_ioU_and_write_to_file(project_dir_fpath, 
                                   groundTruth_dir_rpath, 
                                   BO_grateOutput_dir_rpath, 
