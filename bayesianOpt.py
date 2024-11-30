@@ -32,7 +32,7 @@ param_space = [
 pathsDict = {
     'projectDirFPath'       : pl.Path(__file__).parent.resolve(),
     'inputImgDirRPath'      : 'DATA/BO/input/',
-    'grateOutputDirRPath'   : 'DATA/BO/grateV2/',
+    'grateOutputDirRPath'   : 'DATA/BO/BOTraining/',
     'groundTruthDirRPath'   : 'DATA/BO/groundTruth/',
     'detectionDirName'      : 'Images',
     'masksDirName'          : 'Masks',
@@ -240,15 +240,17 @@ if __name__ == "__main__":
     # Store the results and convergence plot
     with open(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'results.txt', 'w') as f:
         f.write(f"Best parameters found:\n")
-        # for name, value in zip([dim.name for dim in param_space], res.x):
-        #     f.write(f"{name}: {value}\n")
         f.write(f"Best objective value: {-res.fun}\n")
-        
-        # Get the evaluation number of the best found result
         best_eval = res.func_vals.argmin() + 1
         f.write(f"Best evaluation number: {best_eval}\n")
-        
-        
+    
+    with open(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'convergence.csv', 'w') as f:
+        f.write(f"Evaluations, Objective Value, Min Objective Value\n")
+        min_val = res.func_vals[0]
+        for i, val in enumerate(res.func_vals):
+            min_val = min(min_val, val)
+            f.write(f"{i+1}, {val}, {min_val}\n")
+            
     plot_convergence(res)
     plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'convergence_plot.png')
     
