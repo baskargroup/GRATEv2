@@ -1,6 +1,7 @@
 import numpy as np
 import glob
 import cv2
+import skopt
 from skopt import gp_minimize
 from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
@@ -234,6 +235,9 @@ if __name__ == "__main__":
     # pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'], 
     # threshold_value=10)
     
+    # Save checkpoints using callbacks
+    checkpoint_callback = skopt.callbacks.CheckpointSaver(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'checkpoint.pkl')
+    
     # Run Bayesian Optimization
     res = gp_minimize(
         func=objective,
@@ -241,7 +245,8 @@ if __name__ == "__main__":
         acq_func='EI',      # Expected Improvement
         n_calls=200,         # Number of evaluations of the objective function
         n_initial_points=10,# Number of initial random evaluations
-        random_state=42     # For reproducibility
+        random_state=42,     # For reproducibility
+        callback=[checkpoint_callback]
     )
 
     # Print the best found parameters and the corresponding score
