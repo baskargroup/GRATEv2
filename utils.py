@@ -216,6 +216,7 @@ def createVersionDirectory(folderDir, name):
                if (item.is_dir() 
                    and re.search(ResFolderName, item.name) 
                    and len(item.name) > lenFolderName
+                   and item.name[lenFolderName:].isdigit()
                    )
                ]
 

@@ -145,6 +145,23 @@ def updateTemplateIndex(baseDirPathObj,
                 break
     return versionIndex - 1
 
+# # Previous Loss function used for run_3
+# def compute_iou(detectedDirPath, groundTruthDirPath):
+    
+#     imagesNames = [file_path.name for file_path in detectedDirPath.iterdir() 
+#                     if file_path.is_file() and file_path.suffix in '.png']
+    
+#     IoU = []
+#     for imageName in imagesNames:
+#         detected = cv2.imread(str(detectedDirPath / imageName), cv2.IMREAD_GRAYSCALE)
+#         ground_truth = cv2.imread(str(groundTruthDirPath / imageName), cv2.IMREAD_GRAYSCALE)
+#         intersection = np.logical_and(detected, ground_truth)
+#         union = np.logical_or(detected, ground_truth)
+#         iou = np.sum(intersection) / np.sum(union)
+#         IoU.append(iou)
+    
+#     return np.mean(IoU)
+
 def compute_iou(detectedDir_fpath, 
                 groundTruthDir_fpath):
     imagesNames = [file_path.name for file_path in detectedDir_fpath.iterdir() 
