@@ -41,7 +41,8 @@ pathsDict = {
     'configFileRPath'       : 'configFiles/BO.cfg',
     }
 
-def createConfigFile(configFilePath, configDict):
+def createConfigFile(configFilePath, 
+                     configDict):
     configDict['data_dir']          = pathsDict['inputImgDirRPath']
     configDict['base_result_dir']   = pathsDict['grateOutputDirRPath']
     
@@ -57,10 +58,13 @@ def createConfigFile(configFilePath, configDict):
     configDict['alpha_shape_factor']    = 0.002
     
     with open(configFilePath, 'w') as configFile:
-        libconf.dump(configDict, configFile)
+        libconf.dump(configDict, 
+                     configFile)
         configFile.close()
 
-def extract_and_fill_annotations(image, output_path, threshold_value=10):
+def extract_and_fill_annotations(image, 
+                                 output_path, 
+                                 threshold_value=10):
     """
     Extracts colored annotations (crystal outlines) from an RGB TEM image with a grayscale background,
     fills the inside of the annotations, and outputs a binary image where the annotations are white (filled)
@@ -108,7 +112,9 @@ def extract_and_fill_annotations(image, output_path, threshold_value=10):
 
     return mask
 
-def CreateMaskFromAnnotatedImagesInsideDir(inputDirPath, outputDirPath, threshold_value=10):
+def CreateMaskFromAnnotatedImagesInsideDir(inputDirPath, 
+                                           outputDirPath, 
+                                           threshold_value=10):
     annotatedImagesPath = [file_path for file_path in inputDirPath.iterdir() 
                    if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
     
@@ -128,7 +134,9 @@ def load_annotations(annotation_folder):
     annotations = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in annotation_files]
     return annotations
 
-def updateTemplateIndex(baseDirPathObj, versionDirTemplate, versionIndex):
+def updateTemplateIndex(baseDirPathObj, 
+                        versionDirTemplate, 
+                        versionIndex):
     if versionIndex <= 0:
         versionIndex = 0
         while True:
@@ -137,7 +145,8 @@ def updateTemplateIndex(baseDirPathObj, versionDirTemplate, versionIndex):
                 break
     return versionIndex - 1
 
-def compute_iou(detectedDir_fpath, groundTruthDir_fpath):
+def compute_iou(detectedDir_fpath, 
+                groundTruthDir_fpath):
     imagesNames = [file_path.name for file_path in detectedDir_fpath.iterdir() 
                     if file_path.is_file() and file_path.suffix in '.png']
     
@@ -183,42 +192,30 @@ def objective(**params):
     def run_algorithm():
         command = ['python', 'main.py', 'BO.cfg']
         subprocess.run(command)
-
-    # def compute_iou(detectedDirPath, groundTruthDirPath):
-        
-    #     imagesNames = [file_path.name for file_path in detectedDirPath.iterdir() 
-    #                     if file_path.is_file() and file_path.suffix in '.png']
-        
-    #     IoU = []
-    #     for imageName in imagesNames:
-    #         detected = cv2.imread(str(detectedDirPath / imageName), cv2.IMREAD_GRAYSCALE)
-    #         ground_truth = cv2.imread(str(groundTruthDirPath / imageName), cv2.IMREAD_GRAYSCALE)
-    #         intersection = np.logical_and(detected, ground_truth)
-    #         union = np.logical_or(detected, ground_truth)
-    #         iou = np.sum(intersection) / np.sum(union)
-    #         IoU.append(iou)
-        
-    #     return np.mean(IoU)
     
     createConfigFile(pathsDict['projectDirFPath'] / pathsDict['configFileRPath'], 
                      params)
     run_algorithm()
     
     latestRunDirIndex = updateTemplateIndex(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'], 
-                                            pathsDict['grateRunDirTemplate'], 0)
+                                            pathsDict['grateRunDirTemplate'], 
+                                            0)
     
     # Create Masks for the latest run
     CreateMaskFromAnnotatedImagesInsideDir(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['detectionDirName'], 
                                            pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['masksDirName'], 
                                            threshold_value = 10)
     
-    score = compute_iou(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['masksDirName'], pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'])
+    score = compute_iou(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['masksDirName'], 
+                        pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'])
     
     return -score
 
 if __name__ == "__main__":
     # # Prepare the gound truth masks
-    # CreateMaskFromAnnotatedImagesInsideDir(pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['detectionDirName'], pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'], threshold_value=10)
+    # CreateMaskFromAnnotatedImagesInsideDir(pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['detectionDirName'], 
+    # pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'], 
+    # threshold_value=10)
     
     # Run Bayesian Optimization
     res = gp_minimize(
