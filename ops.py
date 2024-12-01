@@ -167,6 +167,15 @@ def plot_results(last_dspace_run,
             
         for result in results:
             if result:
+                # pltAlphaShape(  axes, 
+                #                 result['alpha_shape'])
+                # pltOrientationLine( axes, 
+                #                     result['angle'], 
+                #                     result['color'], 
+                #                     result['x_min_max'], 
+                #                     result['y_min_max'], 
+                #                     result['centroid'][0], 
+                #                     result['centroid'][1])
                 pltConvexHull(axes, 
                               result['hull'], 
                               result['point_cloud'], 
