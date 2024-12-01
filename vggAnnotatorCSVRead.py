@@ -89,7 +89,7 @@ def save_image_with_polygon(annotations,
         
         polygon = annotation['region_attributes']['polygon']
         for i in range(len(polygon)):
-            cv2.line(img, polygon[i], polygon[(i+1)%len(polygon)], (0, 255, 0), 5)
+            cv2.line(img, polygon[i], polygon[(i+1)%len(polygon)], (0, 255, 0), 20)
         cv2.imwrite(str(project_dir_fpath / save_image_dir_rpath / currentFilename), img)
         lastFilename = currentFilename
     
@@ -163,7 +163,10 @@ if __name__ == '__main__':
     BO_grateOutput_dir_rpath        = 'DATA/BO/validation/output/BO_para/version_2_subset_soloPlot'
     manual_grateOutput_dir_rpath    = 'DATA/BO/validation/output/manual_para/version_2_subset_soloPlot'
     
-    plot_VGG_annotations_on_image(project_dir_fpath, VGG_annotations_csv_rpath, unannotated_image_dir_rpath, annotated_image_dir_rpath)
+    plot_VGG_annotations_on_image(project_dir_fpath, 
+                                  VGG_annotations_csv_rpath, 
+                                  unannotated_image_dir_rpath, 
+                                  annotated_image_dir_rpath)
     
     # Create Masks for groundTruth, BO and manual
     create_gt_BO_manual_masks(  project_dir_fpath,
