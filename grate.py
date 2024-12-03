@@ -110,7 +110,7 @@ class ImageProcessor:
             thresh = threshold_otsu(blur_img)
             binary = cv2.threshold(blur_img, thresh, 255, cv2.THRESH_BINARY)[1]
         
-        self.debugORSave(self.img, binary, 1, "1_BLURRING AND THRESHOLDING")
+        self.debugORSave(binary, "1_BLURRING AND THRESHOLDING")
         return binary
 
     def process_skeleton(self, thresh):
@@ -134,7 +134,7 @@ class ImageProcessor:
         input[intersection_matrix==True]    = 0
         InvInput                            = invertBinaryImage( input )
         
-        self.debugORSave( img , InvInput , 0,"5_BRANCHED SKELETON" )
+        self.debugORSave( InvInput, "5_BRANCHED SKELETON")
         return input
     
     @timeit
@@ -175,7 +175,7 @@ class ImageProcessor:
             BoneLen = 0
 
         Invbb = invertBinaryImage(bb)        
-        self.debugORSave( self.img , Invbb, 0, "6_FILTERED AND UNIFORM SIZED BACKBONE" )
+        self.debugORSave(Invbb, "6_FILTERED AND UNIFORM SIZED BACKBONE")
         return bb
     
     @timeit
@@ -209,7 +209,7 @@ class ImageProcessor:
                 )
             InvEllip_temp_img   = invertBinaryImage(ellip_temp_img)
             
-            self.debugORSave( input_img , InvEllip_temp_img , 0, "7_ELLIPSE INSCRIBED" )
+            self.debugORSave(InvEllip_temp_img , "7_ELLIPSE INSCRIBED")
         return filtered_props.to_numpy()
     
     @timeit
@@ -264,7 +264,7 @@ class ImageProcessor:
                         break
                         
             InvA_Mat_img = invertBinaryImage(A_Mat_img)
-            self.debugORSave(img, InvA_Mat_img, 0, "8_ADJACENT ELLIPSES")        
+            self.debugORSave(InvA_Mat_img, "8_ADJACENT ELLIPSES")        
         return A_Mat
     
     def group_nodes_by_component_efficient(self, labels):
@@ -336,7 +336,7 @@ class ImageProcessor:
         self.save_backbone_coords(backboneCoords)
         
         InvCcImg        = invertBinaryImage(ccImg)
-        self.debugORSave(img, InvCcImg, 0, "9_CLUSTERS")
+        self.debugORSave(InvCcImg, "9_CLUSTERS")
         
         return AllClusterPointCloud, crystalAngles
     
@@ -471,7 +471,7 @@ class ImageProcessor:
         kernel  = np.ones( ( self.parameters[ 'closing k size' ] , self.parameters[ 'closing k size' ] ) , np.uint8 )
         output  = cv2.morphologyEx( input , cv2.MORPH_CLOSE , kernel )
         
-        self.debugORSave( input , output , 1, "2_CLOSING" )
+        self.debugORSave(output , "2_CLOSING" )
         return output
 
     @timeit
@@ -483,7 +483,7 @@ class ImageProcessor:
         kernel  = np.ones(( self.parameters[ 'opening k size' ] , self.parameters[ 'opening k size' ] ) , np.uint8 )
         output  = cv2.morphologyEx( input , cv2.MORPH_OPEN , kernel )
         
-        self.debugORSave( input , output , 1, "3_OPENING" )
+        self.debugORSave(output, "3_OPENING")
         return output 
 
     @timeit
@@ -497,10 +497,10 @@ class ImageProcessor:
         output      = ( skeleton / np.max( skeleton ) ) * 255 
         InvOutput   = invertBinaryImage( output )
 
-        self.debugORSave( input , InvOutput , 1,"4_SKELETONIZED" )
+        self.debugORSave(InvOutput, "4_SKELETONIZED")
         return output
     
-    def debugORSave(self, initial, final, concat, text):
+    def debugORSave(self, final, text):
         if self.parameters['debug'] == 1:
             final = final.astype( 'uint8' )
             final = cv2.equalizeHist( final )
