@@ -258,7 +258,7 @@ def plotHistWithKde(data,
     fig.savefig(plotSave_fPath / (fileName + '.pdf'))
     
     plt.close(fig)
-
+    
 def createDataSufficiencyPlots(df, 
                                col_name,
                                xlabel, 
@@ -275,28 +275,23 @@ def createDataSufficiencyPlots(df,
     
     uniformDist =  np.random.uniform(df[col_name].min(), df[col_name].max(), len(df[col_name]))
     
-    # Create separate wasserstein distance files to store the wasserstein distance between 
-    # 1. the current and previous plot
-    # 2. the current and full data 
-    # 3. Uniform distribution and the current plot
-    wassDist_currPrev_fPath = dataSuffDir_fPath / 'wassDist_currPrev.txt'
-    wassDist_currFull_fPath = dataSuffDir_fPath / 'wassDist_currFull.txt'
-    wassDist_currUniform_fPath = dataSuffDir_fPath / 'wassDist_currUniform.txt'
+    # Change file extensions to .csv
+    wassDist_currPrev_fPath = dataSuffDir_fPath / 'wassDist_currPrev.csv'
+    wassDist_currFull_fPath = dataSuffDir_fPath / 'wassDist_currFull.csv'
+    wassDist_currUniform_fPath = dataSuffDir_fPath / 'wassDist_currUniform.csv'
     
     wassDist_currPrev_f = open(wassDist_currPrev_fPath, 'w')
     wassDist_currFull_f = open(wassDist_currFull_fPath, 'w')
     wassDist_currUniform_f = open(wassDist_currUniform_fPath, 'w')
     
-    wassDist_currPrev_f.write('current data percent, WassDist\n')
-    wassDist_currFull_f.write('current data percent, WassDist\n')
-    wassDist_currUniform_f.write('current data percent, WassDist\n')
-    
-    df_current = None
-    df_previous = None
+    # Write CSV headers
+    wassDist_currPrev_f.write('current_data_percent,WassDist\n')
+    wassDist_currFull_f.write('current_data_percent,WassDist\n')
+    wassDist_currUniform_f.write('current_data_percent,WassDist\n')
     
     for i in range(numPlots):
-        numData = int(df.shape[0] * (i+1) / numPlots)
-        df_current = df[col_name].iloc[:numData]
+        numData_current = int(df.shape[0] * (i+1) / numPlots)
+        df_current = df[col_name].iloc[:numData_current]
         plotHistWithKde(df_current, 
                         xlabel, 
                         fileName + '_{}'.format(int((i+1)*100 / numPlots)), 
@@ -309,18 +304,26 @@ def createDataSufficiencyPlots(df,
                         y_upper_bound=0.006,
                         color='red')
         
-        if df_previous is not None:
-            wass_dist = wasserstein_distance(df_previous, df_current)
-            wassDist_currPrev_f.write('{}, {}\n'.format(int((i+1)*100 / numPlots), wass_dist))
-            # df_previous = df_current
+        # Compute stable wasserstein distance for current vs previous
+        if i > 0:
+            numData_previous = int(df.shape[0] * i / numPlots)
+            wass_dist_list = []
             
-        wass_dist = wasserstein_distance(uniformDist[:numData], df_current)
-        wassDist_currUniform_f.write('{}, {}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+            for _ in range(10):
+                # df_current_shuffled = df_current.sample(frac=1, replace=False)
+                df_previous_shuffled = df_current.sample(n=numData_previous, replace=False)
+                wass_dist_list.append(wasserstein_distance(df_previous_shuffled, df_current))
+            
+            wass_dist = np.mean(wass_dist_list)
+            wassDist_currPrev_f.write('{},{}\n'.format(int((i+1)*100 / numPlots), wass_dist))
         
+        # WassDist with uniform distribution
+        wass_dist = wasserstein_distance(uniformDist[:numData_current], df_current)
+        wassDist_currUniform_f.write('{},{}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+        
+        # WassDist with full dataset
         wass_dist = wasserstein_distance(df[col_name], df_current)
-        wassDist_currFull_f.write('{}, {}\n'.format(int((i+1)*100 / numPlots), wass_dist))
-        
-        df_previous = df_current
+        wassDist_currFull_f.write('{},{}\n'.format(int((i+1)*100 / numPlots), wass_dist))
         
     wassDist_currPrev_f.close()
     wassDist_currFull_f.close()
