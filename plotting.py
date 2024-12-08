@@ -29,7 +29,7 @@ def plot2DKde(data_x, data_y,
     matplotlib.use("pgf")
     matplotlib.rcParams.update({
         "pgf.texsystem": "pdflatex",
-        'font.family': 'serif',
+        'font.family': 'sans-serif',
         'font.size': 60,
         'text.usetex': True,
         'pgf.rcfonts': False,
@@ -142,7 +142,7 @@ def plot3DSeabornKde(data_x, data_y,
     matplotlib.use("pgf")
     matplotlib.rcParams.update({
         "pgf.texsystem": "pdflatex",
-        'font.family': 'serif',
+        'font.family': 'sans-serif',
         'font.size': 18,
         'text.usetex': True,
         'pgf.rcfonts': False,
@@ -215,7 +215,7 @@ def plotHistWithKde(data,
     
     # get bins using np.histogram_bin_edges
     bins = np.histogram_bin_edges(np_data, bins=binsType)
-    print("bins:  ", bins)
+    # print("bins:  ", bins)
     
     minVal = np.min(np_data)
     maxVal = np.max(np_data)
@@ -223,7 +223,7 @@ def plotHistWithKde(data,
     matplotlib.use("pgf")
     matplotlib.rcParams.update({
         "pgf.texsystem": "pdflatex",
-        'font.family': 'serif',
+        'font.family': 'sans-serif',
         'font.size' : 60,
         'text.usetex': True,
         'pgf.rcfonts': False,
@@ -315,15 +315,18 @@ def createDataSufficiencyPlots(df,
                 wass_dist_list.append(wasserstein_distance(df_previous_shuffled, df_current))
             
             wass_dist = np.mean(wass_dist_list)
-            wassDist_currPrev_f.write('{},{}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+            # wassDist_currPrev_f.write('{},{}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+            wassDist_currPrev_f.write('{},{}\n'.format(numData_current, wass_dist))
         
         # WassDist with uniform distribution
         wass_dist = wasserstein_distance(uniformDist[:numData_current], df_current)
-        wassDist_currUniform_f.write('{},{}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+        # wassDist_currUniform_f.write('{},{}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+        wassDist_currUniform_f.write('{},{}\n'.format(numData_current, wass_dist))
         
         # WassDist with full dataset
         wass_dist = wasserstein_distance(df[col_name], df_current)
-        wassDist_currFull_f.write('{},{}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+        # wassDist_currFull_f.write('{},{}\n'.format(int((i+1)*100 / numPlots), wass_dist))
+        wassDist_currFull_f.write('{},{}\n'.format(numData_current, wass_dist))
         
     wassDist_currPrev_f.close()
     wassDist_currFull_f.close()
@@ -356,6 +359,9 @@ if __name__ == "__main__":
     plotSave_fPath.mkdir(parents=True, exist_ok=True)
     
     df_filteredOverall = pd.read_csv(filteredOverallCSV_fPath)
+    
+    # Size of the filtered data
+    print("Size of the filtered data: ", df_filteredOverall.shape)
     
     if df_filteredOverall.shape[0] == 0:
         raise ValueError("No data to plot")
