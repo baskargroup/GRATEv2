@@ -18,6 +18,9 @@ bins = 50  # Number of bins for histogram
 
 # Load data
 data = pd.read_csv(input_csv)
+data = data[data["D-Spacing(FFT, nm)"] >= 1.7]
+data = data[data["D-Spacing(FFT, nm)"] <= 2.4]
+
 d_spacing = data["D-Spacing(FFT, nm)"].values
 crystal_area = data["Crystal Area (nm^2)"].values
 
@@ -45,6 +48,12 @@ X = d_spacing.reshape(-1, 1)  # sklearn expects a 2D array
 # Fit a 1-component Gaussian (single normal distribution)
 gmm1 = GaussianMixture(n_components=1, covariance_type='full', random_state=42)
 gmm1.fit(X)
+
+# Get mean, variance, and mixing weights
+mean1 = gmm1.means_[0][0]
+variance1 = np.diag(gmm1.covariances_[0])[0]
+weight1 = gmm1.weights_[0]
+
 log_likelihood_1 = gmm1.score(X) * len(X)  # score gives avg log-likelihood per sample
 aic_1 = gmm1.aic(X)
 bic_1 = gmm1.bic(X)
@@ -52,6 +61,16 @@ bic_1 = gmm1.bic(X)
 # Fit a 2-component Gaussian mixture
 gmm2 = GaussianMixture(n_components=2, covariance_type='full', random_state=42)
 gmm2.fit(X)
+
+# Get mean, variance, and mixing weights for each component
+mean2_1 = gmm2.means_[0][0]
+variance2_1 = np.diag(gmm2.covariances_[0])[0]
+weight2_1 = gmm2.weights_[0]
+
+mean2_2 = gmm2.means_[1][0]
+variance2_2 = np.diag(gmm2.covariances_[1])[0]
+weight2_2 = gmm2.weights_[1]
+
 log_likelihood_2 = gmm2.score(X) * len(X)
 aic_2 = gmm2.aic(X)
 bic_2 = gmm2.bic(X)
@@ -88,3 +107,25 @@ print(f"  p-value: {p_value:.4f}")
 
 # Interpretation:
 # If p-value is small (e.g., < 0.05), the 2-component model is significantly better than the 1-component model.
+
+
+# ---------------------------------------
+# print the mean, variance, and mixing weights
+
+print("\nSingle Gaussian Model:")
+print(f"  Mean: {mean1:.4f}")
+print(f"  Variance: {variance1:.4f}")
+print(f"  Weight: {weight1:.4f}")
+
+print("\nTwo-Component Gaussian Mixture Model:")
+print(f"  Component 1:")
+print(f"    Mean: {mean2_1:.4f}")
+print(f"    Variance: {variance2_1:.4f}")
+print(f"    Weight: {weight2_1:.4f}")
+
+print(f"  Component 2:")
+print(f"    Mean: {mean2_2:.4f}")
+print(f"    Variance: {variance2_2:.4f}")
+print(f"    Weight: {weight2_2:.4f}")
+
+# ---------------------------------------
