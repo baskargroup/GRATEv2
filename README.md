@@ -1,11 +1,11 @@
 
-# GRATEv2: Automated HRTEM Image Analysis Framework
+# GRATEv2: Automated HRTEM Image Analysis Framework {[Paper Link](https://arxiv.org/abs/2411.03474)}
 
 **GRATEv2** (GRaph-based Analysis of TEM) is an open-source computational framework designed for automated analysis and detection of crystalline structures in High-Resolution Transmission Electron Microscopy (HRTEM) images. This tool helps material scientists, chemists, and engineers study the microstructure of conjugated polymers and other materials at the nanoscale.
 
 ## Key Features
 - **Image Processing-Based Analysis:**  
-  `main.py` provides a parameterized image processing pipeline to detect and characterize crystals in HRTEM images based on parameters specified in a configuration file.
+  `main.py` provides a parameterized image processing pipeline to detect and characterize crystals in HRTEM images based on parameters specified in a configuration file located inside `configFiles` directory.
 - **Bayesian Optimization:**  
   `bayesianOpt.py` leverages Bayesian optimization to find the optimal parameters for the image processing algorithm, reducing manual tuning and ensuring reproducibility.
 - **Comprehensive Structural Feature Extraction:**  
@@ -15,18 +15,18 @@
 
 ## Repository Structure
 - **`main.py`**:  
-  The primary script for analysis. Requires a config file specifying input directories, output directories, and algorithm parameters. Processes HRTEM images and outputs detected crystals with evaluated features.
+  The primary script for analysis. Requires a config file to be located inside `configFiles` directory specifying input data directory path, output results directory path, and algorithm parameters. Processes HRTEM images and outputs detected crystals with evaluated features.
   
 - **`bayesianOpt.py`**:  
-  Performs Bayesian optimization to determine optimal image processing parameters. Interacts with `main.py` to evaluate candidate parameters on a training dataset. Users can adjust paths, iteration counts (`n_calls`, `n_initial_points`), and even the loss function if desired.
+  Performs Bayesian optimization to determine optimal image processing parameters. Interacts with `main.py` to evaluate candidate parameters on a training dataset. Users can adjust paths, iteration counts (`n_calls`, `n_initial_points`), and even the objective function if desired for custom loss metrics. 
   
 - **`requirements.txt`**:  
   Lists Python dependencies. Use `pip install -r requirements.txt` to set up a consistent environment.
   
 - **`vggAnnotatorCSVRead.py`**:  
-  A helper script for converting CSV annotations (created using the VGG Image Annotator) into the required format for training and evaluation of crystal detection performance.
+  A helper script for converting CSV annotations (created using the VGG Image Annotator) into the required format for training and evaluation of crystal detection performance. This script is used to generate ground truth masks for training and validation.
 
-- **Configuration Files (e.g., `para.cfg`)**:  
+- **Configuration Files (e.g., `BO_run3_200Evals.cfg`)**:  
   Specify directories, parameters, and modes. Once optimal parameters are found via Bayesian optimization, users mainly need to adjust `data_dir` and `base_result_dir`. The modes are optional but can enable debugging or other features.
 
 ## Installation
@@ -51,14 +51,14 @@
 
 ### Running the Image Processing Algorithm
 1. **Update Config File:**  
-   Open `para.cfg` (or another config file) and update `data_dir` and `base_result_dir`. Insert the optimal parameters found via Bayesian optimization if available.
+   Open `BO_run3_200Evals.cfg` (or another config file) and update `data_dir` and `base_result_dir`. The algorithm parameters are already set to optimal values found via Bayesian optimization after 200 evaluations.
    
 2. **Run the Analysis:**
    ```bash
-   python main.py para.cfg
+   python main.py BO_run3_200Evals.cfg
    ```
    
-   The script will process images, detect crystals, and save the results, including crystal properties, in the specified output directory.
+   The script will look for the config file inside the `configFiles` directory and will process image, detect crystals, and save the results, including crystal properties, in the specified output directory.
 
 ### Performing Bayesian Optimization
 1. **Update `bayesianOpt.py`:**  
@@ -107,3 +107,14 @@ journal={arXiv preprint arXiv:2411.03474},
 year={2024}
 }
 ```
+
+
+
+<!-- Information missing 
+1. Input data information (image format and parameters such as image resolution pix2nm, d-spacing to search)
+2. Inputs to bayesian optimization file
+  - training data
+  - ground truth data
+  - directory paths
+
+-->
