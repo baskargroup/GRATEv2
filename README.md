@@ -28,10 +28,10 @@
   A helper script for converting CSV annotations (created using the VGG Image Annotator) into the required format for training and evaluation of crystal detection performance. This script is used to generate ground truth masks for training and validation.
 
 - **Configuration Files (e.g., `BO_run3_200Evals.cfg`)**:  
-  Specify directories, parameters, and modes. Once optimal parameters are found via Bayesian optimization, users mainly need to adjust `data_dir` and `base_result_dir`. The modes are optional but can enable debugging or other features.
+  Specify directories, parameters, and modes. Once optimal parameters are found via Bayesian optimization, users mainly need to adjust `data_dir` and `base_result_dir`. The modes are optional but can enable debugging or other features. 💡 **TODO:** Need to rename the config files to ManualSelection and BO
 
 ## Installation
-1. **Clone the repository:**
+1. **Clone the repository:** 💡 **TODO:** May need to update it after transfering the repository to the BGLab
    ```bash
    git clone https://github.com/YourUsername/GRATEv2.git
    cd GRATEv2
@@ -53,23 +53,24 @@
 ### Running the Image Processing Algorithm
 1. **Update Config File:**  
    Open `BO_run3_200Evals.cfg` (or another config file) and update `data_dir` and `base_result_dir`. The algorithm parameters are already set to optimal values found via Bayesian optimization after 200 evaluations.
-   
+
 2. **Run the Analysis:**
    ```bash
    python main.py BO_run3_200Evals.cfg
    ```
-   
+
    The script will look for the config file inside the `configFiles` directory and will process image present in `data_dir`, detect crystals, and save the results, including crystal properties, in the specified `base_result_dir` location.
 
 ### Performing Bayesian Optimization
 1. **Update `bayesianOpt.py`:**  
+
    Adjust `inputImgDirRPath`, `grateOutputDirRPath`, and `groundTruthDirRPath`. Modify `n_calls` and `n_initial_points` if needed. Consider changing the loss function if you want to incorporate additional features beyond IoU.
-   
+
 2. **Run the Optimization:**
    ```bash
    python bayesianOpt.py
    ```
-   
+  
    The script tests various parameter sets, runs `main.py` to evaluate performance, and converges on optimal parameters. Results (convergence plots, best parameters) are saved in the output directory.
 
 ### Preparing Ground Truth Annotations
@@ -78,7 +79,7 @@
   ```bash
   python vggAnnotatorCSVRead.py
   ```
-  
+
   This generates appropriate ground truth masks for evaluating detection performance.
 
 ## Thresholds and Batch Sizes in Bayesian Optimization
