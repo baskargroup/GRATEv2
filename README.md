@@ -4,22 +4,23 @@
 **GRATEv2** (GRaph-based Analysis of TEM) is an open-source computational framework designed for automated analysis and detection of crystalline structures in High-Resolution Transmission Electron Microscopy (HRTEM) images. This tool helps material scientists, chemists, and engineers study the microstructure of conjugated polymers and other materials at the nanoscale.
 
 ## Key Features
-- **Image Processing-Based Analysis:**  
+- **Image Processing-Based Analysis:** 📷  
   `main.py` provides a parameterized image processing pipeline to detect and characterize crystals in HRTEM images based on parameters specified in a configuration file located inside `configFiles` directory.
-- **Bayesian Optimization:**  
+- **Bayesian Optimization:** 🔍  
   `bayesianOpt.py` leverages Bayesian optimization to find the optimal parameters for the image processing algorithm, reducing manual tuning and ensuring reproducibility.
-- **Comprehensive Structural Feature Extraction:**  
+- **Comprehensive Structural Feature Extraction:** 🔬  
   Extracts crystal properties such as d-spacing, orientation angles, aspect ratios, and intercrystalline correlations.
-- **Batch-Based Incremental Analysis:**  
+- **Batch-Based Incremental Analysis:** 🔄  
   Integrates Bayesian optimization with iterative parameter updates, guided by a chosen metric (e.g., Intersection over Union) for quantifying detection performance.
 
 ## Repository Structure
 - **`main.py`**:  
-  The primary script for analysis. Requires a config file to be located inside `configFiles` directory specifying input data directory path, output results directory path, and algorithm parameters. Processes HRTEM images and outputs detected crystals with evaluated features.
+  The primary script for analysis. Requires a config file to be present inside `configFiles` directory specifying input data directory path, output results directory path, and algorithm parameters. Processes HRTEM images and outputs detected crystals with evaluated features.
   
 - **`bayesianOpt.py`**:  
-  Performs Bayesian optimization to determine optimal image processing parameters. Interacts with `main.py` to evaluate candidate parameters on a training dataset. Users can adjust paths, iteration counts (`n_calls`, `n_initial_points`), and even the objective function if desired for custom loss metrics. 
-  
+  Performs Bayesian optimization to determine optimal image processing parameters. Interacts with `main.py` to evaluate candidate parameters on a training dataset. Users can adjust paths, iteration counts (`n_calls`, `n_initial_points`), and even the objective function if desired for custom loss metrics.
+ 💡 **TODO:** Elaborate on the paths to be set by the user.
+
 - **`requirements.txt`**:  
   Lists Python dependencies. Use `pip install -r requirements.txt` to set up a consistent environment.
   
@@ -36,10 +37,10 @@
    cd GRATEv2
    ```
    
-2. **Create and activate a virtual environment (optional):**
+2. **Create and activate a virtual environment:**
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate
+   python3 -m venv gratev2_venv
+   source gratev2_venv/bin/activate
    ```
    
 3. **Install dependencies:**
@@ -58,7 +59,7 @@
    python main.py BO_run3_200Evals.cfg
    ```
    
-   The script will look for the config file inside the `configFiles` directory and will process image, detect crystals, and save the results, including crystal properties, in the specified output directory.
+   The script will look for the config file inside the `configFiles` directory and will process image present in `data_dir`, detect crystals, and save the results, including crystal properties, in the specified `base_result_dir` location.
 
 ### Performing Bayesian Optimization
 1. **Update `bayesianOpt.py`:**  
