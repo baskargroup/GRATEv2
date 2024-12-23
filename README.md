@@ -25,7 +25,7 @@
   Lists Python dependencies. Use `pip install -r requirements.txt` to set up a consistent environment.
   
 - **`vggAnnotatorCSVRead.py`**:  
-  A helper script for converting CSV annotations (created using the VGG Image Annotator) into the required format for training and evaluation of crystal detection performance. This script is used to generate ground truth masks for training and validation.
+  A helper script for converting CSV annotations (created using the VGG Image Annotator) into the required format for training and evaluation of crystal detection performance. This script is used to generate ground truth annotations for training and validation.
 
 - **Configuration Files (e.g., `BO_run3_200Evals.cfg`)**:  
   Specify directories, parameters, and modes. Once optimal parameters are found via Bayesian optimization, users mainly need to adjust `data_dir` and `base_result_dir`. The modes are optional but can enable debugging or other features. 💡 **TODO:** Need to rename the config files to ManualSelection and BO
