@@ -34,7 +34,7 @@
 ## Installation
 1. **Clone the repository:** 💡 **TODO:** May need to update it after transfering the repository to the BGLab
    ```bash
-   git clone https://github.com/YourUsername/GRATEv2.git
+   git clone https://<YourUsername>@bitbucket.org/baskargroup/gratev2.git GRATEv2
    cd GRATEv2
    ```
    
