@@ -18,7 +18,7 @@
   The primary script for analysis. Requires a config file to be present inside `configFiles` directory specifying input data directory path, output results directory path, and algorithm parameters. Processes HRTEM images and outputs detected crystals with evaluated features.
   
 - **`bayesianOpt.py`**:  
-  Performs Bayesian optimization to determine optimal image processing parameters. Interacts with `main.py` to evaluate candidate parameters on a training dataset. Users can adjust paths, iteration counts (`n_calls`, `n_initial_points`), and even the objective function if desired for custom loss metrics.
+  Performs Bayesian optimization to determine optimal image processing parameters. Interacts with `main.py` to evaluate candidate parameters on a training dataset. Users can adjust paths, iteration counts (`n_calls`, `n_initial_points`), and even the objective function if desired for custom loss metrics.  
  💡 **TODO:** Elaborate on the paths to be set by the user.
 
 - **`requirements.txt`**:  
@@ -28,7 +28,8 @@
   A helper script for converting CSV annotations (created using the VGG Image Annotator) into the required format for training and evaluation of crystal detection performance. This script is used to generate ground truth annotations for training and validation.
 
 - **Configuration Files (e.g., `BO_run3_200Evals.cfg`)**:  
-  Specify directories, parameters, and modes. Once optimal parameters are found via Bayesian optimization, users mainly need to adjust `data_dir` and `base_result_dir`. The modes are optional but can enable debugging or other features. 💡 **TODO:** Need to rename the config files to ManualSelection and BO
+  Specify directories, parameters, and modes. Once optimal parameters are found via Bayesian optimization, users mainly need to adjust `data_dir` and `base_result_dir`. The modes are optional but can enable debugging or other features.
+  💡 **TODO:** Need to rename the config files to ManualSelection and BO
 
 ## Installation
 1. **Clone the repository:** 💡 **TODO:** May need to update it after transfering the repository to the BGLab
