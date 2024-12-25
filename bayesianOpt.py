@@ -32,9 +32,10 @@ param_space = [
 
 pathsDict = {
     'projectDirFPath'       : pl.Path(__file__).parent.resolve(),
-    'inputImgDirRPath'      : 'DATA/BO/input/',
-    'grateOutputDirRPath'   : 'DATA/BO/BOTraining/',
-    'groundTruthDirRPath'   : 'DATA/BO/groundTruth/',
+    'inputImgDirRPath'      : 'DATA/BO/training/input/',
+    'grateOutputDirRPath'   : 'DATA/BO/training/evaluations/',
+    'groundTruthDirRPath'   : 'DATA/BO/training/groundTruth/',
+    'baseValDirRpath'       : 'DATA/BO/validation',
     'detectionDirName'      : 'Images',
     'masksDirName'          : 'Masks',
     'grateRunDirTemplate'   : 'version_{}',
@@ -116,6 +117,14 @@ def extract_and_fill_annotations(image,
 def CreateMaskFromAnnotatedImagesInsideDir(inputDirPath, 
                                            outputDirPath, 
                                            threshold_value=10):
+    
+    # Check input and output directories
+    if not inputDirPath.exists():
+        raise FileNotFoundError(f"Error: Input directory not found: {inputDirPath}")
+    
+    if not outputDirPath.exists():
+        outputDirPath.mkdir(parents=True, exist_ok=True)
+    
     annotatedImagesPath = [file_path for file_path in inputDirPath.iterdir() 
                    if file_path.is_file() and file_path.suffix in ACCEPTED_FORMATS]
     
@@ -164,11 +173,15 @@ def updateTemplateIndex(baseDirPathObj,
 #     return np.mean(IoU)
 
 def compute_iou(detectedDir_fpath, 
-                groundTruthDir_fpath):
+                groundTruthDir_fpath, get_iou_list=False):
     imagesNames = [file_path.name for file_path in detectedDir_fpath.iterdir() 
                     if file_path.is_file() and file_path.suffix in '.png']
-    
-    IoU = []
+    IoU = None
+    if get_iou_list:
+        IoU = {}
+    else:
+        IoU = []
+        
     for imageName in imagesNames:
         detected = cv2.imread(str(detectedDir_fpath / imageName), cv2.IMREAD_GRAYSCALE)
         ground_truth = cv2.imread(str(groundTruthDir_fpath / imageName), cv2.IMREAD_GRAYSCALE)
@@ -191,13 +204,19 @@ def compute_iou(detectedDir_fpath,
         
         iou = np.sum(intersection) / np.sum(union)
         
-        IoU.append(iou)
+        if get_iou_list:
+            IoU[imageName] = iou
+        else:
+            IoU.append(iou)
     
     if len(IoU) == 0:
         print("Warning: No valid IoU values computed. Returning zero.")
         return 0.0  # or handle this case as needed
     
-    return np.mean(IoU)
+    if get_iou_list:
+        return IoU
+    else:
+        return np.mean(IoU)
 
 
 @use_named_args(param_space)
@@ -228,6 +247,87 @@ def objective(**params):
                         pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'])
     
     return -score
+
+def create_gt_BO_manual_masks( base_dir_fpath):
+    
+    groundTruth_dir_fpath = base_dir_fpath / 'groundTruth'
+    BO_para_fpath = base_dir_fpath / 'output/BO_para'
+    manual_para_fpath = base_dir_fpath / 'output/manual_para'
+    
+    BO_para_latestRunDirIndex = updateTemplateIndex(BO_para_fpath, 
+                                                    pathsDict['grateRunDirTemplate'], 
+                                                    0)
+    
+    manual_para_latestRunDirIndex = updateTemplateIndex(manual_para_fpath,
+                                                        pathsDict['grateRunDirTemplate'],
+                                                        0)
+    
+    BO_para_versionDir_fpath = BO_para_fpath / pathsDict['grateRunDirTemplate'].format(BO_para_latestRunDirIndex)
+    manual_para_versionDir_fpath = manual_para_fpath / pathsDict['grateRunDirTemplate'].format(manual_para_latestRunDirIndex)
+    
+    CreateMaskFromAnnotatedImagesInsideDir(groundTruth_dir_fpath / 'Images', 
+                                           groundTruth_dir_fpath / 'Masks')
+    
+    
+    CreateMaskFromAnnotatedImagesInsideDir(BO_para_versionDir_fpath / 'Images',
+                                           BO_para_versionDir_fpath / 'Masks')
+    
+    CreateMaskFromAnnotatedImagesInsideDir( manual_para_versionDir_fpath / 'Images',
+                                            manual_para_versionDir_fpath / 'Masks')
+
+def write_iou_to_file(iou, 
+                      fpath, 
+                      grateOutput_Masks_dir_fpath, 
+                      groundTruth_Masks_dir_fpath):
+    with open (fpath, 'w') as f:
+        f.write('IOU\n')
+        f.write('Ground Truth Masks Directory   : ' + str(groundTruth_Masks_dir_fpath) + '\n')
+        f.write('GRATE Masks Directory          : ' + str(grateOutput_Masks_dir_fpath) + '\n')
+        
+        for key, value in iou.items():
+            f.write(key + ' : ' + str(value) + '\n')
+        
+        f.write('\n')
+        f.write('Avg IOU: ' + str(np.mean(list(iou.values()))))
+        f.write('\n')
+
+def compute_ioU_and_write_to_file(base_dir_fpath):
+    
+    groundTruth_dir_fpath   = base_dir_fpath / 'groundTruth'
+    BO_para_fpath           = base_dir_fpath / 'output/BO_para'
+    manual_para_fpath       = base_dir_fpath / 'output/manual_para'
+    
+    BO_para_latestRunDirIndex = updateTemplateIndex(BO_para_fpath, 
+                                                    pathsDict['grateRunDirTemplate'], 
+                                                    0)
+    
+    manual_para_latestRunDirIndex = updateTemplateIndex(manual_para_fpath,
+                                                        pathsDict['grateRunDirTemplate'],
+                                                        0)
+    
+    BO_para_versionDir_fpath        = BO_para_fpath / pathsDict['grateRunDirTemplate'].format(BO_para_latestRunDirIndex)
+    manual_para_versionDir_fpath    = manual_para_fpath / pathsDict['grateRunDirTemplate'].format(manual_para_latestRunDirIndex)
+    
+    # calculate BO and manual IOU
+    print('Calculating BO IOU...')
+    BO_iou = compute_iou(BO_para_versionDir_fpath / 'Masks', 
+                         groundTruth_dir_fpath / 'Masks', 
+                         get_iou_list=True)
+    
+    print('Calculating Manual IOU...')
+    manual_iou = compute_iou(manual_para_versionDir_fpath / 'Masks', 
+                             groundTruth_dir_fpath / 'Masks',
+                             get_iou_list=True)
+    
+    # Write IOU to file
+    write_iou_to_file(  BO_iou, 
+                        BO_para_versionDir_fpath / 'iou_log.txt', 
+                        BO_para_versionDir_fpath / 'Masks',
+                        groundTruth_dir_fpath / 'Masks')
+    write_iou_to_file(  manual_iou, 
+                        manual_para_versionDir_fpath / 'iou_log.txt',
+                        manual_para_versionDir_fpath / 'Masks',
+                        groundTruth_dir_fpath / 'Masks')
 
 if __name__ == "__main__":
     # # Prepare the gound truth masks
@@ -283,3 +383,26 @@ if __name__ == "__main__":
     plot_objective(res)
     plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'objective_plot.png')
     
+    # Validation of the best parameters
+    # baseValDir_rpath = 'DATA/BO/validation'   # should have "groundTruth", "input" and "output" directories inside
+    # base dir should have the following structure:
+    #|--base_dir/
+    #   |--groundTruth/
+    #       |--Images/
+    #       |--Masks/
+    #   |--input/
+    #       |--img1.png
+    #   |--output/
+    #       |--BO_para/
+    #           |--version_1/
+    #               |--Images/
+    #               |--Masks/
+    #       |--manual_para/
+    #           |--version_1/
+    #               |--Images/
+    #               |--Masks/
+   
+    # Create Masks for groundTruth, BO and manual
+    create_gt_BO_manual_masks( pathsDict['projectDirFPath'] / pathsDict['baseValDirRpath'])
+    
+    compute_ioU_and_write_to_file(pathsDict['projectDirFPath'] / pathsDict['baseValDirRpath'])

@@ -3,42 +3,6 @@ import json
 import cv2
 import numpy as np
 import pathlib as pl
-from bayesianOpt import CreateMaskFromAnnotatedImagesInsideDir
-
-def compute_iou(detectedDir_fpath, groundTruthDir_fpath):
-    imagesNames = [file_path.name for file_path in detectedDir_fpath.iterdir() 
-                    if file_path.is_file() and file_path.suffix in '.png']
-    
-    IoU = {}
-    for imageName in imagesNames:
-        detected = cv2.imread(str(detectedDir_fpath / imageName), cv2.IMREAD_GRAYSCALE)
-        ground_truth = cv2.imread(str(groundTruthDir_fpath / imageName), cv2.IMREAD_GRAYSCALE)
-        
-        # Ensure that images are read correctly
-        if detected is None or ground_truth is None:
-            print(f"Warning: Could not read images {imageName}. Skipping.")
-            continue
-        
-        # Convert images to binary (if necessary)
-        _, detected_bin = cv2.threshold(detected, 127, 1, cv2.THRESH_BINARY)
-        _, ground_truth_bin = cv2.threshold(ground_truth, 127, 1, cv2.THRESH_BINARY)
-        
-        intersection = np.logical_and(detected_bin, ground_truth_bin)
-        union = np.logical_or(detected_bin, ground_truth_bin)
-        
-        if np.sum(union) == 0:
-            print(f"Warning: Union of detected and ground truth is zero for {imageName}. Skipping.")
-            continue
-        
-        iou = np.sum(intersection) / np.sum(union)
-        
-        IoU[imageName] = iou
-    
-    if len(IoU) == 0:
-        print("Warning: No valid IoU values computed. Returning zero.")
-        return 0.0  # or handle this case as needed
-    
-    return IoU
 
 def read_via_annotations(csv_file_path):
     """
@@ -73,110 +37,68 @@ def read_via_annotations(csv_file_path):
             annotations.append(annotation)
     return annotations
 
-def save_image_with_polygon(annotations, 
-                            project_dir_fpath, 
-                            input_image_dir_rpath, 
-                            save_image_dir_rpath):
+def save_image_with_polygon(annotations,
+                            input_image_dir_fpath, 
+                            save_image_dir_fpath):
     currentFilename = ''
     lastFilename = ''
-    for annotation in annotations:
-        
+    
+    for annotation in annotations:    
         currentFilename = annotation['filename']
         if lastFilename != currentFilename:
-            img = cv2.imread(str(project_dir_fpath / input_image_dir_rpath / currentFilename))
+            img = cv2.imread(str(input_image_dir_fpath / currentFilename))
         else:
-            img = cv2.imread(str(project_dir_fpath / save_image_dir_rpath / currentFilename))
+            img = cv2.imread(str(save_image_dir_fpath / currentFilename))
         
         polygon = annotation['region_attributes']['polygon']
         for i in range(len(polygon)):
             cv2.line(img, polygon[i], polygon[(i+1)%len(polygon)], (0, 255, 0), 20)
-        cv2.imwrite(str(project_dir_fpath / save_image_dir_rpath / currentFilename), img)
+        cv2.imwrite(str(save_image_dir_fpath / currentFilename), img)
         lastFilename = currentFilename
     
-def write_iou_to_file(iou, 
-                      fpath, 
-                      grateOutput_Masks_dir_fpath, 
-                      groundTruth_Masks_dir_fpath):
-    with open (fpath, 'w') as f:
-        f.write('IOU\n')
-        f.write('Ground Truth Masks Directory   : ' + str(groundTruth_Masks_dir_fpath) + '\n')
-        f.write('GRATE Masks Directory          : ' + str(grateOutput_Masks_dir_fpath) + '\n')
-        
-        for key, value in iou.items():
-            f.write(key + ' : ' + str(value) + '\n')
-        
-        f.write('\n')
-        f.write('Avg IOU: ' + str(np.mean(list(iou.values()))))
-        f.write('\n')
-        
-def plot_VGG_annotations_on_image(project_dir_fpath, 
-                                  annotations_csv_rpath, 
-                                  input_image_dir_rpath, 
-                                  save_image_dir_rpath):
-    
-    annotations = read_via_annotations(project_dir_fpath / annotations_csv_rpath)
-    save_image_with_polygon(annotations, project_dir_fpath, input_image_dir_rpath, save_image_dir_rpath)
 
-def create_gt_BO_manual_masks(  project_dir_fpath,
-                                groundTruth_dir_rpath,
-                                BO_grateOutput_dir_rpath,
-                                manual_grateOutput_dir_rpath):
-    CreateMaskFromAnnotatedImagesInsideDir(project_dir_fpath / groundTruth_dir_rpath / 'Images', 
-                                           project_dir_fpath / groundTruth_dir_rpath / 'Masks')
-    CreateMaskFromAnnotatedImagesInsideDir(project_dir_fpath / BO_grateOutput_dir_rpath / 'Images',
-                                           project_dir_fpath / BO_grateOutput_dir_rpath / 'Masks')
-    CreateMaskFromAnnotatedImagesInsideDir(project_dir_fpath / manual_grateOutput_dir_rpath / 'Images',
-                                           project_dir_fpath / manual_grateOutput_dir_rpath / 'Masks')
-
-def compute_ioU_and_write_to_file(project_dir_fpath, 
-                                  groundTruth_dir_rpath, 
-                                  BO_grateOutput_dir_rpath, 
-                                  manual_grateOutput_dir_rpath):
-    # calculate BO and manual IOU
-    print('Calculating BO IOU...')
-    BO_iou = compute_iou(project_dir_fpath / BO_grateOutput_dir_rpath / 'Masks', 
-                         project_dir_fpath / groundTruth_dir_rpath / 'Masks')
+def plot_VGG_annotations_on_image(base_dir_fpath, 
+                                  annotations_csv_fname):
     
-    print('Calculating Manual IOU...')
-    manual_iou = compute_iou(project_dir_fpath / manual_grateOutput_dir_rpath / 'Masks', 
-                             project_dir_fpath / groundTruth_dir_rpath / 'Masks')
+    annotations = read_via_annotations(base_dir_fpath / 'groundTruth' / annotations_csv_fname)
     
-    # Write IOU to file
-    write_iou_to_file(  BO_iou, 
-                        project_dir_fpath / BO_grateOutput_dir_rpath / 'iou_log.txt', 
-                        project_dir_fpath / BO_grateOutput_dir_rpath / 'Masks',
-                        project_dir_fpath / groundTruth_dir_rpath / 'Masks')
-    write_iou_to_file(  manual_iou, 
-                        project_dir_fpath / manual_grateOutput_dir_rpath / 'iou_log.txt',
-                        project_dir_fpath / manual_grateOutput_dir_rpath / 'Masks',
-                        project_dir_fpath / groundTruth_dir_rpath / 'Masks')
+    save_image_dir_fpath = base_dir_fpath / 'groundTruth' / 'Images'
+    save_image_dir_fpath.mkdir(parents=True, exist_ok=True)
+    
+    save_image_with_polygon(annotations,
+                            base_dir_fpath / 'input', 
+                            save_image_dir_fpath)
 
 if __name__ == '__main__':
     
     project_dir_fpath = pl.Path(__file__).parent.resolve()
-    VGG_annotations_csv_rpath   = 'DATA/BO/validation/groundTruth/CSV/via_project_28Nov2024_20h54m_csv.csv'
-    unannotated_image_dir_rpath = 'DATA/BO/validation/input/subset/png'
-    annotated_image_dir_rpath   = 'DATA/BO/validation/groundTruth/Images'
+    base_dir_rpath = 'DATA/BO/validation'   # should have input and groundTruth directories inside
+    annotation_csv_fname = 'via_project_28Nov2024_20h54m_csv.csv'
     
-    # Below directories should containing the "Images" and "Masks" directories
-    groundTruth_dir_rpath           = 'DATA/BO/validation/groundTruth'
-    BO_grateOutput_dir_rpath        = 'DATA/BO/validation/output/BO_para/version_2_subset_soloPlot'
-    manual_grateOutput_dir_rpath    = 'DATA/BO/validation/output/manual_para/version_2_subset_soloPlot'
+    # base dir should have the following structure:
+    #|--base_dir/
+    #   |--groundTruth/
+    #       |--annotation_csv_fname
+    #   |--input/
+    #       |--img1.png
+    #       |--img2.png
+    #       |--...
     
-    plot_VGG_annotations_on_image(project_dir_fpath, 
-                                  VGG_annotations_csv_rpath, 
-                                  unannotated_image_dir_rpath, 
-                                  annotated_image_dir_rpath)
+    # check base directory
+    if not (project_dir_fpath / base_dir_rpath).exists():
+        print('Error: Directory not found:', base_dir_rpath)
+        exit()
+        
+    # check annotation file
+    if not (project_dir_fpath / base_dir_rpath / 'groundTruth' / annotation_csv_fname).exists():
+        print('Error: Annotation file not found:', annotation_csv_fname)
+        exit()
+        
+    # check input image directory
+    if not (project_dir_fpath / base_dir_rpath / 'input').exists():
+        print('Error: Directory not found: input')
+        exit()
     
-    # Create Masks for groundTruth, BO and manual
-    create_gt_BO_manual_masks(  project_dir_fpath,
-                                groundTruth_dir_rpath,
-                                BO_grateOutput_dir_rpath,
-                                manual_grateOutput_dir_rpath)
-    
-    compute_ioU_and_write_to_file(project_dir_fpath, 
-                                  groundTruth_dir_rpath, 
-                                  BO_grateOutput_dir_rpath, 
-                                  manual_grateOutput_dir_rpath)
-    
+    plot_VGG_annotations_on_image(project_dir_fpath / base_dir_rpath, 
+                                  annotation_csv_fname) 
     print('Done!')
