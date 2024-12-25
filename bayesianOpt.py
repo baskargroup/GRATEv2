@@ -44,9 +44,15 @@ pathsDict = {
     }
 
 def createConfigFile(configFilePath, 
-                     configDict):
-    configDict['data_dir']          = pathsDict['inputImgDirRPath']
-    configDict['base_result_dir']   = pathsDict['grateOutputDirRPath']
+                     configDict, 
+                     trainingRun = True):
+    
+    if trainingRun:
+        configDict['data_dir']          = pathsDict['inputImgDirRPath']
+        configDict['base_result_dir']   = pathsDict['grateOutputDirRPath']
+    else:
+        configDict['data_dir']          = pathsDict['baseValDirRpath'] + '/input'
+        configDict['base_result_dir']   = pathsDict['baseValDirRpath'] + '/output/BO_para'
     
     configDict['dspace_nm'] = [1.9]
     configDict['pix_2_nm']  = 78.5
@@ -218,17 +224,16 @@ def compute_iou(detectedDir_fpath,
     else:
         return np.mean(IoU)
 
-
+def run_algorithm(cfg_fileName = 'BO.cfg'):
+        command = ['python', 'main.py', cfg_fileName]
+        subprocess.run(command)
+        
 @use_named_args(param_space)
 def objective(**params):
     """
     Objective function for Bayesian Optimization.
     Evaluates the algorithm's performance on the annotated images.
     """
-    
-    def run_algorithm():
-        command = ['python', 'main.py', 'BO.cfg']
-        subprocess.run(command)
     
     createConfigFile(pathsDict['projectDirFPath'] / pathsDict['configFileRPath'], 
                      params)
@@ -265,15 +270,15 @@ def create_gt_BO_manual_masks( base_dir_fpath):
     BO_para_versionDir_fpath = BO_para_fpath / pathsDict['grateRunDirTemplate'].format(BO_para_latestRunDirIndex)
     manual_para_versionDir_fpath = manual_para_fpath / pathsDict['grateRunDirTemplate'].format(manual_para_latestRunDirIndex)
     
-    CreateMaskFromAnnotatedImagesInsideDir(groundTruth_dir_fpath / 'Images', 
-                                           groundTruth_dir_fpath / 'Masks')
+    CreateMaskFromAnnotatedImagesInsideDir(groundTruth_dir_fpath / pathsDict['detectionDirName'], 
+                                           groundTruth_dir_fpath / pathsDict['masksDirName'])
     
     
-    CreateMaskFromAnnotatedImagesInsideDir(BO_para_versionDir_fpath / 'Images',
-                                           BO_para_versionDir_fpath / 'Masks')
+    CreateMaskFromAnnotatedImagesInsideDir(BO_para_versionDir_fpath / pathsDict['detectionDirName'],
+                                           BO_para_versionDir_fpath / pathsDict['masksDirName'])
     
-    CreateMaskFromAnnotatedImagesInsideDir( manual_para_versionDir_fpath / 'Images',
-                                            manual_para_versionDir_fpath / 'Masks')
+    CreateMaskFromAnnotatedImagesInsideDir( manual_para_versionDir_fpath / pathsDict['detectionDirName'],
+                                            manual_para_versionDir_fpath / pathsDict['masksDirName'])
 
 def write_iou_to_file(iou, 
                       fpath, 
@@ -310,24 +315,24 @@ def compute_ioU_and_write_to_file(base_dir_fpath):
     
     # calculate BO and manual IOU
     print('Calculating BO IOU...')
-    BO_iou = compute_iou(BO_para_versionDir_fpath / 'Masks', 
-                         groundTruth_dir_fpath / 'Masks', 
+    BO_iou = compute_iou(BO_para_versionDir_fpath / pathsDict['masksDirName'], 
+                         groundTruth_dir_fpath / pathsDict['masksDirName'], 
                          get_iou_list=True)
     
     print('Calculating Manual IOU...')
-    manual_iou = compute_iou(manual_para_versionDir_fpath / 'Masks', 
-                             groundTruth_dir_fpath / 'Masks',
+    manual_iou = compute_iou(manual_para_versionDir_fpath / pathsDict['masksDirName'], 
+                             groundTruth_dir_fpath / pathsDict['masksDirName'],
                              get_iou_list=True)
     
     # Write IOU to file
     write_iou_to_file(  BO_iou, 
                         BO_para_versionDir_fpath / 'iou_log.txt', 
-                        BO_para_versionDir_fpath / 'Masks',
-                        groundTruth_dir_fpath / 'Masks')
+                        BO_para_versionDir_fpath / pathsDict['masksDirName'],
+                        groundTruth_dir_fpath / pathsDict['masksDirName'])
     write_iou_to_file(  manual_iou, 
                         manual_para_versionDir_fpath / 'iou_log.txt',
-                        manual_para_versionDir_fpath / 'Masks',
-                        groundTruth_dir_fpath / 'Masks')
+                        manual_para_versionDir_fpath / pathsDict['masksDirName'],
+                        groundTruth_dir_fpath / pathsDict['masksDirName'])
 
 if __name__ == "__main__":
     # # Prepare the gound truth masks
@@ -383,25 +388,43 @@ if __name__ == "__main__":
     plot_objective(res)
     plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'objective_plot.png')
     
+    # Run the algorithm with the best parameters found for the validation set
+    bestConfigFilePath = pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'best_params.cfg'
+    
+    print(f"Running the algorithm with the best parameters found on the validation set using {bestConfigFilePath}")
+    
+    # Update the input and output directories in the config file
+    configDict = libconf.load(open(bestConfigFilePath))
+    
+    createConfigFile( pathsDict['projectDirFPath'] / pathsDict['configFileRPath'], 
+                     configDict, 
+                     trainingRun=False)
+    
+    run_algorithm()
+    
+    # run the manual algorithm using manual.cfg
+    run_algorithm('manual.cfg')
+    
     # Validation of the best parameters
-    # baseValDir_rpath = 'DATA/BO/validation'   # should have "groundTruth", "input" and "output" directories inside
     # base dir should have the following structure:
-    #|--base_dir/
-    #   |--groundTruth/
-    #       |--Images/
-    #       |--Masks/
-    #   |--input/
-    #       |--img1.png
-    #   |--output/
-    #       |--BO_para/
-    #           |--version_1/
-    #               |--Images/
-    #               |--Masks/
-    #       |--manual_para/
-    #           |--version_1/
-    #               |--Images/
-    #               |--Masks/
-   
+    '''
+    |--base_dir/
+      |--groundTruth/
+          |--Images/
+          |--Masks/
+      |--input/
+          |--img1.png
+      |--output/
+          |--BO_para/
+              |--version_1/
+                  |--Images/
+                  |--Masks/
+          |--manual_para/
+              |--version_1/
+                  |--Images/
+                  |--Masks/
+    '''
+    
     # Create Masks for groundTruth, BO and manual
     create_gt_BO_manual_masks( pathsDict['projectDirFPath'] / pathsDict['baseValDirRpath'])
     
