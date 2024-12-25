@@ -35,6 +35,7 @@ pathsDict = {
     'inputImgDirRPath'      : 'DATA/BO/training/input/',
     'grateOutputDirRPath'   : 'DATA/BO/training/evaluations/',
     'groundTruthDirRPath'   : 'DATA/BO/training/groundTruth/',
+    'baseTrainDirRPath'     : 'DATA/BO/training',
     'baseValDirRpath'       : 'DATA/BO/validation',
     'detectionDirName'      : 'Images',
     'masksDirName'          : 'Masks',
@@ -42,6 +43,79 @@ pathsDict = {
     "latestRunDirIndex"     : 0,
     'configFileRPath'       : 'configFiles/BO.cfg',
     }
+
+# training and validation sub directories as dict
+train_subDirs = {
+    'gt'    : 'groundTruth',
+    'inp'   : 'input',
+    'eval'  : 'evaluations',
+}
+val_subDirs = {
+    'gt'    : 'groundTruth',
+    'inp'   : 'input',
+    'out_BO': 'output/BO_para',
+    'out_man': 'output/manual_para',
+}
+run_subDirs = {
+    'img'   : 'Images',
+    'mask'  : 'Masks',
+}
+
+def checkDirStructure():
+    '''
+    Expected directory structure:
+    |--baseTrainDir/
+        |--groundTruth/             # Check if exists else error
+            |--Images/              # Check if exists else error
+            |--Masks/               # Check if exists else error
+        |--input/                   # Check if exists else error
+            |--img1.tif
+            |--img2.tif
+            |--...
+        |--evaluations/             # Check if exists else error
+            |--version_1/           # Created by the gratev2 main.py
+            |--version_2/           # Created by the gratev2 main.py
+            |--...
+            
+    |--baseValDir/
+        |--groundTruth/             # Check if exists else error
+            |--Images/              # Check if exists else error
+            |--Masks/               # Check if exists else error
+        |--input/                   # Check if exists else error
+            |--img1.tif
+            |--img2.tif
+            |--...
+        |--output/                  # Check if exists else error
+            |--BO_para/             # Check if exists else error
+                |--version_1/       # Created by the gratev2 main.py
+                    |--Images/
+                    |--Masks/
+            |--manual_para/         # Check if exists else error
+                |--version_1/       # Created by the gratev2 main.py
+                    |--Images/
+                    |--Masks/
+    '''
+    # Check if the training directories exist
+    for key, value in train_subDirs.items():
+        if not (pathsDict['projectDirFPath'] / pathsDict['baseTrainDirRPath'] / value).exists():
+            raise FileNotFoundError(f"Error: Training directory not found: {value}")
+        
+        if key == 'gt': 
+            for _, runSubDir in run_subDirs.items():
+                if not (pathsDict['projectDirFPath'] / pathsDict['baseTrainDirRPath'] / value / runSubDir).exists():
+                    raise FileNotFoundError(f"Error: Training sub-directory not found: {runSubDir}")
+            
+    # Check if the validation directories exist
+    for key, value in val_subDirs.items():
+        if not (pathsDict['projectDirFPath'] / pathsDict['baseValDirRpath'] / value).exists():
+            raise FileNotFoundError(f"Error: Validation directory not found: {value}")
+        
+        if key == 'gt':
+            for _, runSubDir in run_subDirs.items():
+                if not (pathsDict['projectDirFPath'] / pathsDict['baseValDirRpath'] / value / runSubDir).exists():
+                    raise FileNotFoundError(f"Error: Validation sub-directory not found: {runSubDir}")
+            
+    print("Directory structure check passed.")
 
 def createConfigFile(configFilePath, 
                      configDict, 
@@ -339,6 +413,8 @@ if __name__ == "__main__":
     # CreateMaskFromAnnotatedImagesInsideDir(pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['detectionDirName'], 
     # pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'], 
     # threshold_value=10)
+    
+    checkDirStructure()
     
     # Save checkpoints using callbacks
     checkpoint_callback = skopt.callbacks.CheckpointSaver(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'checkpoint.pkl')
