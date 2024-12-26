@@ -27,7 +27,7 @@
 - **`vggAnnotatorCSVRead.py`**:  
   A helper script for converting CSV annotations (created using the VGG Image Annotator) into the required format for training and evaluation of crystal detection performance. This script is used to generate ground truth annotations for training and validation.
 
-- **Configuration Files (e.g., `BO_run3_200Evals.cfg`)**:  
+- **Configuration Files (e.g., `BO_200Evals.cfg`)**:  
   Specify directories, parameters, and modes. Once optimal parameters are found via Bayesian optimization, users mainly need to adjust `data_dir` and `base_result_dir`. The modes are optional but can enable debugging or other features.
   💡 **TODO:** Need to rename the config files to ManualSelection and BO
 
@@ -53,11 +53,11 @@
 
 ### Running the Image Processing Algorithm
 1. **Update Config File:**  
-   Open `BO_run3_200Evals.cfg` (or another config file) and update `data_dir` and `base_result_dir`. The algorithm parameters are already set to optimal values found via Bayesian optimization after 200 evaluations.
+   Open `BO_200Evals.cfg` (or another config file, inside the `configFiles` directory) and update `data_dir` and `base_result_dir`. Note, these directories are to be set relative to the project root path. The algorithm parameters are already set to optimal values found via Bayesian optimization after 200 evaluations.
 
 2. **Run the Analysis:**
    ```bash
-   python main.py BO_run3_200Evals.cfg
+   python main.py BO_200Evals.cfg
    ```
 
    The script will look for the config file inside the `configFiles` directory and will process image present in `data_dir`, detect crystals, and save the results, including crystal properties, in the specified `base_result_dir` location.

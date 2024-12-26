@@ -1,7 +1,7 @@
 .ipynb_checkpoints/
 */.ipynb_checkpoints/*
-*.png
-*.tif
+# *.png
+# *.tif
 ME592x/
 Results/
 sampleData/
