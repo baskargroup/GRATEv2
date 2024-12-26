@@ -330,39 +330,39 @@ def objective(**params):
 
 def generateMasks_GT_BO_manual( base_dir_fpath):
     
-    groundTruth_dir_fpath   = base_dir_fpath / val_subD['gt']
-    BO_para_fpath           = base_dir_fpath / val_subD['out_BO']
-    manual_para_fpath       = base_dir_fpath / val_subD['out_man']
+    gt_fpath    = base_dir_fpath / val_subD['gt']
+    BO_fpath    = base_dir_fpath / val_subD['out_BO']
+    man_fpath   = base_dir_fpath / val_subD['out_man']
     
-    BO_para_latestRunDirIndex = updateTemplateIndex(BO_para_fpath, 
-                                                    pths['run_tmplt'], 
-                                                    0)
+    BO_lstRunDirIdx = updateTemplateIndex(BO_fpath,
+                                          pths['run_tmplt'],
+                                          0)
     
-    manual_para_latestRunDirIndex = updateTemplateIndex(manual_para_fpath,
-                                                        pths['run_tmplt'],
-                                                        0)
+    man_lstRunDirIdx = updateTemplateIndex(man_fpath,
+                                           pths['run_tmplt'],
+                                           0)
     
-    BO_para_versionDir_fpath = BO_para_fpath / pths['run_tmplt'].format(BO_para_latestRunDirIndex)
-    manual_para_versionDir_fpath = manual_para_fpath / pths['run_tmplt'].format(manual_para_latestRunDirIndex)
+    BO_runDir_fpath = BO_fpath / pths['run_tmplt'].format(BO_lstRunDirIdx)
+    man_runDir_fpath = man_fpath / pths['run_tmplt'].format(man_lstRunDirIdx)
     
-    generateMasks(groundTruth_dir_fpath / run_subD['img'],
-                  groundTruth_dir_fpath / run_subD['mask'])
+    generateMasks(gt_fpath / run_subD['img'],
+                  gt_fpath / run_subD['mask'])
     
     
-    generateMasks(BO_para_versionDir_fpath / run_subD['img'],
-                  BO_para_versionDir_fpath / run_subD['mask'])
+    generateMasks(BO_runDir_fpath / run_subD['img'],
+                  BO_runDir_fpath / run_subD['mask'])
     
-    generateMasks(manual_para_versionDir_fpath / run_subD['img'],
-                  manual_para_versionDir_fpath / run_subD['mask'])
+    generateMasks(man_runDir_fpath / run_subD['img'],
+                  man_runDir_fpath / run_subD['mask'])
 
 def write_iou_to_file(iou, 
                       fpath, 
-                      grateOutput_Masks_dir_fpath, 
-                      groundTruth_Masks_dir_fpath):
+                      grate_masks_dir_fpth, 
+                      gt_masks_dir_fpth):
     with open (fpath, 'w') as f:
         f.write('IOU\n')
-        f.write('Ground Truth Masks Directory   : ' + str(groundTruth_Masks_dir_fpath) + '\n')
-        f.write('GRATE Masks Directory          : ' + str(grateOutput_Masks_dir_fpath) + '\n')
+        f.write('Ground Truth Masks Directory   : ' + str(gt_masks_dir_fpth) + '\n')
+        f.write('GRATE Masks Directory          : ' + str(grate_masks_dir_fpth) + '\n')
         
         for key, value in iou.items():
             f.write(key + ' : ' + str(value) + '\n')
@@ -468,15 +468,15 @@ if __name__ == "__main__":
     plt.savefig(trn_eval_fpth / 'objective_plot.png')
     
     # Run the algorithm with the best parameters found for the validation set
-    bestConfigFilePath = trn_eval_fpth / 'best_params.cfg'
+    bestCfgFilePath = trn_eval_fpth / 'best_params.cfg'
     
-    print(f"Running the algorithm with the best parameters found on the validation set using {bestConfigFilePath}")
+    print(f"Running the algorithm with the best parameters found on the validation set using {bestCfgFilePath}")
     
     # Update the input and output directories in the config file
-    configDict = libconf.load(open(bestConfigFilePath))
+    cfgDict = libconf.load(open(bestCfgFilePath))
     
     createConfigFile( pths['prj_fpth'] / pths['cfg_rpth'], 
-                     configDict, 
+                     cfgDict, 
                      trainingRun=False)
     
     run_algorithm()
