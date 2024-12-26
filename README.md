@@ -53,7 +53,7 @@
 
 ### Running the Image Processing Algorithm
 1. **Update Config File:**  
-   Open `BO_200Evals.cfg` (or another config file, inside the `configFiles` directory) and update `data_dir` and `base_result_dir`. Note, these directories are to be set relative to the project root path. The algorithm parameters are already set to optimal values found via Bayesian optimization after 200 evaluations.
+   Open `BO_200Evals.cfg` (or another config file, inside the `configFiles` directory) and update `data_dir` and `base_result_dir` values to run on custom data. Note, these directories are to be set relative to the project root path. The algorithm parameters are already set to optimal values found via Bayesian optimization after 200 evaluations.
 
 2. **Run the Analysis:**
    ```bash
@@ -65,7 +65,7 @@
 ### Performing Bayesian Optimization
 1. **Update `bayesianOpt.py`:**  
 
-   Adjust `inputImgDirRPath`, `grateOutputDirRPath`, and `groundTruthDirRPath`. Modify `n_calls` and `n_initial_points` if needed. Consider changing the loss function if you want to incorporate additional features beyond IoU.
+   Adjust `pths['trn_rpth']` and `pths['val_rpth']` at line number 35 and 36. Modify `n_calls` and `n_initial_points` arguments for the `gp_minimize` function if needed. Consider changing the `objective()` function if you want to incorporate additional features beyond IoU.
 
 2. **Run the Optimization:**
    ```bash
@@ -76,19 +76,23 @@
 
 ### Preparing Ground Truth Annotations
 - **Annotation Tool:** Use the [VGG Image Annotator](https://www.robots.ox.ac.uk/~vgg/software/via/) to annotate crystals in HRTEM images.
+- **Example Annotations File :** 
+  An example CSV file with annotation file created using the VGG annotator is provided at `Example/validation/groundTruth/annotation.csv`.
 - **Convert CSV Annotations:**
   ```bash
   python vggAnnotatorCSVRead.py
   ```
 
-  This generates appropriate ground truth masks for evaluating detection performance.
+  This generates appropriate ground truth masks for evaluating detection performance. Inside the script `vggAnnotatorCSVRead.py`, update the `base_dir_rpath` and `annotation_csv_fname` variable to point to the validation directory path and the name of annotation CSV file generated from VGG annotator.
+- **Evaluate Detection Performance:**
+  Example annotations created using the python script are provided in the `Example/validation/groundTruth/Images` directory.
 
 ## Thresholds and Batch Sizes in Bayesian Optimization
 When using Bayesian optimization, data is processed incrementally in batches. The batch size affects how the Wasserstein distance values scale. Larger batches introduce more substantial changes per increment, potentially justifying a slightly higher threshold, while smaller batches produce subtler changes and may warrant a lower threshold. Consider these factors when selecting a stopping criterion.
 
 ## Customization
 - **Loss Function:**  
-  Edit the objective function in `bayesianOpt.py` to integrate additional crystal features into the loss function if desired.
+  Edit the `objective()` function in `bayesianOpt.py` to integrate additional crystal features into the loss function if desired.
   
 - **Modes and Parameters:**
   Adjust modes in the config file (e.g., `debug`, `save_BB`, `result_display`) to control outputs and intermediate debugging steps.

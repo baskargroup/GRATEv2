@@ -32,8 +32,8 @@ param_space = [
 
 pths = {
     'prj_fpth'  : pl.Path(__file__).parent.resolve(),
-    'trn_rpth'  : 'DATA/BO/training',
-    'val_rpth'  : 'DATA/BO/validation',
+    'trn_rpth'  : 'Example/training',
+    'val_rpth'  : 'Example/validation',
     'run_tmplt' : 'version_{}',
     'cfg_rpth'  : 'configFiles/BO.cfg',
     }
@@ -433,8 +433,8 @@ if __name__ == "__main__":
         func=objective,
         dimensions=param_space,
         acq_func='EI',      # Expected Improvement
-        n_calls=2,         # Number of evaluations of the objective function
-        n_initial_points=1,# Number of initial random evaluations
+        n_calls=200,         # Number of evaluations of the objective function
+        n_initial_points=10,# Number of initial random evaluations
         random_state=42,     # For reproducibility
         callback=[checkpoint_callback]
     )

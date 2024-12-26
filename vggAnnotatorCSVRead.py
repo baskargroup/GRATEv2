@@ -72,8 +72,8 @@ def plot_VGG_annotations_on_image(base_dir_fpath,
 if __name__ == '__main__':
     
     project_dir_fpath = pl.Path(__file__).parent.resolve()
-    base_dir_rpath = 'DATA/BO/validation'   # should have input and groundTruth directories inside
-    annotation_csv_fname = 'via_project_28Nov2024_20h54m_csv.csv'
+    base_dir_rpath = 'Example/validation'   # should have input and groundTruth directories inside
+    annotation_csv_fname = 'annotation.csv'
     
     # base dir should have the following structure:
     #|--base_dir/
