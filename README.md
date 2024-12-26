@@ -1,111 +1,75 @@
+# GRATEv2: Automated HRTEM Image Analysis Framework [Paper Link](https://arxiv.org/abs/2411.03474)
 
-# GRATEv2: Automated HRTEM Image Analysis Framework {[Paper Link](https://arxiv.org/abs/2411.03474)}
-
-**GRATEv2** (GRaph-based Analysis of TEM) is an open-source computational framework designed for automated analysis and detection of crystalline structures in High-Resolution Transmission Electron Microscopy (HRTEM) images. This tool helps material scientists, chemists, and engineers study the microstructure of conjugated polymers and other materials at the nanoscale.
+**GRATEv2** helps automate the detection of crystalline structures in High-Resolution Transmission Electron Microscopy (HRTEM) images. It aids material scientists, chemists, and engineers in studying nanoscale microstructures.
 
 ## Key Features
-- **Image Processing-Based Analysis:** 📷  
-  `main.py` provides a parameterized image processing pipeline to detect and characterize crystals in HRTEM images based on parameters specified in a configuration file located inside `configFiles` directory.
-- **Bayesian Optimization:** 🔍  
-  `bayesianOpt.py` leverages Bayesian optimization to find the optimal parameters for the image processing algorithm, reducing manual tuning and ensuring reproducibility.
-- **Comprehensive Structural Feature Extraction:** 🔬  
-  Extracts crystal properties such as d-spacing, orientation angles, aspect ratios, and intercrystalline correlations.
-- **Batch-Based Incremental Analysis:** 🔄  
-  Integrates Bayesian optimization with iterative parameter updates, guided by a chosen metric (e.g., Intersection over Union) for quantifying detection performance.
+- **Image Processing Pipeline (main.py)**  
+  Parameter-based detection of crystals in HRTEM images, using a config file in `configFiles`.
+- **Bayesian Optimization (bayesianOpt.py)**  
+  Tunes parameters automatically for improved detection using the `gp_minimize` function.
+- **Structural Feature Extraction**  
+  Outputs d-spacing, orientation angles, aspect ratios, and intercrystalline correlations.
+- **Incremental Analysis**  
+  Integrates parameter updates within batch processing, guided by a detection performance metric.
 
 ## Repository Structure
-- **`main.py`**:  
-  The primary script for analysis. Requires a config file to be present inside `configFiles` directory specifying input data directory path, output results directory path, and algorithm parameters. Processes HRTEM images and outputs detected crystals with evaluated features.
-  
-- **`bayesianOpt.py`**:  
-  Performs Bayesian optimization to determine optimal image processing parameters. Interacts with `main.py` to evaluate candidate parameters on a training dataset. Users can adjust paths, iteration counts (`n_calls`, `n_initial_points`), and even the objective function if desired for custom loss metrics.  
- 💡 **TODO:** Elaborate on the paths to be set by the user.
-
-- **`requirements.txt`**:  
-  Lists Python dependencies. Use `pip install -r requirements.txt` to set up a consistent environment.
-  
-- **`vggAnnotatorCSVRead.py`**:  
-  A helper script for converting CSV annotations (created using the VGG Image Annotator) into the required format for training and evaluation of crystal detection performance. This script is used to generate ground truth annotations for training and validation.
-
-- **Configuration Files (e.g., `BO_200Evals.cfg`)**:  
-  Specify directories, parameters, and modes. Once optimal parameters are found via Bayesian optimization, users mainly need to adjust `data_dir` and `base_result_dir`. The modes are optional but can enable debugging or other features.
-  💡 **TODO:** Need to rename the config files to ManualSelection and BO
+- **`main.py`**: Processes HRTEM images based on a chosen config file. Outputs detected crystals and features.  
+- **`bayesianOpt.py`**: Optimizes parameters by running `main.py` iteratively. Users can edit paths, iteration counts, and the objective function.
+- **`requirements.txt`**: Lists Python dependencies.  
+- **`vggAnnotatorCSVRead.py`**: Converts CSV annotations (from VGG Image Annotator) into ground truth masks for training and validation.
+- **Configuration Files**: Contain directory paths and algorithm parameters. Modes allow debugging or specialized features.
 
 ## Installation
-1. **Clone the repository:** 💡 **TODO:** May need to update it after transfering the repository to the BGLab
-   ```bash
+1. Clone the repo:
+   ```
    git clone https://<YourUsername>@bitbucket.org/baskargroup/gratev2.git GRATEv2
    cd GRATEv2
    ```
-   
-2. **Create and activate a virtual environment:**
-   ```bash
+2. Create and activate a virtual environment:
+   ```
    python3 -m venv gratev2_venv
    source gratev2_venv/bin/activate
    ```
-   
-3. **Install dependencies:**
-   ```bash
+3. Install dependencies:
+   ```
    pip install -r requirements.txt
    ```
 
 ## Usage
-
-### Running the Image Processing Algorithm
-1. **Update Config File:**  
-   Open `BO_200Evals.cfg` (or another config file, inside the `configFiles` directory) and update `data_dir` and `base_result_dir` values to run on custom data. Note, these directories are to be set relative to the project root path. The algorithm parameters are already set to optimal values found via Bayesian optimization after 200 evaluations.
-
-2. **Run the Analysis:**
-   ```bash
+1. **Edit Config File:** Update `data_dir` and `base_result_dir` in `BO_200Evals.cfg` (or another `.cfg` file in `configFiles`).
+2. **Run Analysis:**
+   ```
    python main.py BO_200Evals.cfg
    ```
-
-   The script will look for the config file inside the `configFiles` directory and will process image present in `data_dir`, detect crystals, and save the results, including crystal properties, in the specified `base_result_dir` location.
-
-### Performing Bayesian Optimization
-1. **Update `bayesianOpt.py`:**  
-
-   Adjust `pths['trn_rpth']` and `pths['val_rpth']` at line number 35 and 36. Modify `n_calls` and `n_initial_points` arguments for the `gp_minimize` function if needed. Consider changing the `objective()` function if you want to incorporate additional features beyond IoU.
-
-2. **Run the Optimization:**
-   ```bash
+3. **Perform Bayesian Optimization:**  
+   Update paths in `bayesianOpt.py`, then:
+   ```
    python bayesianOpt.py
    ```
-  
-   The script tests various parameter sets, runs `main.py` to evaluate performance, and converges on optimal parameters. Results (convergence plots, best parameters) are saved in the output directory.
 
-### Preparing Ground Truth Annotations
-- **Annotation Tool:** Use the [VGG Image Annotator](https://www.robots.ox.ac.uk/~vgg/software/via/) to annotate crystals in HRTEM images.
-- **Example Annotations File :** 
-  An example CSV file with annotation file created using the VGG annotator is provided at `Example/validation/groundTruth/annotation.csv`.
-- **Convert CSV Annotations:**
-  ```bash
-  python vggAnnotatorCSVRead.py
-  ```
+## Ground Truth Annotations
+- Use the [VGG Image Annotator](https://www.robots.ox.ac.uk/~vgg/software/via/) for crystal annotations.
+- Convert CSV to annotations with:
+   ```
+   python vggAnnotatorCSVRead.py
+   ```
+- Adjust the script’s `base_dir_rpath` and `annotation_csv_fname` as needed.
 
-  This generates appropriate ground truth masks for evaluating detection performance. Inside the script `vggAnnotatorCSVRead.py`, update the `base_dir_rpath` and `annotation_csv_fname` variable to point to the validation directory path and the name of annotation CSV file generated from VGG annotator.
-- **Evaluate Detection Performance:**
-  Example annotations created using the python script are provided in the `Example/validation/groundTruth/Images` directory.
-
-## Thresholds and Batch Sizes in Bayesian Optimization
-When using Bayesian optimization, data is processed incrementally in batches. The batch size affects how the Wasserstein distance values scale. Larger batches introduce more substantial changes per increment, potentially justifying a slightly higher threshold, while smaller batches produce subtler changes and may warrant a lower threshold. Consider these factors when selecting a stopping criterion.
+## Thresholds and Batch Sizes
+When running Bayesian optimization, consider how batch size influences threshold setting for the Wasserstein distance.
 
 ## Customization
-- **Loss Function:**  
-  Edit the `objective()` function in `bayesianOpt.py` to integrate additional crystal features into the loss function if desired.
-  
-- **Modes and Parameters:**
-  Adjust modes in the config file (e.g., `debug`, `save_BB`, `result_display`) to control outputs and intermediate debugging steps.
-  
+- **Loss Function:** Modify `objective()` in `bayesianOpt.py` to include other crystal metrics.
+- **Parameters and Modes:** Adjust these in your config file for debugging or custom visualization.
+
 ## Contributing
-We welcome contributions in the form of issue reports, feature requests, or pull requests. Please open an issue to discuss proposed changes before submitting a PR.
+Open issues or submit pull requests for bug reports or enhancements.
 
 ## License
-(Include your chosen license here, for example: This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.)
+Please refer to the [LICENSE](LICENSE) file here.
 
 ## Citation
-If you use GRATEv2 in your research, please cite our related publications:
-
+If you use GRATEv2 in research, please cite:
 ```bibtex
 @article{gamdha2024computational,
 title={GRATEv2: Computational Tools for Real-time Analysis of High-throughput High-resolution TEM (HRTEM) Images of Conjugated Polymers},
@@ -114,14 +78,3 @@ journal={arXiv preprint arXiv:2411.03474},
 year={2024}
 }
 ```
-
-
-
-<!-- Information missing 
-1. Input data information (image format and parameters such as image resolution pix2nm, d-spacing to search)
-2. Inputs to bayesian optimization file
-  - training data
-  - ground truth data
-  - directory paths
-
--->
