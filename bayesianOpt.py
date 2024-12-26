@@ -30,33 +30,27 @@ param_space = [
     Real(   1.0 ,   5.0 ,   name='thresh_area_factor'   ,   dtype= float),
     ]
 
-pathsDict = {
-    'projectDirFPath'       : pl.Path(__file__).parent.resolve(),
-    'inputImgDirRPath'      : 'DATA/BO/training/input/',
-    'grateOutputDirRPath'   : 'DATA/BO/training/evaluations/',
-    'groundTruthDirRPath'   : 'DATA/BO/training/groundTruth/',
-    'baseTrainDirRPath'     : 'DATA/BO/training',
-    'baseValDirRpath'       : 'DATA/BO/validation',
-    'detectionDirName'      : 'Images',
-    'masksDirName'          : 'Masks',
-    'grateRunDirTemplate'   : 'version_{}',
-    "latestRunDirIndex"     : 0,
-    'configFileRPath'       : 'configFiles/BO.cfg',
+pths = {
+    'prj_fpth'  : pl.Path(__file__).parent.resolve(),
+    'trn_rpth'  : 'DATA/BO/training',
+    'val_rpth'  : 'DATA/BO/validation',
+    'run_tmplt' : 'version_{}',
+    'cfg_rpth'  : 'configFiles/BO.cfg',
     }
 
 # training and validation sub directories as dict
-train_subDirs = {
+trn_subD = {
     'gt'    : 'groundTruth',
     'inp'   : 'input',
     'eval'  : 'evaluations',
 }
-val_subDirs = {
+val_subD = {
     'gt'    : 'groundTruth',
     'inp'   : 'input',
     'out_BO': 'output/BO_para',
     'out_man': 'output/manual_para',
 }
-run_subDirs = {
+run_subD = {
     'img'   : 'Images',
     'mask'  : 'Masks',
 }
@@ -96,23 +90,23 @@ def checkDirStructure():
                     |--Masks/
     '''
     # Check if the training directories exist
-    for key, value in train_subDirs.items():
-        if not (pathsDict['projectDirFPath'] / pathsDict['baseTrainDirRPath'] / value).exists():
+    for key, value in trn_subD.items():
+        if not (pths['prj_fpth'] / pths['trn_rpth'] / value).exists():
             raise FileNotFoundError(f"Error: Training directory not found: {value}")
         
         if key == 'gt': 
-            for _, runSubDir in run_subDirs.items():
-                if not (pathsDict['projectDirFPath'] / pathsDict['baseTrainDirRPath'] / value / runSubDir).exists():
+            for _, runSubDir in run_subD.items():
+                if not (pths['prj_fpth'] / pths['trn_rpth'] / value / runSubDir).exists():
                     raise FileNotFoundError(f"Error: Training sub-directory not found: {runSubDir}")
             
     # Check if the validation directories exist
-    for key, value in val_subDirs.items():
-        if not (pathsDict['projectDirFPath'] / pathsDict['baseValDirRpath'] / value).exists():
+    for key, value in val_subD.items():
+        if not (pths['prj_fpth'] / pths['val_rpth'] / value).exists():
             raise FileNotFoundError(f"Error: Validation directory not found: {value}")
         
         if key == 'gt':
-            for _, runSubDir in run_subDirs.items():
-                if not (pathsDict['projectDirFPath'] / pathsDict['baseValDirRpath'] / value / runSubDir).exists():
+            for _, runSubDir in run_subD.items():
+                if not (pths['prj_fpth'] / pths['val_rpth'] / value / runSubDir).exists():
                     raise FileNotFoundError(f"Error: Validation sub-directory not found: {runSubDir}")
             
     print("Directory structure check passed.")
@@ -122,11 +116,11 @@ def createConfigFile(configFilePath,
                      trainingRun = True):
     
     if trainingRun:
-        configDict['data_dir']          = pathsDict['inputImgDirRPath']
-        configDict['base_result_dir']   = pathsDict['grateOutputDirRPath']
+        configDict['data_dir']          = str(pl.Path(pths['trn_rpth']) / trn_subD['inp'])
+        configDict['base_result_dir']   = str(pl.Path(pths['trn_rpth']) / trn_subD['eval'])
     else:
-        configDict['data_dir']          = pathsDict['baseValDirRpath'] + '/input'
-        configDict['base_result_dir']   = pathsDict['baseValDirRpath'] + '/output/BO_para'
+        configDict['data_dir']          = str(pl.Path(pths['val_rpth']) / val_subD['inp'])
+        configDict['base_result_dir']   = str(pl.Path(pths['val_rpth']) / val_subD['out_BO'])
     
     configDict['dspace_nm'] = [1.9]
     configDict['pix_2_nm']  = 78.5
@@ -144,9 +138,9 @@ def createConfigFile(configFilePath,
                      configFile)
         configFile.close()
 
-def extract_and_fill_annotations(image, 
-                                 output_path, 
-                                 threshold_value=10):
+def genMaskFromAnnotationFile(image,
+                              output_path,
+                              threshold_value=10):
     """
     Extracts colored annotations (crystal outlines) from an RGB TEM image with a grayscale background,
     fills the inside of the annotations, and outputs a binary image where the annotations are white (filled)
@@ -194,9 +188,9 @@ def extract_and_fill_annotations(image,
 
     return mask
 
-def CreateMaskFromAnnotatedImagesInsideDir(inputDirPath, 
-                                           outputDirPath, 
-                                           threshold_value=10):
+def generateMasks(inputDirPath,
+                          outputDirPath,
+                          threshold_value=10):
     
     # Check input and output directories
     if not inputDirPath.exists():
@@ -211,7 +205,7 @@ def CreateMaskFromAnnotatedImagesInsideDir(inputDirPath,
     for i, annotatedImagePath in enumerate(annotatedImagesPath):
         annotatedImg = cv2.imread(str(annotatedImagePath))
         maskImagePath = outputDirPath / annotatedImagePath.name
-        extract_and_fill_annotations(annotatedImg, maskImagePath, threshold_value)
+        genMaskFromAnnotationFile(annotatedImg, maskImagePath, threshold_value)
 
 # Placeholder functions for loading data
 def load_images(image_folder):
@@ -253,7 +247,9 @@ def updateTemplateIndex(baseDirPathObj,
 #     return np.mean(IoU)
 
 def compute_iou(detectedDir_fpath, 
-                groundTruthDir_fpath, get_iou_list=False):
+                groundTruthDir_fpath, 
+                get_iou_list=False):
+    
     imagesNames = [file_path.name for file_path in detectedDir_fpath.iterdir() 
                     if file_path.is_file() and file_path.suffix in '.png']
     IoU = None
@@ -309,50 +305,55 @@ def objective(**params):
     Evaluates the algorithm's performance on the annotated images.
     """
     
-    createConfigFile(pathsDict['projectDirFPath'] / pathsDict['configFileRPath'], 
+    createConfigFile(pths['prj_fpth'] / pths['cfg_rpth'], 
                      params)
     run_algorithm()
     
-    latestRunDirIndex = updateTemplateIndex(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'], 
-                                            pathsDict['grateRunDirTemplate'], 
-                                            0)
+    trn_eval_fpth = pths['prj_fpth'] / pths['trn_rpth'] / trn_subD['eval']
+    trn_gt_fpth = pths['prj_fpth'] / pths['trn_rpth'] / trn_subD['gt']
+    
+    lst_idx = updateTemplateIndex(trn_eval_fpth,
+                                  pths['run_tmplt'],
+                                  0)
+    
+    trn_lstRunD_fpth = trn_eval_fpth / pths['run_tmplt'].format(lst_idx)
     
     # Create Masks for the latest run
-    CreateMaskFromAnnotatedImagesInsideDir(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['detectionDirName'], 
-                                           pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['masksDirName'], 
-                                           threshold_value = 10)
+    generateMasks(trn_lstRunD_fpth / run_subD['img'],
+                  trn_lstRunD_fpth / run_subD['mask'],
+                  threshold_value = 10)
     
-    score = compute_iou(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / pathsDict['grateRunDirTemplate'].format(latestRunDirIndex) / pathsDict['masksDirName'], 
-                        pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'])
+    score = compute_iou(trn_lstRunD_fpth / run_subD['mask'], 
+                        trn_gt_fpth / run_subD['mask'])
     
     return -score
 
-def create_gt_BO_manual_masks( base_dir_fpath):
+def generateMasks_GT_BO_manual( base_dir_fpath):
     
-    groundTruth_dir_fpath = base_dir_fpath / 'groundTruth'
-    BO_para_fpath = base_dir_fpath / 'output/BO_para'
-    manual_para_fpath = base_dir_fpath / 'output/manual_para'
+    groundTruth_dir_fpath   = base_dir_fpath / val_subD['gt']
+    BO_para_fpath           = base_dir_fpath / val_subD['out_BO']
+    manual_para_fpath       = base_dir_fpath / val_subD['out_man']
     
     BO_para_latestRunDirIndex = updateTemplateIndex(BO_para_fpath, 
-                                                    pathsDict['grateRunDirTemplate'], 
+                                                    pths['run_tmplt'], 
                                                     0)
     
     manual_para_latestRunDirIndex = updateTemplateIndex(manual_para_fpath,
-                                                        pathsDict['grateRunDirTemplate'],
+                                                        pths['run_tmplt'],
                                                         0)
     
-    BO_para_versionDir_fpath = BO_para_fpath / pathsDict['grateRunDirTemplate'].format(BO_para_latestRunDirIndex)
-    manual_para_versionDir_fpath = manual_para_fpath / pathsDict['grateRunDirTemplate'].format(manual_para_latestRunDirIndex)
+    BO_para_versionDir_fpath = BO_para_fpath / pths['run_tmplt'].format(BO_para_latestRunDirIndex)
+    manual_para_versionDir_fpath = manual_para_fpath / pths['run_tmplt'].format(manual_para_latestRunDirIndex)
     
-    CreateMaskFromAnnotatedImagesInsideDir(groundTruth_dir_fpath / pathsDict['detectionDirName'], 
-                                           groundTruth_dir_fpath / pathsDict['masksDirName'])
+    generateMasks(groundTruth_dir_fpath / run_subD['img'],
+                  groundTruth_dir_fpath / run_subD['mask'])
     
     
-    CreateMaskFromAnnotatedImagesInsideDir(BO_para_versionDir_fpath / pathsDict['detectionDirName'],
-                                           BO_para_versionDir_fpath / pathsDict['masksDirName'])
+    generateMasks(BO_para_versionDir_fpath / run_subD['img'],
+                  BO_para_versionDir_fpath / run_subD['mask'])
     
-    CreateMaskFromAnnotatedImagesInsideDir( manual_para_versionDir_fpath / pathsDict['detectionDirName'],
-                                            manual_para_versionDir_fpath / pathsDict['masksDirName'])
+    generateMasks(manual_para_versionDir_fpath / run_subD['img'],
+                  manual_para_versionDir_fpath / run_subD['mask'])
 
 def write_iou_to_file(iou, 
                       fpath, 
@@ -371,61 +372,63 @@ def write_iou_to_file(iou,
         f.write('\n')
 
 def compute_ioU_and_write_to_file(base_dir_fpath):
+  
+    gt_fpath    = base_dir_fpath / val_subD['gt']
+    BO_fpath    = base_dir_fpath / val_subD['out_BO']
+    man_fpath   = base_dir_fpath / val_subD['out_man']
     
-    groundTruth_dir_fpath   = base_dir_fpath / 'groundTruth'
-    BO_para_fpath           = base_dir_fpath / 'output/BO_para'
-    manual_para_fpath       = base_dir_fpath / 'output/manual_para'
+    BO_lstRunDirIdx = updateTemplateIndex(BO_fpath,
+                                          pths['run_tmplt'],
+                                          0)
     
-    BO_para_latestRunDirIndex = updateTemplateIndex(BO_para_fpath, 
-                                                    pathsDict['grateRunDirTemplate'], 
-                                                    0)
-    
-    manual_para_latestRunDirIndex = updateTemplateIndex(manual_para_fpath,
-                                                        pathsDict['grateRunDirTemplate'],
-                                                        0)
-    
-    BO_para_versionDir_fpath        = BO_para_fpath / pathsDict['grateRunDirTemplate'].format(BO_para_latestRunDirIndex)
-    manual_para_versionDir_fpath    = manual_para_fpath / pathsDict['grateRunDirTemplate'].format(manual_para_latestRunDirIndex)
+    man_lstRunDirIdx = updateTemplateIndex(man_fpath,
+                                           pths['run_tmplt'],
+                                           0)
+
+    BO_runDir_fpath     = BO_fpath / pths['run_tmplt'].format(BO_lstRunDirIdx)
+    man_runDir_fpath    = man_fpath / pths['run_tmplt'].format(man_lstRunDirIdx)
     
     # calculate BO and manual IOU
     print('Calculating BO IOU...')
-    BO_iou = compute_iou(BO_para_versionDir_fpath / pathsDict['masksDirName'], 
-                         groundTruth_dir_fpath / pathsDict['masksDirName'], 
+    BO_iou = compute_iou(BO_runDir_fpath / run_subD['mask'], 
+                         gt_fpath / run_subD['mask'], 
                          get_iou_list=True)
     
     print('Calculating Manual IOU...')
-    manual_iou = compute_iou(manual_para_versionDir_fpath / pathsDict['masksDirName'], 
-                             groundTruth_dir_fpath / pathsDict['masksDirName'],
+    manual_iou = compute_iou(man_runDir_fpath / run_subD['mask'], 
+                             gt_fpath / run_subD['mask'],
                              get_iou_list=True)
     
     # Write IOU to file
     write_iou_to_file(  BO_iou, 
-                        BO_para_versionDir_fpath / 'iou_log.txt', 
-                        BO_para_versionDir_fpath / pathsDict['masksDirName'],
-                        groundTruth_dir_fpath / pathsDict['masksDirName'])
+                        BO_runDir_fpath / 'iou_log.txt', 
+                        BO_runDir_fpath / run_subD['mask'],
+                        gt_fpath / run_subD['mask'])
     write_iou_to_file(  manual_iou, 
-                        manual_para_versionDir_fpath / 'iou_log.txt',
-                        manual_para_versionDir_fpath / pathsDict['masksDirName'],
-                        groundTruth_dir_fpath / pathsDict['masksDirName'])
+                        man_runDir_fpath / 'iou_log.txt',
+                        man_runDir_fpath / run_subD['mask'],
+                        gt_fpath / run_subD['mask'])
 
 if __name__ == "__main__":
+    
+    trn_eval_fpth = pths['prj_fpth'] / pths['trn_rpth'] / trn_subD['eval']
     # # Prepare the gound truth masks
-    # CreateMaskFromAnnotatedImagesInsideDir(pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['detectionDirName'], 
-    # pathsDict['projectDirFPath'] / pathsDict['groundTruthDirRPath'] / pathsDict['masksDirName'], 
+    # CreateMaskFromAnnotatedImagesInsideDir(pathsDict['prj_fpth'] / pths['trn_rpth'] / trn_subD['gt'] / run_subD['img'], 
+    # pathsDict['prj_fpth'] / pths['trn_rpth'] / trn_subD['gt'] / run_subD['mask'], 
     # threshold_value=10)
     
     checkDirStructure()
     
     # Save checkpoints using callbacks
-    checkpoint_callback = skopt.callbacks.CheckpointSaver(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'checkpoint.pkl')
+    checkpoint_callback = skopt.callbacks.CheckpointSaver(trn_eval_fpth / 'checkpoint.pkl')
     
     # Run Bayesian Optimization
     res = gp_minimize(
         func=objective,
         dimensions=param_space,
         acq_func='EI',      # Expected Improvement
-        n_calls=200,         # Number of evaluations of the objective function
-        n_initial_points=10,# Number of initial random evaluations
+        n_calls=2,         # Number of evaluations of the objective function
+        n_initial_points=1,# Number of initial random evaluations
         random_state=42,     # For reproducibility
         callback=[checkpoint_callback]
     )
@@ -438,13 +441,13 @@ if __name__ == "__main__":
     print(f"Best objective value: {-res.fun}")
     
     # Store the results and convergence plot
-    with open(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'results.txt', 'w') as f:
+    with open(trn_eval_fpth / 'results.txt', 'w') as f:
         f.write(f"Best parameters found:\n")
         f.write(f"Best objective value: {-res.fun}\n")
         best_eval = res.func_vals.argmin() + 1
         f.write(f"Best evaluation number: {best_eval}\n")
     
-    with open(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'convergence.csv', 'w') as f:
+    with open(trn_eval_fpth / 'convergence.csv', 'w') as f:
         f.write(f"Evaluations, Objective Value, Min Objective Value\n")
         min_val = res.func_vals[0]
         for i, val in enumerate(res.func_vals):
@@ -452,27 +455,27 @@ if __name__ == "__main__":
             f.write(f"{i+1}, {val}, {min_val}\n")
             
     plot_convergence(res)
-    plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'convergence_plot.png')
+    plt.savefig(trn_eval_fpth / 'convergence_plot.png')
     
     # Save the best parameters to a config file
     best_params = dict(zip([dim.name for dim in param_space], res.x))
-    createConfigFile(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'best_params.cfg', best_params)
+    createConfigFile(trn_eval_fpth / 'best_params.cfg', best_params)
     
     plot_evaluations(res)
-    plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'evaluations_plot.png')
+    plt.savefig(trn_eval_fpth / 'evaluations_plot.png')
     
     plot_objective(res)
-    plt.savefig(pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'objective_plot.png')
+    plt.savefig(trn_eval_fpth / 'objective_plot.png')
     
     # Run the algorithm with the best parameters found for the validation set
-    bestConfigFilePath = pathsDict['projectDirFPath'] / pathsDict['grateOutputDirRPath'] / 'best_params.cfg'
+    bestConfigFilePath = trn_eval_fpth / 'best_params.cfg'
     
     print(f"Running the algorithm with the best parameters found on the validation set using {bestConfigFilePath}")
     
     # Update the input and output directories in the config file
     configDict = libconf.load(open(bestConfigFilePath))
     
-    createConfigFile( pathsDict['projectDirFPath'] / pathsDict['configFileRPath'], 
+    createConfigFile( pths['prj_fpth'] / pths['cfg_rpth'], 
                      configDict, 
                      trainingRun=False)
     
@@ -481,27 +484,7 @@ if __name__ == "__main__":
     # run the manual algorithm using manual.cfg
     run_algorithm('manual.cfg')
     
-    # Validation of the best parameters
-    # base dir should have the following structure:
-    '''
-    |--base_dir/
-      |--groundTruth/
-          |--Images/
-          |--Masks/
-      |--input/
-          |--img1.png
-      |--output/
-          |--BO_para/
-              |--version_1/
-                  |--Images/
-                  |--Masks/
-          |--manual_para/
-              |--version_1/
-                  |--Images/
-                  |--Masks/
-    '''
-    
     # Create Masks for groundTruth, BO and manual
-    create_gt_BO_manual_masks( pathsDict['projectDirFPath'] / pathsDict['baseValDirRpath'])
+    generateMasks_GT_BO_manual( pths['prj_fpth'] / pths['val_rpth'])
     
-    compute_ioU_and_write_to_file(pathsDict['projectDirFPath'] / pathsDict['baseValDirRpath'])
+    compute_ioU_and_write_to_file(pths['prj_fpth'] / pths['val_rpth'])
