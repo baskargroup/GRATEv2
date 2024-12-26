@@ -133,6 +133,13 @@ def createConfigFile(configFilePath,
     configDict['bayesian_opt_run']      = True
     configDict['alpha_shape_factor']    = 0.002
     
+    # Adding post processing parameters
+    configDict['post_processing'] = {
+        'ds_lower_bound'        : 1.5,
+        'ds_upper_bound'        : 2.8,
+        'threshold_area_factor' : 7,
+        }
+    
     with open(configFilePath, 'w') as configFile:
         libconf.dump(configDict, 
                      configFile)
@@ -419,7 +426,6 @@ if __name__ == "__main__":
     
     checkDirStructure()
     
-    # Save checkpoints using callbacks
     checkpoint_callback = skopt.callbacks.CheckpointSaver(trn_eval_fpth / 'checkpoint.pkl')
     
     # Run Bayesian Optimization
