@@ -292,8 +292,8 @@ def load_img_result_dir(img_path, params):
 
 def pick_unique_colors(count):
     
-    color_options = ['b', 'r', 'c', 'm','y','w']
-    # color_options = ['b', 'g', 'r', 'c', 'm','y','w']
+    color_options = ['b', 'r', 'c', 'm','y']
+    # color_options = ['b', 'g', 'r', 'c', 'm','y']
     
     assert count <= len(color_options), "Count should be less than or equal to the number of colors available"
     crystal_color = random.sample(color_options, count)
