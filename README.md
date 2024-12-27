@@ -49,9 +49,9 @@
 - **Configuration Files** (e.g., `BO_200Evals.cfg`, `manual.cfg`)  
     - **Purpose**: Specify algorithm parameters and paths.  
     - **Usage**: 
-      - `data_dir` and `base_result_dir`: For input and output directories.  
-      - Algorithm parameters (e.g., morphological settings, d-spacing references).  
-      - Optional modes (`debug`, `save_BB`, `result_display`) to control additional outputs.  
+        - `data_dir` and `base_result_dir`: For input and output directories.  
+        - Algorithm parameters (e.g., morphological settings, d-spacing references).  
+        - Optional modes (`debug`, `save_BB`, `result_display`) to control additional outputs.  
     - **Recommendation**: Rename or create new config files to differentiate between manual selection and Bayesian-optimized parameters (e.g., `manual.cfg`, `BO_200Evals.cfg`).
 
 
@@ -64,60 +64,59 @@
    cd GRATEv2
    ```
 
-	2.	Create and activate a virtual environment
+2.	Create and activate a virtual environment
     ```bash
     python3 -m venv gratev2_venv
     source gratev2_venv/bin/activate
     ```
 
-	3.	Install dependencies
+3.	Install dependencies
     ```bash
     pip install -r requirements.txt
     ```
 ## Usage
 
 1. Running the Image Processing Algorithm
-	1.	Update Config File
-
-	-	Choose a config file inside the configFiles directory (e.g., BO_200Evals.cfg).
-	-	Edit data_dir (path to input images) and base_result_dir (path to store output) to point to your data.
-	-	If you have Bayesian-optimized parameters, you can keep them in the config file; otherwise, you can manually adjust them.
-	2.	Run Analysis
-        ```bash
-        python main.py BO_200Evals.cfg
-        ```
-	-	The script processes images found in data_dir, detects crystals, and saves results under base_result_dir.
+    1.	Update Config File
+        -	Choose a config file inside the configFiles directory (e.g., BO_200Evals.cfg).
+        -	Edit data_dir (path to input images) and base_result_dir (path to store output) to point to your data.
+        -	If you have Bayesian-optimized parameters, you can keep them in the config file; otherwise, you can manually adjust them.
+    2.	Run Analysis
+          ```bash
+          python main.py BO_200Evals.cfg
+          ```
+        -	The script processes images found in data_dir, detects crystals, and saves results under base_result_dir.
 
 2. Performing Bayesian Optimization
-	1.	Adjust bayesianOpt.py
-	-	Update path variables for inputImgDirRPath, grateOutputDirRPath, groundTruthDirRPath.
-	-	Modify n_calls (total optimization steps) and n_initial_points (random initial exploration) in the gp_minimize function if needed.
-	2.	Run Bayesian Optimization
-        ```bash
-        python bayesianOpt.py
-        ```
+    1.	Adjust bayesianOpt.py
+        -	Update path variables for inputImgDirRPath, grateOutputDirRPath, groundTruthDirRPath.
+        -	Modify n_calls (total optimization steps) and n_initial_points (random initial exploration) in the gp_minimize function if needed.
+    2.	Run Bayesian Optimization
+          ```bash
+          python bayesianOpt.py
+          ```
 
-	-	Tests various parameter sets, calling main.py for each set.
-	-	Saves best parameter sets, convergence plots, and results in the specified output directory.
+        -	Tests various parameter sets, calling main.py for each set.
+        -	Saves best parameter sets, convergence plots, and results in the specified output directory.
 
-	3.	(Optional) Custom Loss
-	-	In bayesianOpt.py, the objective() function uses an IoU-based metric by default.
-	-	Users can extend or replace it with orientation-based or centroid-based measures, especially if crystals exhibit complex overlaps or require finer detection fidelity.
+    3.	(Optional) Custom Loss
+        -	In bayesianOpt.py, the objective() function uses an IoU-based metric by default.
+        -	Users can extend or replace it with orientation-based or centroid-based measures, especially if crystals exhibit complex overlaps or require finer detection fidelity.
 
 3. Preparing Ground Truth Annotations
-	1.	Annotation Tool
-	-	Use the VGG Image Annotator to label crystals in HRTEM images.
-	-	Save the resulting CSV in the relevant directory.
-	2.	Convert CSV Annotations
-        ```bash
-        python vggAnnotatorCSVRead.py
-        ```
-	-	Modifies the CSV into binary masks for evaluating detection performance.
-	-	Update base_dir_rpath and annotation_csv_fname in vggAnnotatorCSVRead.py to point to your data.
+    1.	Annotation Tool
+        -	Use the VGG Image Annotator to label crystals in HRTEM images.
+        -	Save the resulting CSV in the relevant directory.
+    2.	Convert CSV Annotations
+          ```bash
+          python vggAnnotatorCSVRead.py
+          ```
+        -	Modifies the CSV into binary masks for evaluating detection performance.
+        -	Update base_dir_rpath and annotation_csv_fname in vggAnnotatorCSVRead.py to point to your data.
 
-	3.	Validation and Testing
-	-	Place generated masks in the correct groundTruth location.
-	-	Use bayesianOpt.py or manual evaluation to measure performance on annotated data.
+    3.	Validation and Testing
+        -	Place generated masks in the correct groundTruth location.
+        -	Use bayesianOpt.py or manual evaluation to measure performance on annotated data.
 
 ## Thresholds and Batch Sizes in Bayesian Optimization
 -	When using Bayesian optimization with incremental dataset additions, the batch size influences how frequently and significantly the Wasserstein distance (or other metrics) changes.
