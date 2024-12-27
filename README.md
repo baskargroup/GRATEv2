@@ -27,32 +27,32 @@
 ## Repository Structure
 
 - **`main.py`**  
-  - **Purpose**: Primary script for image processing analysis.  
-  - **Usage**: Requires a config file (e.g., `BO_200Evals.cfg`) specifying input paths, output paths, and algorithm parameters.  
-  - **Notes**: Processes HRTEM images and outputs detected crystals along with computed features.  
+    - **Purpose**: Primary script for image processing analysis.  
+    - **Usage**: Requires a config file (e.g., `BO_200Evals.cfg`) specifying input paths, output paths, and algorithm parameters.  
+    - **Notes**: Processes HRTEM images and outputs detected crystals along with computed features.  
 
 - **`bayesianOpt.py`**  
-  - **Purpose**: Performs Bayesian optimization to identify optimal parameter sets for `main.py`.  
-  - **Paths**: Users should update path variables inside `bayesianOpt.py` (e.g., `inputImgDirRPath`, `grateOutputDirRPath`, `groundTruthDirRPath`) before running.  
-  - **Loss/Metric**: By default uses IoU, but can be changed in the `objective()` function if a more sophisticated metric is desired.  
-  - **Iteration Controls**: Modify `n_calls` and `n_initial_points` to set the number of optimization steps and initial random evaluations.
+    - **Purpose**: Performs Bayesian optimization to identify optimal parameter sets for `main.py`.  
+    - **Paths**: Users should update path variables inside `bayesianOpt.py` (e.g., `inputImgDirRPath`, `grateOutputDirRPath`, `groundTruthDirRPath`) before running.  
+    - **Loss/Metric**: By default uses IoU, but can be changed in the `objective()` function if a more sophisticated metric is desired.  
+    - **Iteration Controls**: Modify `n_calls` and `n_initial_points` to set the number of optimization steps and initial random evaluations.
 
 - **`requirements.txt`**  
-  - **Purpose**: Lists Python dependencies for creating a reproducible environment.  
-  - **Usage**: `pip install -r requirements.txt`
+    - **Purpose**: Lists Python dependencies for creating a reproducible environment.  
+    - **Usage**: `pip install -r requirements.txt`
 
 - **`vggAnnotatorCSVRead.py`**  
-  - **Purpose**: Converts VGG Image Annotator CSV outputs into binary masks for ground truth.  
-  - **Usage**: Adjust path variables (e.g., `base_dir_rpath`, `annotation_csv_fname`) to point to your annotation data.  
-  - **Result**: Produces masks used in evaluating detection performance or training Bayesian optimization.
+    - **Purpose**: Converts VGG Image Annotator CSV outputs into binary masks for ground truth.  
+    - **Usage**: Adjust path variables (e.g., `base_dir_rpath`, `annotation_csv_fname`) to point to your annotation data.  
+    - **Result**: Produces masks used in evaluating detection performance or training Bayesian optimization.
 
 - **Configuration Files** (e.g., `BO_200Evals.cfg`, `manual.cfg`)  
-  - **Purpose**: Specify algorithm parameters and paths.  
-  - **Usage**: 
-    - `data_dir` and `base_result_dir`: For input and output directories.  
-    - Algorithm parameters (e.g., morphological settings, d-spacing references).  
-    - Optional modes (`debug`, `save_BB`, `result_display`) to control additional outputs.  
-  - **Recommendation**: Rename or create new config files to differentiate between manual selection and Bayesian-optimized parameters (e.g., `manual.cfg`, `BO_200Evals.cfg`).
+    - **Purpose**: Specify algorithm parameters and paths.  
+    - **Usage**: 
+      - `data_dir` and `base_result_dir`: For input and output directories.  
+      - Algorithm parameters (e.g., morphological settings, d-spacing references).  
+      - Optional modes (`debug`, `save_BB`, `result_display`) to control additional outputs.  
+    - **Recommendation**: Rename or create new config files to differentiate between manual selection and Bayesian-optimized parameters (e.g., `manual.cfg`, `BO_200Evals.cfg`).
 
 
 ## Installation
