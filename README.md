@@ -132,8 +132,9 @@
 ## Contributing
 
 We welcome contributions, such as issues, pull requests, or feature suggestions. Please open an issue to discuss proposed changes before submitting a PR. For any questions or feedback, feel free to reach out to the authors.
-- Dhruv Gamdha (dgamdha@iastate.edu)
-- Basar Ganapathysubramanian (baskarg@iastate.edu)
+
+  - Dhruv Gamdha (dgamdha@iastate.edu)
+  - Basar Ganapathysubramanian (baskarg@iastate.edu)
 
 ## License
 
@@ -143,7 +144,7 @@ This project is licensed under the [MIT LICENSE](LICENSE), making it freely avai
 
 If you use GRATEv2 in your research, please cite our work:
 
- ```bibtex
+```bibtex
 @article{gamdha2024computational,
 title={GRATEv2: Computational Tools for Real-time Analysis of High-throughput High-resolution TEM (HRTEM) Images of Conjugated Polymers},
 author={Gamdha, Dhruv and Fair, Ryan and Krishnamurthy, Adarsh and Gomez, Enrique and Ganapathysubramanian, Baskar},
