@@ -52,7 +52,7 @@ def save_image_with_polygon(annotations,
         
         polygon = annotation['region_attributes']['polygon']
         for i in range(len(polygon)):
-            cv2.line(img, polygon[i], polygon[(i+1)%len(polygon)], (0, 255, 0), 20)
+            cv2.line(img, polygon[i], polygon[(i+1)%len(polygon)], (0, 255, 0), 5)
         cv2.imwrite(str(save_image_dir_fpath / currentFilename), img)
         lastFilename = currentFilename
     

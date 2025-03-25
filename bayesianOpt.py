@@ -335,11 +335,18 @@ def objective(**params):
     
     return -score
 
-def generateMasks_GT_BO_manual( base_dir_fpath):
+def generateMasks_inTrn_GT(base_trn_dir_fpath):
     
-    gt_fpath    = base_dir_fpath / val_subD['gt']
-    BO_fpath    = base_dir_fpath / val_subD['out_BO']
-    man_fpath   = base_dir_fpath / val_subD['out_man']
+    gt_fpath = base_trn_dir_fpath / trn_subD['gt']
+    
+    generateMasks(gt_fpath / run_subD['img'],
+                  gt_fpath / run_subD['mask'])
+
+def generateMasks_inVal_GT_BO_manual( base_val_dir_fpath):
+    
+    gt_fpath    = base_val_dir_fpath / val_subD['gt']
+    BO_fpath    = base_val_dir_fpath / val_subD['out_BO']
+    man_fpath   = base_val_dir_fpath / val_subD['out_man']
     
     BO_lstRunDirIdx = updateTemplateIndex(BO_fpath,
                                           pths['run_tmplt'],
@@ -419,7 +426,9 @@ def compute_ioU_and_write_to_file(base_dir_fpath):
 if __name__ == "__main__":
     
     trn_eval_fpth = pths['prj_fpth'] / pths['trn_rpth'] / trn_subD['eval']
-    # # Prepare the gound truth masks
+    # Prepare the ground truth masks for training
+    generateMasks_inTrn_GT(pths['prj_fpth'] / pths['trn_rpth'])
+    
     # CreateMaskFromAnnotatedImagesInsideDir(pathsDict['prj_fpth'] / pths['trn_rpth'] / trn_subD['gt'] / run_subD['img'], 
     # pathsDict['prj_fpth'] / pths['trn_rpth'] / trn_subD['gt'] / run_subD['mask'], 
     # threshold_value=10)
@@ -490,7 +499,7 @@ if __name__ == "__main__":
     # run the manual algorithm using manual.cfg
     run_algorithm('manual.cfg')
     
-    # Create Masks for groundTruth, BO and manual
-    generateMasks_GT_BO_manual( pths['prj_fpth'] / pths['val_rpth'])
+    # Create Masks for groundTruth, BO and manual in validation set
+    generateMasks_inVal_GT_BO_manual( pths['prj_fpth'] / pths['val_rpth'])
     
     compute_ioU_and_write_to_file(pths['prj_fpth'] / pths['val_rpth'])

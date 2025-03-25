@@ -33,7 +33,7 @@
 
 - **`bayesianOpt.py`**  
     - **Purpose**: Performs Bayesian optimization to identify optimal parameter sets for `main.py`.  
-    - **Paths**: Users should update path variables inside `bayesianOpt.py` (e.g., `inputImgDirRPath`, `grateOutputDirRPath`, `groundTruthDirRPath`) before running.  
+    - **Paths**: Users should update path variables inside `bayesianOpt.py` (e.g.`pths['trn_rpth']`, `pths['val_rpth']`) before running.  
     - **Loss/Metric**: By default uses IoU, but can be changed in the `objective()` function if a more sophisticated metric is desired.  
     - **Iteration Controls**: Modify `n_calls` and `n_initial_points` to set the number of optimization steps and initial random evaluations.
 
@@ -60,7 +60,7 @@
 1. **Clone the repository**  
    *(Update the following commands if the repository URL or local path changes.)*
    ```bash
-   git clone https://<YourUsername>@bitbucket.org/baskargroup/gratev2.git GRATEv2
+   git clone https://bitbucket.org/baskargroup/gratev2.git GRATEv2
    cd GRATEv2
    ```
 
@@ -89,7 +89,7 @@
 
 2. Performing Bayesian Optimization
     1.	Adjust bayesianOpt.py
-        -	Update path variables for inputImgDirRPath, grateOutputDirRPath, groundTruthDirRPath.
+        -	Update path variables for `pths['trn_rpth']`, `pths['val_rpth']`.
         -	Modify n_calls (total optimization steps) and n_initial_points (random initial exploration) in the gp_minimize function if needed.
     2.	Run Bayesian Optimization
           ```bash
@@ -118,9 +118,6 @@
         -	Place generated masks in the correct groundTruth location.
         -	Use bayesianOpt.py or manual evaluation to measure performance on annotated data.
 
-## Thresholds and Batch Sizes in Bayesian Optimization
--	When using Bayesian optimization with incremental dataset additions, the batch size influences how frequently and significantly the Wasserstein distance (or other metrics) changes.
--	Larger batch sizes may produce more pronounced distribution shifts, potentially requiring a higher threshold, while smaller batch sizes update incrementally and might justify a lower threshold for stopping criteria.
 
 ## Customization
 1.	Loss Function
