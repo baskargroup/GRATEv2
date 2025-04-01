@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 import pathlib as pl
 import libconf
 import subprocess
+import os
+import pickle
+import tempfile
 
 # Constants
 ACCEPTED_FORMATS = ['.tif', '.tiff', '.png']
@@ -422,8 +425,39 @@ def compute_ioU_and_write_to_file(base_dir_fpath):
                         man_runDir_fpath / 'iou_log.txt',
                         man_runDir_fpath / run_subD['mask'],
                         gt_fpath / run_subD['mask'])
+    
+
+def robust_save_checkpoint(checkpoint, filename):
+    """
+    Save a checkpoint object to a file robustly using atomic writes.
+    
+    Args:
+        checkpoint: The data (e.g., an optimization result) to be saved.
+        filename: The target filename for the checkpoint.
+    """
+    dir_name = os.path.dirname(filename)
+    
+    # Create a temporary file in the same directory
+    try:
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, dir=dir_name) as tf:
+            pickle.dump(checkpoint, tf)
+            temp_name = tf.name
+        # Atomically move the temporary file to the target location
+        os.replace(temp_name, filename)
+        print(f"Checkpoint saved successfully to {filename}")
+    except Exception as e:
+        print(f"Failed to save checkpoint to {filename}: {e}")
+        # Optionally, remove the temporary file if it exists
+        if os.path.exists(temp_name):
+            os.remove(temp_name)
 
 if __name__ == "__main__":
+    
+    # Assume n_calls is defined, for example:
+    n_calls = 1000
+    n_initial_points = 50
+    random_state = 42
+    store_frequency = max(1, int(n_calls * 0.1))  # Saves every 10% of n_calls
     
     trn_eval_fpth = pths['prj_fpth'] / pths['trn_rpth'] / trn_subD['eval']
     # Prepare the ground truth masks for training
@@ -435,17 +469,51 @@ if __name__ == "__main__":
     
     checkDirStructure()
     
-    checkpoint_callback = skopt.callbacks.CheckpointSaver(trn_eval_fpth / 'checkpoint.pkl')
+    # Path to the checkpoint file
+    checkpoint_file_fpath = trn_eval_fpth / 'checkpoint.pkl'
     
-    # Run Bayesian Optimization
+    # Attempt to resume from checkpoint if it exists
+    x0, y0 = None, None
+    if checkpoint_file_fpath.exists():
+        print("Checkpoint found. Attempting to resume optimization from checkpoint.")
+        try:
+            with open(checkpoint_file_fpath, 'rb') as f:
+                previous_result = pickle.load(f)
+            x0 = previous_result.x_iters
+            y0 = previous_result.func_vals
+            print("Checkpoint loaded successfully.")
+        except Exception as e:
+            print("Failed to load checkpoint due to error:", e)
+            print("Starting new optimization and overwriting the checkpoint.")
+            x0, y0 = None, None
+    else:
+        print("No checkpoint found. Starting a new optimization.")
+    
+    # Custom callback to save best parameters at each iteration
+    def best_params_callback(res):
+        best_params = dict(zip([dim.name for dim in param_space], res.x))
+        createConfigFile(trn_eval_fpth / 'best_params.cfg', best_params)
+        # Print iteration number and best parameters
+        print(f"Iteration {len(res.x_iters)}: Best parameters: {best_params}")
+    
+    def checkpoint_callback(res):
+        # Determine the current iteration count based on the number of evaluated points.
+        iteration = len(res.x_iters)
+        # Save checkpoint every store_frequency iterations, or on the final iteration.
+        if (iteration % store_frequency == 0) or (iteration == n_calls):
+            robust_save_checkpoint(res, str(checkpoint_file_fpath))
+
+    # Run Bayesian Optimization. If resuming, set n_initial_points=0.
     res = gp_minimize(
         func=objective,
         dimensions=param_space,
         acq_func='EI',      # Expected Improvement
-        n_calls=200,         # Number of evaluations of the objective function
-        n_initial_points=10,# Number of initial random evaluations
-        random_state=42,     # For reproducibility
-        callback=[checkpoint_callback]
+        n_calls=n_calls,
+        n_initial_points= n_initial_points if x0 is None else 0,
+        random_state= random_state,
+        callback=[checkpoint_callback, best_params_callback],
+        x0=x0,
+        y0=y0
     )
 
     # Print the best found parameters and the corresponding score
