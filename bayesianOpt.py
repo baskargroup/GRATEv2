@@ -128,12 +128,12 @@ def createConfigFile(configFilePath,
     configDict['dspace_nm'] = [1.9]
     configDict['pix_2_nm']  = 78.5
     
-    configDict['debug']                 = 0
+    configDict['debug']                 = configDict.get('debug', 0)
+    configDict['bayesian_opt_run']      = configDict.get('bayesian_opt_run', True)
     configDict['save_BB']               = 0
     configDict['save_backbone_coords']  = 0
     configDict['result_display']        = 0
     configDict['image_scale_percent']   = 50
-    configDict['bayesian_opt_run']      = True
     configDict['alpha_shape_factor']    = 0.002
     
     # Adding post processing parameters
@@ -336,6 +336,9 @@ def objective(**params):
     score = compute_iou(trn_lstRunD_fpth / run_subD['mask'], 
                         trn_gt_fpth / run_subD['mask'])
     
+    # remove the run directory
+    os.system(f'rm -rf {trn_lstRunD_fpth}')
+    
     return -score
 
 def generateMasks_inTrn_GT(base_trn_dir_fpath):
@@ -454,8 +457,8 @@ def robust_save_checkpoint(checkpoint, filename):
 if __name__ == "__main__":
     
     # Assume n_calls is defined, for example:
-    n_calls = 1000
-    n_initial_points = 50
+    n_calls = 300
+    n_initial_points = 10
     random_state = 42
     store_frequency = max(1, int(n_calls * 0.1))  # Saves every 10% of n_calls
     
@@ -490,16 +493,66 @@ if __name__ == "__main__":
         print("No checkpoint found. Starting a new optimization.")
     
     # Custom callback to save best parameters at each iteration
+    best_score_so_far = float('inf')  # Smaller is better since objective returns -IoU
+    
+    def createModifiedConfigFile(configFilePath, configDict, trainingRun=True):
+        """
+        Makes a copy of configDict, sets debug=1 and bayesian_opt_run=False,
+        then calls the original createConfigFile.
+        """
+        modified_config = configDict.copy()
+        modified_config['debug'] = 1
+        modified_config['bayesian_opt_run'] = False
+        createConfigFile(configFilePath, modified_config, trainingRun)
+
     def best_params_callback(res):
-        best_params = dict(zip([dim.name for dim in param_space], res.x))
-        createConfigFile(trn_eval_fpth / 'best_params.cfg', best_params)
-        # Print iteration number and best parameters
-        print(f"Iteration {len(res.x_iters)}: Best parameters: {best_params}")
+        """
+        This callback is invoked at the end of each iteration of gp_minimize.
+        It does two things:
+        1. Always writes the current best parameters to 'best_params.cfg' in trn_eval_fpth.
+        2. If the newly found objective is strictly better, we:
+            - Copy/write a new config file into pths['prj_fpth']/configFiles,
+            - Immediately call run_algorithm() with that config file,
+            - Print a message about the improvement.
+        """
+        global best_score_so_far
+        
+        # 1) Write the current best parameters for reference
+        best_params_current = dict(zip((dim.name for dim in param_space), res.x))
+        createConfigFile(trn_eval_fpth / 'best_params.cfg', best_params_current)
+        
+        iteration_num = len(res.x_iters)
+        print(f"Iteration {iteration_num}: Current best parameters (from skopt): {best_params_current}")
+        
+        # 2) Check if the new objective is strictly better (remember objective is negative IoU)
+        current_best_obj = res.fun
+        if current_best_obj < best_score_so_far:
+            # Update the global best score
+            best_score_so_far = current_best_obj
+            
+            # Copy or directly write a new config file in configFiles
+            new_cfg_filename = f"best_params_iter_{iteration_num}.cfg"
+            new_cfg_fpath = pths['prj_fpth'] / 'configFiles' / new_cfg_filename
+            
+            # createConfigFile(new_cfg_fpath, best_params_current, trainingRun=True)
+            createModifiedConfigFile(new_cfg_fpath, best_params_current, trainingRun=True)
+            
+            # Run the algorithm with these improved parameters
+            run_algorithm(new_cfg_filename)
+            
+            print(
+                f"\n[Improvement] Iteration {iteration_num}: "
+                f"New best objective = {current_best_obj:.6f} "
+                f"(remember: more negative => better IoU).\n"
+                f"Saved config to: {new_cfg_fpath}\n"
+                "Just ran the algorithm with these new parameters.\n"
+            )
     
     def checkpoint_callback(res):
-        # Determine the current iteration count based on the number of evaluated points.
+        """
+        Saves a checkpoint to 'checkpoint.pkl' every N evaluations (store_frequency).
+        """
         iteration = len(res.x_iters)
-        # Save checkpoint every store_frequency iterations, or on the final iteration.
         if (iteration % store_frequency == 0) or (iteration == n_calls):
             robust_save_checkpoint(res, str(checkpoint_file_fpath))
 

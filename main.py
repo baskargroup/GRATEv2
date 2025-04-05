@@ -22,6 +22,9 @@ def load_config():
     project_path = Path(__file__).parent.resolve()
     config_file_path = project_path / 'configFiles' / sys.argv[1]
     
+    # get config file name and store it as a string
+    config_file_name = str(config_file_path).split('/')[-1]
+    
     config = {}
     
     with config_file_path.open() as f:
@@ -36,7 +39,7 @@ def load_config():
             print("Invalid dspace_nm argument. Please provide a float number.")
             sys.exit(1)
         
-    return config, project_path
+    return config, project_path, config_file_name
     
 def prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys_color):
     """Prepare parameters for processing."""
@@ -104,7 +107,11 @@ def prepare_parameters(config, project_path, version_result_dir, dspace_nm, crys
     
     return parameters, data_dir, directories
     
-def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color):
+def setup_directories_and_parameters(project_path, 
+                                     config, 
+                                     dspace_nm, 
+                                     crys_color,
+                                     config_file_name):
     """Setup directories and prepare parameters."""
     
     version_result_dir = createVersionDirectory(project_path / str(config['base_result_dir']), 
@@ -118,7 +125,9 @@ def setup_directories_and_parameters(project_path, config, dspace_nm, crys_color
     
     CreateDirectories(directories)
     
-    with open(version_result_dir / 'config.cfg', 'w') as config_file:
+    # with open(version_result_dir / 'config.cfg', 'w') as config_file:
+    with open(version_result_dir / config_file_name, 'w') as config_file:
+        config_file.write(f"# Created on {pd.Timestamp.now()}\n")
         libconf.dump(config, config_file)
         
     return parameters, data_dir
@@ -197,7 +206,7 @@ def process_image(data_dir, parameters, last_run, run_parallel=True):
 @timeit
 def main():
     
-    config, project_path = load_config()
+    config, project_path, config_file_name = load_config()
     
     first_run = True
     last_run = False
@@ -213,7 +222,8 @@ def main():
             parameters, data_dir = setup_directories_and_parameters(project_path, 
                                                                     config, 
                                                                     dspace_nm, 
-                                                                    crys_colors[i])
+                                                                    crys_colors[i],
+                                                                    config_file_name)
             first_run = False
         else:
             parameters, data_dir = prepare_parameters(config, 
