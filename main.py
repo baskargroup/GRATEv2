@@ -226,7 +226,7 @@ def main():
                                                                     config_file_name)
             first_run = False
         else:
-            parameters, data_dir = prepare_parameters(config, 
+            parameters, data_dir, _ = prepare_parameters(config, 
                                                       project_path, 
                                                       parameters['result directory'], 
                                                       dspace_nm, 
