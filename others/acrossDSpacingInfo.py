@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from os import listdir
 from os.path import join, splitext
 from utils import getAngleDifference, filterThreshArea
-from scipy.stats import poisson
+from scipy.stats import poisson, gaussian_kde
 
 #############################
 #       CONFIGURATION       #
@@ -350,6 +350,170 @@ def check_histogram_peak_FD(csv_filepath, column='value', significance_level=0.0
     }
     
     return p_value < significance_level, p_value, details
+  
+def plot_contour_direct_angle(csv_filepath, save_path, num_levels=10):
+  """
+  Reads the acrossDSpacingInfo.csv file, extracts the 'Direct Distances' and 'Relative Angle' columns,
+  computes 2D binning using the Freedman-Diaconis rule, and produces a 2D contour plot.
+  
+  Parameters:
+    csv_filepath: Path to the acrossDSpacingInfo.csv file.
+    save_path: Path to save the generated contour plot image.
+  """
+  # Read the CSV file
+  df = pd.read_csv(csv_filepath)
+  
+  # Extract the two columns of interest, dropping NaNs
+  direct = df['Direct Distances'].dropna().values
+  angle = df['Relative Angle'].dropna().values
+  
+  # Determine the optimal number of bins for each dimension using the Freedman-Diaconis rule
+  num_bins_direct = freedman_diaconis_bins(direct)
+  num_bins_angle = freedman_diaconis_bins(angle)
+  
+  # Compute a 2D histogram of the data
+  H, xedges, yedges = np.histogram2d(direct, angle, bins=[num_bins_direct, num_bins_angle])
+  
+  # Calculate bin centers for both dimensions
+  xcenters = (xedges[:-1] + xedges[1:]) / 2
+  ycenters = (yedges[:-1] + yedges[1:]) / 2
+  X, Y = np.meshgrid(xcenters, ycenters)
+  
+  # Create a 2D contour plot
+  plt.figure(figsize=(10, 8))
+  contour = plt.contourf(X, Y, H.T, levels=num_levels,cmap='viridis')
+  plt.xlabel('Direct Distances (nm)')
+  plt.ylabel('Relative Angle (degrees)')
+  plt.title('2D Contour Plot: Direct Distance vs. Relative Angle')
+  plt.colorbar(contour, label='Counts')
+  plt.savefig(save_path)
+  plt.close()
+
+
+# Kernel Density Estimate (KDE) Plotting Functions
+
+def plot_kde_avg_relative_angle(df, save_path):
+    """
+    Plot a kernel density estimate (KDE) for 'Avg Relative Angle'.
+    
+    Parameters:
+      df: DataFrame containing 'Avg Relative Angle'.
+      save_path: File path to save the KDE plot image.
+    """
+    data = df['Avg Relative Angle'].dropna().values
+    density = gaussian_kde(data)
+    xs = np.linspace(data.min(), data.max(), 200)
+    ys = density(xs)
+    plt.figure(figsize=(10, 5))
+    plt.plot(xs, ys, color='blue', lw=2, label='KDE')
+    plt.xlabel('Avg Relative Angle (degrees)')
+    plt.ylabel('Density')
+    plt.title('KDE of Average Relative Angles')
+    plt.legend()
+    plt.savefig(save_path)
+    plt.close()
+
+def plot_kde_std_angles(df, save_path):
+    """
+    Plot overlaid KDEs for 'Std Angle 1.9nm' and 'Std Angle 0.7nm'.
+    
+    Parameters:
+      df: DataFrame containing the standard deviation columns.
+      save_path: File path to save the KDE plot image.
+    """
+    data1 = df['Std Angle 1.9nm'].dropna().values
+    data2 = df['Std Angle 0.7nm'].dropna().values
+    density1 = gaussian_kde(data1)
+    density2 = gaussian_kde(data2)
+    xs1 = np.linspace(data1.min(), data1.max(), 200)
+    xs2 = np.linspace(data2.min(), data2.max(), 200)
+    plt.figure(figsize=(10, 5))
+    plt.plot(xs1, density1(xs1), label='Std Angle 1.9nm', lw=2)
+    plt.plot(xs2, density2(xs2), label='Std Angle 0.7nm', lw=2)
+    plt.xlabel('Angle (degrees)')
+    plt.ylabel('Density')
+    plt.title('KDE of Standard Deviations of Angles')
+    plt.legend()
+    plt.savefig(save_path)
+    plt.close()
+
+def plot_kde_metric_direct(df, save_path):
+    """
+    Plot overlaid KDEs for 'Metric Distances' and 'Direct Distances'.
+    
+    Parameters:
+      df: DataFrame containing the distance columns.
+      save_path: File path to save the KDE plot image.
+    """
+    data1 = df['Metric Distances'].dropna().values
+    data2 = df['Direct Distances'].dropna().values
+    density1 = gaussian_kde(data1)
+    density2 = gaussian_kde(data2)
+    xs1 = np.linspace(data1.min(), data1.max(), 200)
+    xs2 = np.linspace(data2.min(), data2.max(), 200)
+    plt.figure(figsize=(10, 5))
+    plt.plot(xs1, density1(xs1), label='Metric Distances', lw=2)
+    plt.plot(xs2, density2(xs2), label='Direct Distances', lw=2)
+    plt.xlabel('Distance (nm)')
+    plt.ylabel('Density')
+    plt.title('KDE of Metric and Direct Distances')
+    plt.legend()
+    plt.savefig(save_path)
+    plt.close()
+
+def plot_kde_relative_angle(df, save_path):
+    """
+    Plot a KDE for 'Relative Angle'.
+    
+    Parameters:
+      df: DataFrame containing 'Relative Angle'.
+      save_path: File path to save the KDE plot image.
+    """
+    data = df['Relative Angle'].dropna().values
+    density = gaussian_kde(data)
+    xs = np.linspace(data.min(), data.max(), 200)
+    ys = density(xs)
+    plt.figure(figsize=(10, 5))
+    plt.plot(xs, ys, color='green', lw=2, label='KDE')
+    plt.xlabel('Relative Angle (degrees)')
+    plt.ylabel('Density')
+    plt.title('KDE of Relative Angles')
+    plt.legend()
+    plt.savefig(save_path)
+    plt.close()
+
+def plot_kde_contour_direct_angle(csv_filepath, save_path, num_levels=10):
+    """
+    Generate a 2D KDE contour plot for 'Direct Distances' and 'Relative Angle' using Gaussian KDE.
+    
+    Parameters:
+      csv_filepath: Path to acrossDSpacingInfo.csv.
+      save_path: Path to save the KDE contour plot image.
+      num_levels: Number of contour levels (default is 10).
+    """
+    df = pd.read_csv(csv_filepath)
+    direct = df['Direct Distances'].dropna().values
+    angle = df['Relative Angle'].dropna().values
+
+    # Define grid for KDE evaluation
+    xmin, xmax = direct.min(), direct.max()
+    ymin, ymax = angle.min(), angle.max()
+    xi, yi = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+    
+    # Evaluate 2D Gaussian KDE on grid
+    values = np.vstack([direct, angle])
+    kernel = gaussian_kde(values)
+    zi = kernel(np.vstack([xi.flatten(), yi.flatten()]))
+    zi = zi.reshape(xi.shape)
+    
+    plt.figure(figsize=(10, 8))
+    contour = plt.contourf(xi, yi, zi, levels=num_levels, cmap='viridis')
+    plt.xlabel('Direct Distances (nm)')
+    plt.ylabel('Relative Angle (degrees)')
+    plt.title('2D KDE Contour Plot: Direct Distance vs. Relative Angle')
+    plt.colorbar(contour, label='Density')
+    plt.savefig(save_path)
+    plt.close()
 
 #############################
 #          MAIN             #
@@ -396,3 +560,29 @@ if __name__ == "__main__":
     significant, p_val, info = check_histogram_peak_FD(across_csv_path, column='Relative Angle')
     print(f"Peak significance: {significant} (p-value: {p_val})")
     print("Peak details:", info)
+    
+    # Generate and save KDE plots
+    kde_avg_angle_path = join(DATA_DIR, "kde_acrossDSpacingInfo_avg_angle.png")
+    plot_kde_avg_relative_angle(avg_angle_df, kde_avg_angle_path)
+    print("Saved KDE plot:", kde_avg_angle_path)
+    
+    kde_std_angle_path = join(DATA_DIR, "kde_acrossDSpacingInfo_std_angles.png")
+    plot_kde_std_angles(avg_angle_df, kde_std_angle_path)
+    print("Saved KDE plot:", kde_std_angle_path)
+    
+    kde_metric_direct_path = join(DATA_DIR, "kde_acrossDSpacingInfo_metric_direct.png")
+    plot_kde_metric_direct(across_df, kde_metric_direct_path)
+    print("Saved KDE plot:", kde_metric_direct_path)
+    
+    kde_relative_angle_path = join(DATA_DIR, "kde_acrossDSpacingInfo_relative_angle.png")
+    plot_kde_relative_angle(across_df, kde_relative_angle_path)
+    print("Saved KDE plot:", kde_relative_angle_path)
+    
+    # Generate and save 2D contour plots
+    contour_plot_path = join(DATA_DIR, "contour_direct_vs_angle.png")
+    plot_contour_direct_angle(across_csv_path, contour_plot_path, num_levels=4)
+    print("Saved 2D contour plot:", contour_plot_path)
+    
+    kde_contour_plot_path = join(DATA_DIR, "kde_contour_direct_vs_angle.png")
+    plot_kde_contour_direct_angle(across_csv_path, kde_contour_plot_path, num_levels=10)
+    print("Saved 2D KDE contour plot:", kde_contour_plot_path)
