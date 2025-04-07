@@ -74,6 +74,24 @@ def freedman_diaconis_bins(data):
         return int(np.ceil(np.sqrt(len(data))))
     
     return int(np.ceil(data_range / bin_width))
+  
+def order_by_image_crystal_count(df, image_col="ImageName"):
+    """
+    Order the rows of a DataFrame based on the number of crystal pairs per image.
+    Images with the highest number of crystal pairs are placed first.
+    
+    Parameters:
+      df: DataFrame containing an 'ImageName' column.
+      image_col: The name of the image column (default "ImageName").
+      
+    Returns:
+      A DataFrame sorted by descending crystal count per image.
+    """
+    counts = df.groupby(image_col).size().sort_values(ascending=False)
+    ordered_images = counts.index.tolist()
+    # Create a categorical type with the ordered images and sort the dataframe accordingly.
+    df[image_col] = pd.Categorical(df[image_col], categories=ordered_images, ordered=True)
+    return df.sort_values(image_col).reset_index(drop=True)
 
 #############################
 #   CSV CREATION FUNCTIONS  #
@@ -82,9 +100,10 @@ def freedman_diaconis_bins(data):
 def createAcrossDSpacingInfo_csv():
     """
     Process CSV files from both directories and create a DataFrame containing:
-      - Metric Distances
-      - Direct Distances
-      - Relative Angle (absolute difference between crystal angles)
+      - ImageName: Name of the source file (image).
+      - Metric Distances: Normalized distance between crystals.
+      - Direct Distances: Euclidean distance (in nm) between crystal centroids.
+      - Relative Angle: Absolute difference between crystal orientations.
     
     Returns:
       DataFrame with the processed data.
@@ -100,6 +119,7 @@ def createAcrossDSpacingInfo_csv():
     MetricDistances = []
     DirectDistances = []
     ModRelAngle = []
+    ImageNames = []  # Record the image filename for each pair
     
     for filename in commonCSV:
         if filename == "overall.csv":
@@ -124,10 +144,11 @@ def createAcrossDSpacingInfo_csv():
                 MetricDistances.append(MetricDist)
                 DirectDistances.append(CCdist)
                 ModRelAngle.append(getAngleDifference(ang1, ang2))
+                ImageNames.append(filename)
     
     print("Total pairs processed:", len(DirectDistances))
-    df = pd.DataFrame(list(zip(MetricDistances, DirectDistances, ModRelAngle)),
-                      columns=['Metric Distances', 'Direct Distances', 'Relative Angle'])
+    df = pd.DataFrame(list(zip(ImageNames, MetricDistances, DirectDistances, ModRelAngle)),
+                      columns=['ImageName', 'Metric Distances', 'Direct Distances', 'Relative Angle'])
     return df.round(2)
 
 def createAvgAngle_acrossDSpacingInfo_csv():
@@ -172,6 +193,47 @@ def createAvgAngle_acrossDSpacingInfo_csv():
     df = pd.DataFrame(list(zip(ModAvgRelAngle, ModStdRelAngle_1p9, ModStdRelAngle_0p7)),
                       columns=['Avg Relative Angle', 'Std Angle 1.9nm', 'Std Angle 0.7nm'])
     return df.round(2)
+
+#############################
+#       FILTERING           #
+#############################
+
+def filter_images_and_crystals(csv_filepath, 
+                               peak_direct_range=(10,15), peak_angle_range=(5,10),
+                               away_direct_thresh=35, away_angle_thresh=50):
+    """
+    Read the acrossDSpacingInfo CSV file and filter records into two groups:
+      1. Peak Region: Direct Distances between peak_direct_range and Relative Angle within peak_angle_range.
+      2. Away Region: Direct Distances greater than away_direct_thresh and Relative Angle greater than away_angle_thresh.
+    
+    Parameters:
+      csv_filepath: Path to the acrossDSpacingInfo CSV file.
+      peak_direct_range: Tuple specifying the range of Direct Distances for the peak region.
+      peak_angle_range: Tuple specifying the range of Relative Angles for the peak region.
+      away_direct_thresh: Lower threshold for Direct Distances in the away region.
+      away_angle_thresh: Lower threshold for Relative Angles in the away region.
+    
+    Returns:
+      peak_df: DataFrame containing records in the peak region.
+      away_df: DataFrame containing records in the away region.
+    """
+    df = pd.read_csv(csv_filepath)
+    
+    # Filter for peak region
+    peak_df = df[(df['Direct Distances'] >= peak_direct_range[0]) & 
+                 (df['Direct Distances'] <= peak_direct_range[1]) & 
+                 (df['Relative Angle'] >= peak_angle_range[0]) & 
+                 (df['Relative Angle'] <= peak_angle_range[1])]
+    
+    # Filter for away region
+    away_df = df[(df['Direct Distances'] > away_direct_thresh) & 
+                 (df['Relative Angle'] > away_angle_thresh)]
+    
+    # Order the rows by the number of crystal pairs per image (highest first)
+    peak_df = order_by_image_crystal_count(peak_df, "ImageName")
+    away_df = order_by_image_crystal_count(away_df, "ImageName")
+    
+    return peak_df, away_df
 
 #############################
 #       PLOTTING            #
@@ -482,13 +544,15 @@ def plot_kde_relative_angle(df, save_path):
     plt.savefig(save_path)
     plt.close()
 
-def plot_kde_contour_direct_angle(csv_filepath, save_path, num_levels=10):
+def plot_kde_contour_direct_angle(csv_filepath, save_path, kde_csv_path=None, num_levels=10):
     """
-    Generate a 2D KDE contour plot for 'Direct Distances' and 'Relative Angle' using Gaussian KDE.
+    Generate a 2D KDE contour plot for 'Direct Distances' and 'Relative Angle' using Gaussian KDE,
+    and optionally store the KDE evaluated grid values as a CSV file for later plotting.
     
     Parameters:
       csv_filepath: Path to acrossDSpacingInfo.csv.
       save_path: Path to save the KDE contour plot image.
+      kde_csv_path: Optional; path to save the KDE grid and density values as a CSV file.
       num_levels: Number of contour levels (default is 10).
     """
     df = pd.read_csv(csv_filepath)
@@ -506,6 +570,17 @@ def plot_kde_contour_direct_angle(csv_filepath, save_path, num_levels=10):
     zi = kernel(np.vstack([xi.flatten(), yi.flatten()]))
     zi = zi.reshape(xi.shape)
     
+    # Optionally save KDE grid and density to CSV
+    if kde_csv_path is not None:
+        # Flatten the grid coordinates and density
+        grid_data = pd.DataFrame({
+            'x': xi.flatten(),
+            'y': yi.flatten(),
+            'density': zi.flatten()
+        })
+        grid_data.to_csv(kde_csv_path, index=False)
+    
+    # Create the 2D contour plot
     plt.figure(figsize=(10, 8))
     contour = plt.contourf(xi, yi, zi, levels=num_levels, cmap='viridis')
     plt.xlabel('Direct Distances (nm)')
@@ -525,6 +600,21 @@ if __name__ == "__main__":
     across_csv_path = join(DATA_DIR, "acrossDSpacingInfo.csv")
     across_df.to_csv(across_csv_path, index=False)
     print("Saved CSV:", across_csv_path)
+    
+    # Filter images and crystal pairs for peak and away regions
+    peak_df, away_df = filter_images_and_crystals(across_csv_path,
+                                                   peak_direct_range=(10,15), 
+                                                   peak_angle_range=(5,10),
+                                                   away_direct_thresh=35, 
+                                                   away_angle_thresh=50)
+    
+    # Save the filtered results
+    peak_csv = join(DATA_DIR, "peak_region.csv")
+    away_csv = join(DATA_DIR, "away_region.csv")
+    peak_df.to_csv(peak_csv, index=False)
+    away_df.to_csv(away_csv, index=False)
+    print("Saved peak region CSV:", peak_csv)
+    print("Saved away region CSV:", away_csv)
     
     # Create and save the average angle info CSV
     avg_angle_df = createAvgAngle_acrossDSpacingInfo_csv()
@@ -583,6 +673,7 @@ if __name__ == "__main__":
     plot_contour_direct_angle(across_csv_path, contour_plot_path, num_levels=4)
     print("Saved 2D contour plot:", contour_plot_path)
     
-    kde_contour_plot_path = join(DATA_DIR, "kde_contour_direct_vs_angle.png")
-    plot_kde_contour_direct_angle(across_csv_path, kde_contour_plot_path, num_levels=10)
-    print("Saved 2D KDE contour plot:", kde_contour_plot_path)
+    kde_csv_path = join(DATA_DIR, "kde_grid_data.csv")
+    kde_contour_plot_path_new = join(DATA_DIR, "kde_contour_direct_vs_angle.png")
+    plot_kde_contour_direct_angle(across_csv_path, kde_contour_plot_path_new, kde_csv_path=kde_csv_path, num_levels=10)
+    print("Saved 2D KDE contour plot with grid data:", kde_contour_plot_path_new)
