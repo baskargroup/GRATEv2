@@ -910,7 +910,7 @@ def plot_edge_normalized_contour(csv_filepath, save_path,
     r1 = df['Radius1'].values
     r2 = df['Radius2'].values
     r_edge = r_centroid - (r1 + r2)
-    r_edge = np.clip(r_edge, r_min, None)
+    # r_edge = np.clip(r_edge, r_min, None)
     theta = df['Relative Angle'].values
 
     # 2) Determine bins
@@ -928,7 +928,7 @@ def plot_edge_normalized_contour(csv_filepath, save_path,
     dth        = np.diff(th_edges)
 
     R, TH = np.meshgrid(r_centers, th_centers, indexing='ij')
-    area = R * dr[:, None] * dth[None, :]
+    area = np.abs(R) * dr[:, None] * dth[None, :]
     H_norm = H / area
 
     # 4b) Optionally export flattened grid + density
