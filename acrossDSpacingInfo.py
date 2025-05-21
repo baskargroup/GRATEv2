@@ -150,6 +150,60 @@ def createAcrossDSpacingInfo_csv():
     df = pd.DataFrame(list(zip(ImageNames, MetricDistances, DirectDistances, ModRelAngle)),
                       columns=['ImageName', 'Metric Distances', 'Direct Distances', 'Relative Angle'])
     return df.round(2)
+  
+  
+def createAcrossDSpacingInfo_with_radii_csv():
+    """
+    Process CSV files from both directories and create a DataFrame containing:
+      - ImageName: Name of the source file (image).
+      - Radius1: Radius (nm) of the 0.4 nm crystal.
+      - Radius2: Radius (nm) of the 2.0 nm crystal.
+      - Metric Distances: Normalized distance between crystals (centroid-to-centroid divided by radii sum).
+      - Direct Distances: Euclidean distance (in nm) between crystal centroids.
+      - Relative Angle: Absolute difference between crystal orientations (degrees).
+    
+    Returns:
+      DataFrame with the processed data.
+    """
+    files1 = [f for f in listdir(D_SPACE_DIR_1) if splitext(f)[1] == ".csv"]
+    files2 = [f for f in listdir(D_SPACE_DIR_2) if splitext(f)[1] == ".csv"]
+    commonCSV = listIntersection(files1, files2)
+    
+    records = []
+    for filename in commonCSV:
+        if filename == "overall.csv":
+            continue
+        df1 = pd.read_csv(join(D_SPACE_DIR_1, filename))
+        df1 = filterThreshArea(df1, 'Crystal Area (nm^2)', d_space=1.9, threshold_area_factor=7)
+        df2 = pd.read_csv(join(D_SPACE_DIR_2, filename))
+        df2 = filterThreshArea(df2, 'Crystal Area (nm^2)', d_space=0.7, threshold_area_factor=10)
+        
+        for _, row1 in df1.iterrows():
+            centroid1 = numericFromString(row1['Centroid'], PIX2NM)
+            area1     = float(row1['Crystal Area (nm^2)'])
+            rad1      = radFromArea(area1)
+            ang1      = float(row1['Crystal Angle (zero at X-axis and clockwise positive)'])
+            for _, row2 in df2.iterrows():
+                centroid2 = numericFromString(row2['Centroid'], PIX2NM)
+                area2     = float(row2['Crystal Area (nm^2)'])
+                rad2      = radFromArea(area2)
+                ang2      = float(row2['Crystal Angle (zero at X-axis and clockwise positive)'])
+                
+                cc_dist   = centroidDist(centroid1, centroid2)
+                metric    = cc_dist / (rad1 + rad2)
+                rel_ang   = getAngleDifference(ang1, ang2)
+                
+                records.append({
+                    'ImageName':        filename,
+                    'Radius1':          rad1,
+                    'Radius2':          rad2,
+                    'Metric Distances': metric,
+                    'Direct Distances': cc_dist,
+                    'Relative Angle':   rel_ang
+                })
+    
+    df = pd.DataFrame(records)
+    return df.round(2)
 
 def createAvgAngle_acrossDSpacingInfo_csv():
     """
@@ -544,13 +598,85 @@ def plot_kde_relative_angle(df, save_path):
     plt.savefig(save_path)
     plt.close()
     
-def plot_kde_contour_direct_angle(csv_filepath, save_path, 
-                                  kde_csv_path=None, num_levels=10,
-                                  normalize_by_wedge=True,
-                                  epsilon=1e-3):
+    
+def plot_wedge_normalized_hist2d(csv_filepath, save_path, num_levels=10):
+    """
+    Plot a wedge‐normalized 2D histogram of Direct Distance vs Relative Angle.
+    Each bin count H(r,θ) is divided by the wedge area r * dr * dθ.
+    
+    Parameters:
+      csv_filepath: path to acrossDSpacingInfo.csv
+      save_path: path to save the resulting contour plot
+      num_levels: number of contour levels to draw
+    """
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    # 1) load data
+    df = pd.read_csv(csv_filepath)
+    direct = df['Direct Distances'].dropna().values
+    angle  = df['Relative Angle']   .dropna().values
+
+    # 2) choose bin counts via Freedman-Diaconis
+    # from your_module import freedman_diaconis_bins
+    nbins_r     = freedman_diaconis_bins(direct)
+    nbins_theta = freedman_diaconis_bins(angle)
+
+    # 3) compute 2D histogram
+    H, r_edges, theta_edges = np.histogram2d(
+        direct, angle,
+        bins=[nbins_r, nbins_theta]
+    )
+
+    # 4) compute bin centers and widths
+    r_centers     = 0.5 * (r_edges[:-1] + r_edges[1:])
+    theta_centers = 0.5 * (theta_edges[:-1] + theta_edges[1:])
+    dr            = np.diff(r_edges)
+    dtheta        = np.diff(theta_edges)
+
+    # 5) build grids for normalization
+    # R, TH both shape (nbins_r, nbins_theta)
+    R, TH = np.meshgrid(r_centers, theta_centers, indexing='ij')
+    
+    # wedge area = r * dr * dθ
+    area = R * dr[:, None] * dtheta[None, :]
+
+    # 6) normalize
+    H_norm = H / area
+
+    # 7) contour‐plot
+    plt.figure(figsize=(8,6))
+    cf = plt.contourf(
+        R, TH,          # both (nbins_r, nbins_theta)
+        H_norm,         # also (nbins_r, nbins_theta)
+        levels=num_levels,
+        cmap='viridis'
+    )
+    plt.xlabel('Direct Distance (nm)')
+    plt.ylabel('Relative Angle (°)')
+    plt.title('Wedge‐Normalized 2D Histogram')
+    plt.colorbar(cf, label='Normalized density')
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+    
+def plot_kde_contour_direct_angle(
+    csv_filepath,
+    save_path,
+    kde_csv_path=None,
+    num_levels=10,
+    normalize_by_wedge=True,
+    epsilon=1e-3,
+    xlim=None,
+    ylim=None,
+    vmin=None,
+    vmax=None,
+    log_scale=False
+):
     """
     Generate a 2D KDE contour plot for 'Direct Distances' and 'Relative Angle' using Gaussian KDE,
-    with optional wedge-area normalization and CSV export of the KDE grid.
+    with optional wedge-area normalization, CSV export, and zoomed axes.
 
     Parameters:
       csv_filepath: Path to acrossDSpacingInfo.csv.
@@ -559,57 +685,148 @@ def plot_kde_contour_direct_angle(csv_filepath, save_path,
       num_levels: Number of contour levels (default is 10).
       normalize_by_wedge: If True, divide density by radius (xi) to normalize by annular area.
       epsilon: Small value to floor xi and avoid division by zero (default 1e-3 nm).
+      xlim: Tuple (xmin, xmax) to set the x-axis limits; if None, uses full range.
+      ylim: Tuple (ymin, ymax) to set the y-axis limits; if None, uses full range.
     """
     import pandas as pd
     import numpy as np
     import matplotlib.pyplot as plt
     from scipy.stats import gaussian_kde
+    from matplotlib.colors import LogNorm
 
-    # Load and clean data
+    # 1. Load and clean data
     df = pd.read_csv(csv_filepath)
     direct = df['Direct Distances'].dropna().values
     angle  = df['Relative Angle']   .dropna().values
 
-    # Define uniform grid for KDE evaluation
-    xmin, xmax = direct.min(), direct.max()
-    ymin, ymax = angle.min(), angle.max()
-    xi, yi = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+    # 2. Define uniform grid for KDE evaluation
+    x_min, x_max = direct.min(), direct.max()
+    y_min, y_max = angle.min(), angle.max()
+    xi, yi = np.mgrid[x_min:x_max:100j, y_min:y_max:100j]
 
-    # Evaluate 2D Gaussian KDE on grid
+    # 3. Evaluate 2D Gaussian KDE on grid
     values = np.vstack([direct, angle])
-    kernel = gaussian_kde(values)
-    zi = kernel(np.vstack([xi.flatten(), yi.flatten()]))
-    zi = zi.reshape(xi.shape)
+    kernel = gaussian_kde(values, bw_method=0.3)
+    zi = kernel(np.vstack([xi.flatten(), yi.flatten()])).reshape(xi.shape)
 
-    # Optional wedge-area normalization
+    # 4. Optional wedge-area normalization
     if normalize_by_wedge:
-        # Avoid dividing by zero radius
         R = np.maximum(xi, epsilon)
         zi = zi / R
 
-    # Optionally save KDE grid and density to CSV
+    # 5. Optionally save KDE grid & density to CSV
     if kde_csv_path:
-        grid_data = pd.DataFrame({
+        pd.DataFrame({
             'direct_distance': xi.flatten(),
             'relative_angle':   yi.flatten(),
             'density':          zi.flatten()
-        })
-        grid_data.to_csv(kde_csv_path, index=False)
+        }).to_csv(kde_csv_path, index=False)
+        
+    # Choose norm
+    norm = None
+    if log_scale:
+        # choose vmin if not set, avoid zeros
+        vmin_ = vmin or max(zi[zi>0].min(), 1e-8)
+        vmax_ = vmax or zi.max()
+        norm = LogNorm(vmin=vmin_, vmax=vmax_)
+    else:
+        vmin_ = vmin
+        vmax_ = vmax
 
-    # Plot
+    # 6. Plot
     plt.figure(figsize=(10, 8))
-    contour = plt.contourf(xi, yi, zi, levels=num_levels, cmap='viridis')
+    contour = plt.contourf( xi, yi, zi, 
+                            levels=num_levels, 
+                            cmap='viridis',
+                            norm=norm,
+                            vmin=vmin_, vmax=vmax_)
+    
     plt.xlabel('Direct Distance (nm)')
     plt.ylabel('Relative Angle (°)')
     title = '2D KDE Contour Plot'
-    if normalize_by_wedge:
-        title += ' (Wedge‐Normalized)'
-    else:
-        title += ' (Raw)'
+    title += ' (Wedge-Normalized)' if normalize_by_wedge else ' (Raw)'
+    if log_scale:
+        title += ' [Log scale]'
     plt.title(title)
     plt.colorbar(contour, label='Density')
+
+    # 7. Apply axis limits if provided
+    if xlim is not None:
+        plt.xlim(xlim)
+    if ylim is not None:
+        plt.ylim(ylim)
+
+    plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
+
+# def plot_kde_contour_direct_angle(csv_filepath, save_path, 
+#                                   kde_csv_path=None, num_levels=10,
+#                                   normalize_by_wedge=True,
+#                                   epsilon=1e-3):
+#     """
+#     Generate a 2D KDE contour plot for 'Direct Distances' and 'Relative Angle' using Gaussian KDE,
+#     with optional wedge-area normalization and CSV export of the KDE grid.
+
+#     Parameters:
+#       csv_filepath: Path to acrossDSpacingInfo.csv.
+#       save_path: Path to save the KDE contour plot image.
+#       kde_csv_path: Optional; path to save the KDE grid and density values as a CSV file.
+#       num_levels: Number of contour levels (default is 10).
+#       normalize_by_wedge: If True, divide density by radius (xi) to normalize by annular area.
+#       epsilon: Small value to floor xi and avoid division by zero (default 1e-3 nm).
+#     """
+#     import pandas as pd
+#     import numpy as np
+#     import matplotlib.pyplot as plt
+#     from scipy.stats import gaussian_kde
+
+#     # Load and clean data
+#     df = pd.read_csv(csv_filepath)
+#     direct = df['Direct Distances'].dropna().values
+#     angle  = df['Relative Angle']   .dropna().values
+
+#     # Define uniform grid for KDE evaluation
+#     xmin, xmax = direct.min(), direct.max()
+#     ymin, ymax = angle.min(), angle.max()
+#     xi, yi = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+
+#     # Evaluate 2D Gaussian KDE on grid
+#     values = np.vstack([direct, angle])
+#     kernel = gaussian_kde(values, bw_method=0.3)
+#     zi = kernel(np.vstack([xi.flatten(), yi.flatten()]))
+#     zi = zi.reshape(xi.shape)
+
+#     # Optional wedge-area normalization
+#     if normalize_by_wedge:
+#         # Avoid dividing by zero radius
+#         R = np.maximum(xi, epsilon)
+#         zi = zi / R
+
+#     # Optionally save KDE grid and density to CSV
+#     if kde_csv_path:
+#         grid_data = pd.DataFrame({
+#             'direct_distance': xi.flatten(),
+#             'relative_angle':   yi.flatten(),
+#             'density':          zi.flatten()
+#         })
+#         grid_data.to_csv(kde_csv_path, index=False)
+
+#     # Plot
+#     plt.figure(figsize=(10, 8))
+#     contour = plt.contourf(xi, yi, zi, levels=num_levels, cmap='viridis')
+#     plt.xlabel('Direct Distance (nm)')
+#     plt.ylabel('Relative Angle (°)')
+#     title = '2D KDE Contour Plot'
+#     if normalize_by_wedge:
+#         title += ' (Wedge‐Normalized)'
+#     else:
+#         title += ' (Raw)'
+#     plt.title(title)
+#     plt.colorbar(contour, label='Density')
+#     plt.savefig(save_path)
+#     plt.close()
+
 
 # def plot_kde_contour_direct_angle(csv_filepath, save_path, kde_csv_path=None, num_levels=10):
 #     """
@@ -656,6 +873,96 @@ def plot_kde_contour_direct_angle(csv_filepath, save_path,
 #     plt.colorbar(contour, label='Density')
 #     plt.savefig(save_path)
 #     plt.close()
+
+def plot_edge_normalized_contour(csv_filepath, save_path,
+                                 num_levels=10, r_min=1e-3,
+                                 xlim=None, ylim=None,
+                                 vmin=None, vmax=None,
+                                 kde_csv_path=None):
+    """
+    Reads a CSV with columns:
+       - 'Direct Distances'    (nm)
+       - 'Relative Angle'      (degrees)
+       - 'Radius1'             (nm)
+       - 'Radius2'             (nm)
+    Computes edge‐to‐edge distances, bins them with Freedman–Diaconis,
+    builds a 2D histogram, normalizes by wedge area (r * dr * dtheta),
+    optionally exports the grid and density to CSV, and saves a contour plot.
+
+    Parameters:
+      csv_filepath: path to the CSV containing the columns above.
+      save_path:    path where the contour image will be written.
+      num_levels:   number of contour levels in the plot.
+      r_min:        minimum edge distance to avoid division by zero.
+      xlim:         tuple (xmin, xmax) to set plt.xlim; None to auto.
+      ylim:         tuple (ymin, ymax) to set plt.ylim; None to auto.
+      vmin:         color scale minimum value; None to auto.
+      vmax:         color scale maximum value; None to auto.
+      kde_csv_path: if given, path to save the flattened grid & density as CSV.
+    """
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    # 1) Load and compute edge‐to‐edge distance
+    df = pd.read_csv(csv_filepath)
+    r_centroid = df['Direct Distances'].values
+    r1 = df['Radius1'].values
+    r2 = df['Radius2'].values
+    r_edge = r_centroid - (r1 + r2)
+    r_edge = np.clip(r_edge, r_min, None)
+    theta = df['Relative Angle'].values
+
+    # 2) Determine bins
+    nbins_r     = freedman_diaconis_bins(pd.Series(r_edge))
+    nbins_theta = freedman_diaconis_bins(pd.Series(theta))
+
+    # 3) 2D histogram
+    H, r_edges, th_edges = np.histogram2d(r_edge, theta,
+                                         bins=[nbins_r, nbins_theta])
+
+    # 4) Wedge‐area normalization
+    r_centers  = (r_edges[:-1] + r_edges[1:]) / 2
+    th_centers = (th_edges[:-1] + th_edges[1:]) / 2
+    dr         = np.diff(r_edges)
+    dth        = np.diff(th_edges)
+
+    R, TH = np.meshgrid(r_centers, th_centers, indexing='ij')
+    area = R * dr[:, None] * dth[None, :]
+    H_norm = H / area
+
+    # 4b) Optionally export flattened grid + density
+    if kde_csv_path:
+        flat = pd.DataFrame({
+            'r_edge':  R.flatten(),
+            'theta':   TH.flatten(),
+            'density': H_norm.flatten()
+        })
+        flat.to_csv(kde_csv_path, index=False)
+
+    # 5) Plot
+    plt.figure(figsize=(10, 8))
+    cf = plt.contourf(R, TH, H_norm,
+                      levels=num_levels,
+                      cmap='viridis')
+    if vmin is not None or vmax is not None:
+        cf.set_clim(vmin, vmax)
+
+    plt.xlabel('Edge-to-Edge Distance (nm)')
+    plt.ylabel('Relative Angle (°)')
+    plt.title('Normalized 2D Density (edge distance vs angle)')
+
+    if xlim is not None:
+        plt.xlim(xlim)
+    if ylim is not None:
+        plt.ylim(ylim)
+
+    plt.colorbar(cf, label='Density / (nm·°)')
+    plt.savefig(save_path)
+    plt.close()
+
+
+
 
 #############################
 #          MAIN             #
@@ -740,7 +1047,55 @@ if __name__ == "__main__":
     plot_contour_direct_angle(across_csv_path, contour_plot_path, num_levels=4)
     print("Saved 2D contour plot:", contour_plot_path)
     
-    kde_csv_path = join(DATA_DIR, "kde_grid_data.csv")
-    kde_contour_plot_path_new = join(DATA_DIR, "kde_contour_direct_vs_angle.png")
-    plot_kde_contour_direct_angle(across_csv_path, kde_contour_plot_path_new, kde_csv_path=kde_csv_path, num_levels=10)
-    print("Saved 2D KDE contour plot with grid data:", kde_contour_plot_path_new)
+    # kde_csv_path = join(DATA_DIR, "kde_grid_data.csv")
+    # kde_contour_plot_path_new = join(DATA_DIR, "kde_contour_direct_vs_angle.png")
+    # plot_kde_contour_direct_angle(across_csv_path, kde_contour_plot_path_new, kde_csv_path=kde_csv_path, num_levels=10)
+    # print("Saved 2D KDE contour plot with grid data:", kde_contour_plot_path_new)
+    
+    kde_zoomed_csv_path = join(DATA_DIR, "kde_zoomed_grid_data.csv")
+    kde_zoomed_contour_plot_path_new = join(DATA_DIR, "kde_zoomed_contour_direct_vs_angle.png")
+    plot_kde_contour_direct_angle(
+        csv_filepath=across_csv_path,
+        save_path=kde_zoomed_contour_plot_path_new,
+        kde_csv_path=kde_zoomed_csv_path,
+        num_levels=20,
+        normalize_by_wedge=True,
+        # xlim=None,
+        # ylim=None,
+        # vmin=None, 
+        # vmax=None,
+        xlim=(0.4, 1),    # show 0–30 nm only
+        ylim=(60, 90),    # show 0–20 degrees only,
+        vmin=1.25e-5, 
+        vmax=6.0e-5,
+        log_scale=False
+      )
+    
+    across_df = createAcrossDSpacingInfo_with_radii_csv()
+    across_csv_path = join(DATA_DIR, "acrossDSpacingInfo_with_radii.csv")
+    across_df.to_csv(across_csv_path, index=False)
+    
+    # plot_edge_normalized_contour(
+    # csv_filepath=across_csv_path,
+    # save_path=join(DATA_DIR, "edge_normalized_contour.png"),
+    # num_levels=10,
+    # r_min=0.1
+    # )
+    
+    plot_edge_normalized_contour(
+    csv_filepath=across_csv_path,
+    save_path=join(DATA_DIR, "edge_normalized_contour.png"),
+    num_levels=8,
+    r_min=0.1,
+    # xlim=(0.4, 1),    # show 0–30 nm only
+    # ylim=(60, 90),    # show 0–20 degrees only,
+    # vmin=1.25e-5, 
+    # vmax=6.0e-5,
+    xlim=None,
+    ylim=None,
+    vmin=None,
+    vmax=None,
+    kde_csv_path=join(DATA_DIR, "edge_normalized_density.csv")
+    )
+    
+    
